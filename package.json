@@ -1,7 +1,7 @@
 {
   "name": "kizuna",
   "productName": "Kizuna",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Kizuna - PlayStation (PS1-PS5) oyun başlatıcısı ve oyuncu topluluğu",
   "author": "Tv Man & FKOAC",
   "license": "UNLICENSED",
@@ -17,7 +17,8 @@
   },
   "devDependencies": {
     "electron": "33.2.1",
-    "electron-builder": "25.1.8"
+    "electron-builder": "25.1.8",
+    "vosk-browser": "^0.0.8"
   },
   "build": {
     "appId": "com.tvman-fkoac.kizuna",
@@ -36,6 +37,7 @@
       "ai.js",
       "serverctl.js",
       "updater.js",
+      "services.js",
       "app/**/*"
     ],
     "extraResources": [
@@ -52,6 +54,10 @@
       {
         "from": "build/node",
         "to": "node"
+      },
+      {
+        "from": "node_modules/7zip-bin/win/x64/7za.exe",
+        "to": "7za.exe"
       }
     ],
     "win": {

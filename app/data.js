@@ -31,12 +31,30 @@ function logoSVG(size = 120, u = 'a') {
 
 /* ---------- CONSOLES (official, open-source emulators) ---------- */
 const CONSOLES = {
-  ps1: { name: 'PlayStation', short: 'PS1', emu: 'DuckStation', url: 'https://www.duckstation.org/', ext: ['cue', 'chd', 'pbp', 'm3u', 'iso', 'img', 'bin'], status: 'Mükemmel uyumluluk', note: 'BIOS dosyasını kendi konsolundan almalısın' },
-  ps2: { name: 'PlayStation 2', short: 'PS2', emu: 'PCSX2', url: 'https://pcsx2.net/', ext: ['iso', 'chd', 'cso', 'bin', 'gz'], status: 'Çok iyi uyumluluk', note: 'BIOS dosyasını kendi konsolundan almalısın' },
-  ps3: { name: 'PlayStation 3', short: 'PS3', emu: 'RPCS3', url: 'https://rpcs3.net/', ext: ['bin', 'self', 'elf', 'iso'], status: 'İyi (güçlü işlemci gerekir)', note: 'Resmi PS3 firmware\'i Sony sitesinden yüklenir' },
-  ps4: { name: 'PlayStation 4', short: 'PS4', emu: 'shadPS4', url: 'https://shadps4.net/', ext: ['bin', 'elf'], status: 'Deneysel — az sayıda oyun çalışır', note: 'Birçok PS4 oyununun resmi PC sürümü var' },
-  ps5: { name: 'PlayStation 5', short: 'PS5', emu: null, url: null, ext: [], status: 'PC emülatörü yok', note: 'Resmi PC sürümü olan oyunlar mağazadan indirilebilir' }
+  ps1: { name: 'PlayStation', short: 'PS1', year: 1994, emu: 'DuckStation', url: 'https://www.duckstation.org/', ext: ['cue', 'chd', 'pbp', 'm3u', 'iso', 'img', 'bin'], status: 'Mükemmel uyumluluk', note: 'BIOS dosyasını kendi konsolundan almalısın', bios: true },
+  ps2: { name: 'PlayStation 2', short: 'PS2', year: 2000, emu: 'PCSX2', url: 'https://pcsx2.net/', ext: ['iso', 'chd', 'cso', 'bin', 'gz'], status: 'Çok iyi uyumluluk', note: 'BIOS dosyasını kendi konsolundan almalısın', bios: true },
+  ps3: { name: 'PlayStation 3', short: 'PS3', year: 2006, emu: 'RPCS3', url: 'https://rpcs3.net/', ext: ['bin', 'self', 'elf', 'iso'], status: 'İyi (güçlü işlemci gerekir)', note: 'Resmi PS3 sistem yazılımını RPCS3 içinden yüklersin', fw: 'https://www.playstation.com/en-us/support/hardware/ps3/system-software/' },
+  ps4: { name: 'PlayStation 4', short: 'PS4', year: 2013, emu: 'shadPS4', url: 'https://shadps4.net/', ext: ['bin', 'elf'], status: 'Deneysel — az sayıda oyun çalışır', note: 'Birçok PS4 oyununun resmi PC sürümü var' },
+  ps5: { name: 'PlayStation 5', short: 'PS5', year: 2020, emu: null, url: null, ext: [], status: 'PC emülatörü yok', note: 'Resmi PC sürümü olan oyunlar mağazadan indirilebilir' }
 };
+/* Console artwork — original, simplified console silhouettes (oldest → newest), not the official logos */
+function consoleArt(id, size = 64) {
+  const body = {
+    ps1: `<rect x="10" y="22" width="76" height="48" rx="5" fill="#c9c9cc" stroke="#8d8d92" stroke-width="2"/><rect x="10" y="58" width="76" height="12" rx="3" fill="#b3b3b8"/>
+      <circle cx="40" cy="40" r="15" fill="#dcdce0" stroke="#9a9aa0" stroke-width="2"/><circle cx="40" cy="40" r="4" fill="#9a9aa0"/>
+      <rect x="64" y="30" width="14" height="6" rx="3" fill="#8d8d92"/><rect x="64" y="42" width="14" height="6" rx="3" fill="#8d8d92"/><circle cx="20" cy="63" r="2.4" fill="#3ee06b"/>`,
+    ps2: `<g transform="rotate(-8 48 46)"><rect x="30" y="8" width="34" height="74" rx="3" fill="#15151a" stroke="#3a3a46" stroke-width="2"/>
+      ${[16, 24, 32, 40, 48, 56, 64].map(y => `<rect x="35" y="${y}" width="24" height="3" fill="#24242c"/>`).join('')}<rect x="62" y="10" width="2" height="70" fill="#2f6bff"/>
+      <circle cx="47" cy="76" r="2.2" fill="#2f6bff"/></g>`,
+    ps3: `<path d="M8 66 Q8 30 48 26 Q88 30 88 66 Z" fill="#0d0d10" stroke="#4a4a55" stroke-width="2"/><path d="M16 60 Q18 36 48 33 Q78 36 80 60" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="3"/>
+      <rect x="8" y="64" width="80" height="6" rx="2" fill="#1c1c22"/><rect x="40" y="60" width="16" height="2" fill="#8d8d92"/>`,
+    ps4: `<path d="M14 62 L28 30 L86 30 L72 62 Z" fill="#141418" stroke="#454552" stroke-width="2"/><path d="M28 30 L86 30 L84 34 L27 34 Z" fill="#25252d"/>
+      <path d="M44 31 L40 61" stroke="#2fd3ff" stroke-width="3" stroke-linecap="round"/><path d="M14 62 L72 62 L70 68 L12 68 Z" fill="#0a0a0d"/>`,
+    ps5: `<path d="M30 10 Q20 46 28 84 L40 84 L40 10 Z" fill="#f4f4f6" stroke="#c9c9d0" stroke-width="1.5"/><path d="M66 10 Q76 46 68 84 L56 84 L56 10 Z" fill="#f4f4f6" stroke="#c9c9d0" stroke-width="1.5"/>
+      <rect x="40" y="10" width="16" height="74" fill="#111116"/><path d="M42 12 L42 82" stroke="#2f6bff" stroke-width="1.5" opacity=".9"/><path d="M54 12 L54 82" stroke="#2f6bff" stroke-width="1.5" opacity=".9"/>`
+  }[id] || '';
+  return `<svg class="con-art" width="${size}" height="${size}" viewBox="0 0 96 96" role="img" aria-label="${(CONSOLES[id] || {}).name || ''}">${body}</svg>`;
+}
 
 /* ---------- GAME CATALOG (pc: an official PC version exists) ---------- */
 const GAMES = [
@@ -66,17 +84,22 @@ const GAMES = [
   ['ps5', 'Gran Turismo 7', 2022, 'Yarış'], ['ps5', 'Elden Ring', 2022, 'RPG', 1], ['ps5', 'Death Stranding 2', 2025, 'Macera'],
   ['ps5', 'Ghost of Yōtei', 2025, 'Açık Dünya']
 ].map(([c, t, y, g, pc]) => ({ id: c + '-' + t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''), c, t, y, g, pc: !!pc }));
+/* Cover art: English Wikipedia article for each game (the app reads its lead image via the public REST API) */
+const WIKI = {
+  'ps1-metal-gear-solid': 'Metal_Gear_Solid_(1998_video_game)', 'ps1-crash-bandicoot': 'Crash_Bandicoot_(video_game)', 'ps1-spyro-the-dragon': 'Spyro_the_Dragon_(video_game)',
+  'ps1-silent-hill': 'Silent_Hill_(video_game)', 'ps1-medal-of-honor': 'Medal_of_Honor_(1999_video_game)', 'ps1-driver': 'Driver_(video_game)',
+  'ps2-god-of-war': 'God_of_War_(2005_video_game)', 'ps2-kingdom-hearts': 'Kingdom_Hearts_(video_game)', 'ps2-ratchet-clank': 'Ratchet_&_Clank_(2002_video_game)',
+  'ps2-jak-and-daxter': 'Jak_and_Daxter:_The_Precursor_Legacy', 'ps2-okami': 'Ōkami', 'ps2-devil-may-cry-3': "Devil_May_Cry_3:_Dante's_Awakening",
+  'ps3-the-last-of-us': 'The_Last_of_Us_(video_game)', 'ps3-metal-gear-solid-4': 'Metal_Gear_Solid_4:_Guns_of_the_Patriots', 'ps3-infamous': 'Infamous_(video_game)',
+  'ps3-littlebigplanet': 'LittleBigPlanet_(2008_video_game)', 'ps3-journey': 'Journey_(2012_video_game)', 'ps3-ni-no-kuni': 'Ni_no_Kuni:_Wrath_of_the_White_Witch',
+  'ps4-god-of-war': 'God_of_War_(2018_video_game)', 'ps4-marvel-s-spider-man': 'Spider-Man_(2018_video_game)',
+  'ps5-demon-s-souls-remake': "Demon's_Souls_(2020_video_game)", 'ps5-marvel-s-spider-man-2': 'Spider-Man_2_(2023_video_game)', 'ps5-astro-bot': 'Astro_Bot_(video_game)',
+  'ps5-death-stranding-2': 'Death_Stranding_2:_On_the_Beach'
+};
+GAMES.forEach(g => { g.wiki = WIKI[g.id] || g.t.replace(/ /g, '_'); });
 
-/* ---------- DEMO PLAYERS (real users once connected to a server) ---------- */
-const USERS = [
-  { id: 'u1', name: 'RoninX', color: 'linear-gradient(135deg,#93C572,#2f5a1e)', status: 'online', joined: '2024-03-12', bio: 'Souls oyunları ve katanalar. ⚔️', games: ['Ghost of Tsushima', 'Sekiro: Shadows Die Twice', 'Bloodborne'], hideGames: false, hideJoin: false },
-  { id: 'u2', name: 'SakuraNeko', color: 'linear-gradient(135deg,#ff8fc8,#8a2d63)', status: 'online', joined: '2025-01-05', bio: 'Kawaii ama rekabetçi 🌸', games: ['Persona 5 Royal', 'Final Fantasy X', 'Astro Bot'], hideGames: false, hideJoin: false },
-  { id: 'u3', name: 'NeonWolf77', color: 'linear-gradient(135deg,#2fd3ff,#0b3b6b)', status: 'game', joined: '2023-11-20', bio: 'Gece sürüşü, synthwave ve yarış.', games: ['Gran Turismo 7', 'Burnout 3: Takedown', 'Need for Speed: Underground 2'], hideGames: false, hideJoin: true },
-  { id: 'u4', name: 'PixelSamurai', color: 'linear-gradient(135deg,#ffc845,#7a4b00)', status: 'away', joined: '2022-07-30', bio: 'Retro avcısı. PS1 > her şey.', games: ['Crash Bandicoot', 'Spyro the Dragon', 'Tekken 3', 'Final Fantasy VII'], hideGames: false, hideJoin: false },
-  { id: 'u5', name: 'LunaPlays', color: 'linear-gradient(135deg,#a46bff,#3a1670)', status: 'online', joined: '2025-06-14', bio: 'Yayıncı. Oyunlarım gizli 🤫', games: ['Elden Ring'], hideGames: true, hideJoin: false },
-  { id: 'u6', name: 'KageRider', color: 'linear-gradient(135deg,#ff3b4f,#5a0711)', status: 'offline', joined: '2024-09-02', bio: 'Gölgelerin içinden.', games: ['Metal Gear Solid 3: Snake Eater', 'Metal Gear Solid'], hideGames: false, hideJoin: false },
-  { id: 'u7', name: 'TurboTurtle', color: 'linear-gradient(135deg,#3ee0a1,#0b5a3c)', status: 'game', joined: '2026-02-18', bio: 'Yavaş ama emin adımlarla 🐢', games: ['LittleBigPlanet', 'Ratchet & Clank'], hideGames: false, hideJoin: false }
-];
+/* Friends are real players on a Kizuna Server — no fake / demo players */
+const USERS = [];
 const STATUS = { online: ['Çevrimiçi', '#3ee06b'], game: ['Oyunda', '#2fd3ff'], away: ['Uzakta', '#ffc845'], offline: ['Çevrimdışı', '#6b6f73'], dnd: ['Rahatsız Etme', '#ff3b4f'] };
 
 const EMOJIS = '😀 😁 😂 🤣 😅 😊 😍 😎 🤩 🥳 😇 🤔 😴 😭 😡 🤯 😱 🥶 🤠 👻 💀 🤖 👾 🎮 🕹️ 🏆 ⚔️ 🗡️ 🛡️ 🔥 ⚡ 💥 ✨ 🌸 🌴 🌺 🍕 🍜 🍣 ☕ 🎧 🎵 🎸 🥁 💚 💖 💜 💙 👍 👎 👏 🙌 🤝 ✌️ 🤘 👀 💯 ✅ ❌ 🚀 🌙 ⭐ 🌈 🐉 🦊 🐱 🐼 🥷'.split(' ');
@@ -105,7 +128,9 @@ const THEMES = [
   { id: 'ocean', name: 'Derin Okyanus', sub: 'Lacivert & camgöbeği', sw: ['#03111c', '#2fd3ff', '#a8efff'] },
   { id: 'violet', name: 'Mor Şimşek', sub: 'Gece moru', sw: ['#0d0618', '#a46bff', '#d9c2ff'] },
   { id: 'gold', name: 'Altın Şampiyon', sub: 'Siyah & altın', sw: ['#0d0a03', '#ffc845', '#ffe7a3'] },
-  { id: 'snow', name: 'Kar Beyazı', sub: 'Açık tema', sw: ['#eef1f4', '#3a7d44', '#7fc28a'] }
+  { id: 'snow', name: 'Kar Beyazı', sub: 'Açık tema', sw: ['#eef1f4', '#3a7d44', '#7fc28a'] },
+  { id: 'noir', name: 'Kara Yağmur', sub: 'Max Payne esintili · yağmur & şimşek', sw: ['#05070a', '#c9d4e0', '#d8b46a'] },
+  { id: 'wild', name: 'Vahşi Saldırı', sub: 'Wild Assault esintili · taktik', sw: ['#120c06', '#ff7a1a', '#ffd23f'] }
 ];
 const ERA_NAMES = {
   classic: 'Klasik Çağ', '60s': "60'lar Pop", '70s': "70'ler Disko", '80s': "80'ler Synthwave", '90s': "90'lar Piksel",
@@ -123,6 +148,8 @@ const FONTS = ['auto', 'Rajdhani', 'Orbitron', 'Inter', 'Poppins', 'Montserrat',
   'Exo 2', 'Oxanium', 'Space Grotesk', 'Teko', 'Russo One', 'Bebas Neue', 'Audiowide', 'Righteous', 'Josefin Sans',
   'Playfair Display', 'Cinzel', 'Noto Sans JP', 'VT323', 'Press Start 2P', 'Pacifico', 'Lobster', 'Satisfy', 'Bungee'];
 const SOUND_OPTS = [['off', 'Kapalı'], ['soft', 'Rahatlatıcı'], ['thin', 'İnce'], ['thick', 'Kalın']];
+const CLICK_OPTS = [...SOUND_OPTS, ['pop', 'Baloncuk'], ['glass', 'Cam'], ['retro', 'Retro 8-bit'], ['wood', 'Ahşap'], ['laser', 'Lazer']];
+const KEY_OPTS = [...SOUND_OPTS, ['mech', 'Mekanik klavye'], ['typewriter', 'Daktilo'], ['bubble', 'Baloncuk'], ['retro', 'Retro 8-bit'], ['rain', 'Yağmur damlası']];
 
 /* ---------- LANGUAGES ---------- */
 const LANGS = {
@@ -151,25 +178,57 @@ const I18N_RAW = {
 };
 const I18N = Object.fromEntries(Object.entries(I18N_RAW).map(([l, arr]) => [l, Object.fromEntries(I18N_KEYS.map((k, i) => [k, arr[i]]))]));
 
-/* ---------- PROFANITY FILTER ---------- */
-const BAD_EXACT = ['amk', 'aq', 'amq', 'amına', 'amina', 'aminakoyim', 'oç', 'siktir', 'sik', 'sikik', 'sikerim', 'sikeyim', 'siktim',
-  'göt', 'götveren', 'piç', 'yarak', 'yarrak', 'yarram', 'orospu', 'orosbu', 'kahpe', 'pezevenk', 'yavşak', 'yavsak', 'ibne',
-  'amcık', 'amcik', 'ananı', 'anani', 'ananızı', 'şerefsiz', 'serefsiz', 'gavat', 'dalyarak', 'puşt', 'pust',
-  'fuck', 'fucking', 'fucker', 'shit', 'bitch', 'asshole', 'bastard', 'cunt', 'motherfucker', 'whore', 'slut', 'dickhead'];
-const BAD_STEMS = ['siktir', 'sikerim', 'sikeyim', 'yarrak', 'orospu', 'pezevenk', 'yavşak', 'amcık', 'amınakoy', 'aminakoy', 'fuck', 'motherf', 'bitch', 'asshole'];
+/* ---------- PROFANITY FILTER + BAN DURATIONS (same rules as server/filter.js) ----------
+   "mild" = swearing (base 1 day), "severe" = insults aimed at people / family, slurs (base 3 days).
+   Every repeat of the same severity doubles the ban: 1 → 2 → 4 → 8 … days (max 365). */
+const SEVERE_EXACT = ['orospu', 'orosbu', 'kahpe', 'pezevenk', 'piç', 'ibne', 'ananı', 'anani', 'ananızı', 'gavat', 'puşt', 'pust', 'amına', 'amina', 'aminakoyim',
+  'cunt', 'motherfucker', 'whore', 'slut'];
+const MILD_EXACT = ['amk', 'aq', 'amq', 'oç', 'siktir', 'sik', 'sikik', 'sikerim', 'sikeyim', 'siktim', 'göt', 'götveren', 'yarak', 'yarrak', 'yarram',
+  'yavşak', 'yavsak', 'amcık', 'amcik', 'şerefsiz', 'serefsiz', 'dalyarak', 'fuck', 'fucking', 'fucker', 'shit', 'bitch', 'asshole', 'bastard', 'dickhead'];
+const SEVERE_STEMS = ['orospu', 'pezevenk', 'amınakoy', 'aminakoy', 'motherf'];
+const MILD_STEMS = ['siktir', 'sikerim', 'sikeyim', 'yarrak', 'yavşak', 'amcık', 'fuck', 'bitch', 'asshole'];
+const BAN_BASE_DAYS = { mild: 1, severe: 3 };
 function normBad(s) {
   return String(s).toLocaleLowerCase('tr')
     .replace(/0/g, 'o').replace(/[1!|]/g, 'i').replace(/3/g, 'e').replace(/[4@]/g, 'a').replace(/[5$]/g, 's').replace(/7/g, 't')
     .replace(/(.)\1{2,}/g, '$1$1');
 }
-function hasProfanity(s) {
-  if (!s) return false;
+function profanityLevel(s) {
+  if (!s) return null;
   const n = normBad(s);
   const collapsed = n.replace(/(.)\1+/g, '$1');
   const split = x => x.split(/[^a-zçğıöşüâî]+/).filter(Boolean);
   const tokens = [...split(n), ...split(collapsed)];
-  if (tokens.some(t => BAD_EXACT.includes(t))) return true;
-  const joined = n.replace(/[^a-zçğıöşü]/g, '');
-  const joinedC = collapsed.replace(/[^a-zçğıöşü]/g, '');
-  return BAD_STEMS.some(st => joined.includes(st) || joinedC.includes(st));
+  const joined = n.replace(/[^a-zçğıöşü]/g, ''), joinedC = collapsed.replace(/[^a-zçğıöşü]/g, '');
+  const stem = list => list.some(st => joined.includes(st) || joinedC.includes(st));
+  if (tokens.some(t => SEVERE_EXACT.includes(t)) || stem(SEVERE_STEMS)) return 'severe';
+  if (tokens.some(t => MILD_EXACT.includes(t)) || stem(MILD_STEMS)) return 'mild';
+  return null;
 }
+const hasProfanity = s => !!profanityLevel(s);
+const banDays = (level, count) => Math.min(365, (BAN_BASE_DAYS[level] || 1) * 2 ** Math.max(0, count - 1));
+
+/* ---------- WHAT'S NEW (shown once after each update, and from the news button) ---------- */
+const CHANGELOG = [
+  {
+    v: '1.0.2', date: '2026-11-18', title: 'Büyük topluluk güncellemesi',
+    items: [
+      ['🤝', 'Gerçek arkadaşlar', 'Sahte demo oyuncular kaldırıldı. Kizuna Topluluk Sunucusu üzerinden dünyanın her yerinden gerçek oyunculara kullanıcı adı veya 8 haneli arkadaş koduyla istek gönder, onlar da sana göndersin; mesajlaş ve sesli sohbet et.'],
+      ['🎮', 'Emülatörler uygulamanın içinde', 'DuckStation, PCSX2, RPCS3 ve shadPS4 artık tek tıkla Kizuna’nın içine kuruluyor — hiçbir siteye gitmene gerek yok.'],
+      ['🖼️', 'Oyun kapakları', 'Oyunlar bölümündeki her oyunun kapak resmi artık görünüyor.'],
+      ['✏️', 'Yeni profil düzenleme', 'Profil resminin yanındaki kalem simgesiyle düzenleme panelini aç-kapa. Fotoğraf, GIF, video ve kapak için kırpma paneli eklendi.'],
+      ['🌧️', 'Yeni temalar', 'Kara Yağmur (Max Payne esintili, yağmur ve şimşekli noir) ve Vahşi Saldırı (Wild Assault esintili) temaları.'],
+      ['🎻', 'Yeni müzikler', 'Rahatlatıcı ve Rock & Aksiyon’a yeni parçalar, kemanlı yeni Dram bölümü ve 3 modlu Tekrarla butonu.'],
+      ['🎙️', 'Sesli komut yenilendi', 'Sesli komutlar artık bilgisayarında çevrimdışı çalışıyor. Ayarlar’dan mikrofon ve hoparlör seçebilirsin.'],
+      ['🕹️', 'Kontrolcü ile kontrol', 'Kizuna’yı artık kolunla gezebilirsin: yön tuşları, A ile seç, B ile geri, LB/RB ile bölümler.'],
+      ['🌍', 'Dil', 'Dil seçince arayüzün tamamı o dile geçiyor.'],
+      ['⚖️', 'Adil ban sistemi', 'Ceza süresi suçun ağırlığına göre: küfür ilk seferde 1 gün, ağır hakaret 3 gün; her tekrarında süre iki katına çıkar.'],
+      ['🛠️', 'Düzeltmeler', 'Tam ekran tercihi hatırlanıyor (F11), ray açılıp kapanırken donma giderildi, engelle ve spam bildir ayrıldı, silinen mesajlar bildirim sayısından düşüyor, yeni tıklama ve klavye sesleri, Kizuna AI daha detaylı sohbet ediyor.']
+    ]
+  },
+  {
+    v: '1.0.1', date: '2026-11-18', title: 'Otomatik güncelleme',
+    items: [['⬆️', 'Otomatik güncelleme', 'Kizuna artık yeni sürümleri GitHub üzerinden kendiliğinden indirip kuruyor.']]
+  }
+];
+const COMMUNITY_URL = 'https://raw.githubusercontent.com/tvman78/Kizuna/main/community.json';

@@ -7,7 +7,7 @@ class NetError extends Error { constructor(status, msg) { super(msg); this.statu
 
 const NET = {
   online: false, wsUp: false, url: '', token: '', me: null,
-  users: new Map(), friends: [], requestsIn: [], requestsOut: [], blocked: [], chats: {}, unread: {}, loaded: {},
+  users: new Map(), friends: [], requestsIn: [], requestsOut: [], blocked: [], spamReported: [], chats: {}, unread: {}, loaded: {},
   ws: null, retry: 0, retryTimer: null,
 
   normUrl(u) {
@@ -65,7 +65,7 @@ const NET = {
   },
   drop() {
     this.token = ''; this.online = false; this.me = null;
-    this.users.clear(); this.friends = []; this.requestsIn = []; this.requestsOut = []; this.blocked = [];
+    this.users.clear(); this.friends = []; this.requestsIn = []; this.requestsOut = []; this.blocked = []; this.spamReported = [];
     this.chats = {}; this.unread = {}; this.loaded = {}; this.iceCache = null;
     clearTimeout(this.retryTimer);
     if (this.ws) { const w = this.ws; this.ws = null; try { w.close(); } catch {} }
@@ -77,7 +77,7 @@ const NET = {
     (me.users || []).forEach(u => this.users.set(u.id, u));
     this.users.set(me.id, me);
     this.friends = me.friends.slice(); this.requestsIn = me.requestsIn.slice();
-    this.requestsOut = me.requestsOut.slice(); this.blocked = me.blocked.slice();
+    this.requestsOut = me.requestsOut.slice(); this.blocked = me.blocked.slice(); this.spamReported = (me.spamReported || []).slice();
   },
   putUser(u) { if (!u) return u; const old = this.users.get(u.id) || {}; const m = { ...old, ...u }; this.users.set(u.id, m); return m; },
 
@@ -115,7 +115,7 @@ const NET = {
     const r = await this.req('POST', '/api/me/' + kind, undefined, { data: file, type: file.type });
     const me = await this.req('GET', '/api/me'); this.applyMe(me); return r;
   },
-  selfBan(reason) { return this.req('POST', '/api/me/selfban', { reason }).catch(() => {}); },
+  selfBan(reason, level) { return this.req('POST', '/api/me/selfban', { reason, level }).then(r => r.banned).catch(() => null); },
 
   /* ---- Players & friends ---- */
   async search(q) { const list = await this.req('GET', '/api/users?q=' + encodeURIComponent(q || '')); return list.map(u => this.putUser(u)); },
@@ -129,13 +129,14 @@ const NET = {
   async accept(id) { const r = await this.req('POST', '/api/friends/accept', { id }); this.putUser(r.user); this.addFriend(id); },
   async reject(id) { await this.req('POST', '/api/friends/reject', { id }); this.requestsIn = this.requestsIn.filter(x => x !== id); this.requestsOut = this.requestsOut.filter(x => x !== id); },
   async remove(id) { await this.req('POST', '/api/friends/remove', { id }); this.friends = this.friends.filter(x => x !== id); },
-  async block(id) {
-    await this.req('POST', '/api/block', { id, spam: true });
+  async block(id, spam) {
+    await this.req('POST', '/api/block', { id, spam: !!spam });
     if (!this.blocked.includes(id)) this.blocked.push(id);
+    this.spamReported = this.spamReported.filter(x => x !== id); if (spam) this.spamReported.push(id);
     this.friends = this.friends.filter(x => x !== id); this.requestsIn = this.requestsIn.filter(x => x !== id); this.requestsOut = this.requestsOut.filter(x => x !== id);
     delete this.chats[id]; delete this.unread[id];
   },
-  async unblock(id) { await this.req('POST', '/api/unblock', { id }); this.blocked = this.blocked.filter(x => x !== id); },
+  async unblock(id) { await this.req('POST', '/api/unblock', { id }); this.blocked = this.blocked.filter(x => x !== id); this.spamReported = this.spamReported.filter(x => x !== id); },
   addFriend(id) {
     this.requestsIn = this.requestsIn.filter(x => x !== id); this.requestsOut = this.requestsOut.filter(x => x !== id);
     if (!this.friends.includes(id)) this.friends.push(id);
@@ -170,6 +171,8 @@ const NET = {
     const body = { kind: msg.kind, text: msg.text, sticker: msg.sticker, file: msg.file, poll: msg.poll && { q: msg.poll.q, opts: msg.poll.opts.map(o => o.t) } };
     return this.upsertMsg(await this.req('POST', '/api/messages/' + encodeURIComponent(id), body));
   },
+  async deleteMsg(peer, mid) { await this.req('POST', '/api/messages/' + encodeURIComponent(peer) + '/' + encodeURIComponent(mid) + '/delete'); this.removeMsg(peer, mid); },
+  removeMsg(peer, mid) { if (this.chats[peer]) this.chats[peer] = this.chats[peer].filter(m => m.id !== mid); },
   markRead(id) { this.unread[id] = 0; return this.req('POST', '/api/messages/' + encodeURIComponent(id) + '/read').catch(() => {}); },
   async vote(mid, opt) { return this.upsertMsg(await this.req('POST', '/api/polls/' + encodeURIComponent(mid) + '/vote', { opt })); },
   async upload(file) { return this.req('POST', '/api/upload', undefined, { data: file, type: file.type || 'application/octet-stream', name: file.name }); }

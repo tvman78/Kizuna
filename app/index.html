@@ -6,7 +6,7 @@
 <title>Kizuna</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&family=Bungee&family=Bungee+Shade&family=Audiowide&family=Monoton&family=Press+Start+2P&family=VT323&family=Righteous&family=Playfair+Display:wght@500;700&family=Cinzel:wght@500;700&family=Poppins:wght@400;600&family=Inter:wght@400;600&family=Montserrat:wght@400;700&family=Exo+2:wght@400;700&family=Oxanium:wght@400;700&family=Space+Grotesk:wght@400;700&family=Teko:wght@400;600&family=Russo+One&family=Bebas+Neue&family=Pacifico&family=Lobster&family=Noto+Sans+JP:wght@400;700&family=Roboto:wght@400;700&family=Nunito:wght@400;700&family=Quicksand:wght@400;700&family=Comfortaa:wght@400;700&family=Josefin+Sans:wght@400;700&family=Abril+Fatface&family=Satisfy&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&family=Bungee&family=Bungee+Shade&family=Audiowide&family=Monoton&family=Press+Start+2P&family=VT323&family=Righteous&family=Playfair+Display:wght@500;700&family=Cinzel:wght@500;700&family=Poppins:wght@400;600&family=Inter:wght@400;600&family=Montserrat:wght@400;700&family=Exo+2:wght@400;700&family=Oxanium:wght@400;700&family=Space+Grotesk:wght@400;700&family=Teko:wght@400;600&family=Russo+One&family=Bebas+Neue&family=Pacifico&family=Lobster&family=Noto+Sans+JP:wght@400;700&family=Roboto:wght@400;700&family=Nunito:wght@400;700&family=Quicksand:wght@400;700&family=Comfortaa:wght@400;700&family=Josefin+Sans:wght@400;700&family=Abril+Fatface&family=Satisfy&family=UnifrakturMaguntia&family=Special+Elite&family=Black+Ops+One&display=swap">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body data-theme="kizuna" data-era="modern">
@@ -18,10 +18,11 @@
 <section id="ban" class="screen hidden">
   <div class="ban-box">
     <div class="ban-icon">⛔</div>
-    <h1>HESABIN 6 AY BOYUNCA BANLANDI</h1>
+    <h1 id="banTitle">HESABIN BANLANDI</h1>
     <p id="banReason" class="ban-reason"></p>
     <div class="ban-timer" id="banTimer"></div>
     <p class="ban-warn">Eğer bir daha ban yemek istemiyorsan kötü kelimeler kullanma.</p>
+    <p class="ban-next" id="banNext"></p>
     <p class="ban-until" id="banUntil"></p>
   </div>
 </section>
@@ -30,7 +31,7 @@
 <div id="preban" class="hidden">
   <div class="preban-box">
     <h2>⚠ SON UYARI</h2>
-    <p>Uyarıya rağmen uygunsuz kelimeler yazmaya devam ettin.<br>6 aylık ban başlıyor:</p>
+    <p>Uyarıya rağmen uygunsuz kelimeler yazmaya devam ettin.<br><b id="prebanDays">1</b> günlük ban başlıyor:</p>
     <div id="prebanCount">20</div>
   </div>
 </div>
@@ -93,7 +94,7 @@
   <aside id="rail">
     <div class="rail-head">
       <div id="railLogo"></div>
-      <div class="rail-brand">KIZUNA<small>v1.0</small></div>
+      <div class="rail-brand">KIZUNA<small id="railVer">v1.0.2</small></div>
     </div>
     <nav id="nav"></nav>
     <button id="railToggle" class="rail-toggle" data-tip="Rayı genişlet / daralt"><span>⟨</span><em>Rayı daralt</em></button>
@@ -111,12 +112,14 @@
         <button class="icon-btn" id="voiceBtn" data-tip="Sesli komut (sağ tık: yazarak komut)"></button>
         <button class="icon-btn" id="padBtn" data-tip="Kontrolcü bağla"></button>
         <button class="icon-btn" id="musicBtn" data-tip="Müziği çal / durdur"></button>
+        <button class="icon-btn" id="fsBtn" data-tip="Tam ekran (F11)"></button>
         <button class="me-btn" id="meBtn" data-tip="Profilin"><span id="meAv"></span><span id="meName"></span></button>
       </div>
     </header>
     <main id="view"></main>
     <footer id="footer"><span data-i18n="makers">Yapımcılar</span><b class="makers">Tv Man &amp; FKOAC</b></footer>
   </div>
+  <button id="newsBtn" class="news-btn" data-tip="Yenilikler — bu güncellemede neler var?"></button>
 </div>
 
 <!-- ============ PRODUCT TOUR ============ -->
@@ -138,8 +141,10 @@
 <div id="modal" class="hidden"><div class="modal-card panel" id="modalCard"></div></div>
 
 <script src="data.js"></script>
+<script src="i18n.js"></script>
 <script src="audio.js"></script>
 <script src="net.js"></script>
+<script src="vendor/vosk.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

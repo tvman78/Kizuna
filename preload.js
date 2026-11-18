@@ -10,6 +10,22 @@ contextBridge.exposeInMainWorld('kizuna', {
   getBan: () => ipcRenderer.invoke('ban-get'),
   setBan: (b) => ipcRenderer.invoke('ban-set', b),
   setIcon: (png) => ipcRenderer.invoke('set-icon', png),
+  fullscreen: (on) => ipcRenderer.invoke('fullscreen', on),
+  emu: {
+    status: () => ipcRenderer.invoke('emu-status'),
+    install: (id) => ipcRenderer.invoke('emu-install', id),
+    open: (id, sub) => ipcRenderer.invoke('emu-open', id, sub),
+    run: (id) => ipcRenderer.invoke('emu-run', id),
+    onProgress: (cb) => { ipcRenderer.removeAllListeners('emu-progress'); ipcRenderer.on('emu-progress', (e, p) => cb(p)); }
+  },
+  covers: {
+    get: (list) => ipcRenderer.invoke('covers-get', list),
+    onCover: (cb) => { ipcRenderer.removeAllListeners('cover'); ipcRenderer.on('cover', (e, c) => cb(c)); }
+  },
+  voice: {
+    model: (lang) => ipcRenderer.invoke('voice-model', lang),
+    onProgress: (cb) => { ipcRenderer.removeAllListeners('voice-progress'); ipcRenderer.on('voice-progress', (e, p) => cb(p)); }
+  },
   onGameExit: (cb) => { ipcRenderer.removeAllListeners('game-exit'); ipcRenderer.on('game-exit', (e, c) => cb(c)); },
   server: {
     status: () => ipcRenderer.invoke('server-status'),
@@ -34,6 +50,7 @@ contextBridge.exposeInMainWorld('kizuna', {
     reset: () => ipcRenderer.invoke('ai-reset'),
     stop: () => ipcRenderer.invoke('ai-stop'),
     chat: (payload) => ipcRenderer.invoke('ai-chat', payload),
+    translate: (payload) => ipcRenderer.invoke('ai-translate', payload),
     onDelta: (cb) => { ipcRenderer.removeAllListeners('ai-delta'); ipcRenderer.on('ai-delta', (e, t) => cb(t)); },
     onAction: (cb) => { ipcRenderer.removeAllListeners('ai-action'); ipcRenderer.on('ai-action', (e, a) => cb(a)); }
   }

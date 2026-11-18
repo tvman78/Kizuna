@@ -7,6 +7,8 @@ const { spawn } = require('child_process');
 const { registerAi } = require('./ai');
 const { registerServerCtl, startServer, stopServer, serverRunning, serverCtl } = require('./serverctl');
 const { registerUpdater } = require('./updater');
+const { registerSchemes, registerServices, windowOptions, trackWindow } = require('./services');
+registerSchemes();
 
 let win = null, tray = null, appIcon = null, quitting = false;
 const guardFile = () => path.join(app.getPath('userData'), 'kizuna-guard.json');
@@ -35,8 +37,9 @@ function destroyTrayIfHidden() {
 
 function createWindow() {
   Menu.setApplicationMenu(null); // developer menu / shortcuts disabled
+  const ws = windowOptions();
   win = new BrowserWindow({
-    width: 1440, height: 900, minWidth: 1024, minHeight: 660,
+    ...ws.opts, minWidth: 1024, minHeight: 660,
     backgroundColor: '#000000', title: 'Kizuna', show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -44,7 +47,12 @@ function createWindow() {
       autoplayPolicy: 'no-user-gesture-required'
     }
   });
-  win.once('ready-to-show', () => win.show());
+  win.once('ready-to-show', () => {
+    if (ws.maximized) win.maximize();
+    win.show();
+    if (ws.fullscreen) win.setFullScreen(true);
+  });
+  trackWindow(win);
   win.loadFile(path.join(__dirname, 'app', 'index.html'));
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https:\/\//i.test(url)) shell.openExternal(url);
@@ -62,11 +70,13 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  session.defaultSession.setPermissionRequestHandler((wc, perm, cb) =>
-    cb(['media', 'fullscreen', 'notifications', 'clipboard-sanitized-write'].includes(perm)));
+  const PERMS = ['media', 'fullscreen', 'notifications', 'clipboard-sanitized-write', 'speaker-selection'];
+  session.defaultSession.setPermissionRequestHandler((wc, perm, cb) => cb(PERMS.includes(perm)));
+  session.defaultSession.setPermissionCheckHandler((wc, perm) => PERMS.includes(perm));
   registerAi();
   registerServerCtl(() => win);
   registerUpdater(() => win, async () => { quitting = true; if (serverRunning()) await stopServer(); });
+  registerServices(() => win);
   createWindow();
   if (serverCtl().autoStart) startServer();
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
@@ -87,8 +97,9 @@ ipcMain.handle('pick-folder', async () => {
   return r.canceled ? null : r.filePaths[0];
 });
 ipcMain.handle('open-external', (e, url) => {
-  if (typeof url === 'string' && /^https:\/\//i.test(url)) shell.openExternal(url);
+  if (typeof url === 'string' && (/^https:\/\//i.test(url) || /^steam:\/\/(store|install|run|openurl)\//i.test(url))) shell.openExternal(url);
 });
+ipcMain.handle('fullscreen', (e, on) => { if (win) win.setFullScreen(on === undefined ? !win.isFullScreen() : !!on); return win ? win.isFullScreen() : false; });
 
 /* ---------- Game folder scanning ---------- */
 const EXT_GUESS = { cue: 'ps1', pbp: 'ps1', m3u: 'ps1', chd: 'ps1', iso: 'ps2', cso: 'ps2' };
@@ -158,7 +169,8 @@ ipcMain.handle('ban-get', () => {
 });
 ipcMain.handle('ban-set', (e, b) => {
   try {
-    if (b && typeof b.until === 'number') fs.writeFileSync(guardFile(), JSON.stringify(b));
+    // The record also keeps the offense counts, so repeat violations get longer bans even after a ban ends
+    if (b && typeof b.until === 'number') fs.writeFileSync(guardFile(), JSON.stringify({ until: b.until, reason: String(b.reason || '').slice(0, 300), at: b.at, days: b.days, offenses: b.offenses || {} }));
     else if (fs.existsSync(guardFile())) fs.unlinkSync(guardFile());
   } catch {}
 });

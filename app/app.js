@@ -10,8 +10,9 @@ const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(3
 const fold = s => String(s || '').toLocaleLowerCase('tr').replace(/ı/g, 'i').normalize('NFD').replace(/[̀-ͯ]/g, '');
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const api = window.kizuna || null;
-const fmtDate = ts => new Date(ts).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
-const fmtTime = ts => new Date(ts).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+const loc = () => (typeof S !== 'undefined' && LANGS[S.lang] && LANGS[S.lang].sp) || 'tr-TR';
+const fmtDate = ts => new Date(ts).toLocaleDateString(loc(), { day: 'numeric', month: 'long', year: 'numeric' });
+const fmtTime = ts => new Date(ts).toLocaleTimeString(loc(), { hour: '2-digit', minute: '2-digit' });
 const fmtSize = b => b > 1e6 ? (b / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1e3)) + ' KB';
 const getPath = (o, p) => p.split('.').reduce((a, k) => (a == null ? a : a[k]), o);
 const setPath = (o, p, v) => { const ks = p.split('.'); const last = ks.pop(); ks.reduce((a, k) => (a[k] ??= {}), o)[last] = v; };
@@ -20,16 +21,17 @@ const setPath = (o, p, v) => { const ks = p.split('.'); const last = ks.pop(); k
 const DEFAULTS = {
   setupDone: false, tourDone: false, lang: 'tr', theme: 'kizuna', accent: '', year: 2026, font: 'auto', fontSize: 15,
   clickSound: 'soft', keySound: 'soft', sfxVol: 0.6, musicVol: 0.45, musicStyle: 'relax', autoMusic: true,
-  profile: { name: '', bio: '', status: 'online', avatar: '', avatarType: '', banner: '', bannerType: '', joined: 0 },
+  profile: { name: '', bio: '', status: 'online', avatar: '', avatarType: '', banner: '', bannerType: '', joined: 0, avatarCrop: null, bannerCrop: null },
   privacy: { hideJoin: false, hideGames: false },
   emulators: { ps1: '', ps2: '', ps3: '', ps4: '' }, gameFolder: '',
   graphics: { scale: '3x', fps: 'high', vsync: true, fullscreen: true },
   account: { email: '' },
   library: [], saved: [], history: [], played: [], visited: [],
-  friends: ['u1', 'u3'], requestsIn: ['u2'], requestsOut: [], blocked: [], reports: [],
+  friends: [], requestsIn: [], requestsOut: [], blocked: [], reports: [],
   chats: {}, unread: {}, lastChat: '', aiChat: [], aiWarned: false,
-  bg: '', bgType: '', bgDim: 0.55, userTracks: [], rail: true,
-  net: { url: 'http://localhost:3777', token: '' }, callRelay: false
+  bg: '', bgType: '', bgDim: 0.55, userTracks: [], rail: true, musicRepeat: 'all',
+  micId: '', spkId: '', seenVersion: '', padNav: true,
+  net: { url: '', token: '' }, callRelay: false
 };
 function deepMerge(a, b) {
   for (const k in b) {
@@ -39,6 +41,15 @@ function deepMerge(a, b) {
   return a;
 }
 let S = (() => { try { return deepMerge(structuredClone(DEFAULTS), JSON.parse(localStorage.getItem('kz_state')) || {}); } catch { return structuredClone(DEFAULTS); } })();
+// v1.0.2: the fake demo players are gone — drop anything that pointed at them
+(() => {
+  const demo = id => /^u\d+$/.test(id);
+  ['friends', 'requestsIn', 'requestsOut', 'blocked'].forEach(k => { S[k] = (S[k] || []).filter(id => !demo(id)); });
+  for (const k of Object.keys(S.chats || {})) if (demo(k)) delete S.chats[k];
+  for (const k of Object.keys(S.unread || {})) if (demo(k)) delete S.unread[k];
+  if (demo(S.lastChat || '')) S.lastChat = '';
+  if (S.net && S.net.url === 'http://localhost:3777' && !S.net.token) S.net.url = '';
+})();
 function save() { try { localStorage.setItem('kz_state', JSON.stringify(S)); } catch { toast('Kaydedilemedi: depolama dolu olabilir', 'err'); } }
 function log(text) { S.history.unshift({ t: Date.now(), text }); S.history = S.history.slice(0, 300); save(); }
 /* Social data: read from the server (NET) when connected to a Kizuna Server, otherwise from demo data (S) */
@@ -63,13 +74,16 @@ async function mediaURL(id) {
   try { const b = await DB.get(id); if (!b) return null; return (urlCache[id] = URL.createObjectURL(b)); } catch { return null; }
 }
 async function storeMedia(file) { const id = 'm_' + uid(); await DB.put(id, file); return { id, type: file.type || '' }; }
-const mediaHTML = (url, type) => (type || '').startsWith('video')
-  ? `<video src="${url}" autoplay loop muted playsinline></video>` : `<img src="${url}" alt="">`;
+/* Framing (crop) is non-destructive: x/y = focus point in %, z = zoom — works for photos, GIFs and videos alike */
+const cropStyle = c => c ? `object-position:${+c.x}% ${+c.y}%;transform:scale(${+c.z || 1});transform-origin:${+c.x}% ${+c.y}%` : '';
+const mediaHTML = (url, type, crop) => (type || '').startsWith('video')
+  ? `<video src="${url}" autoplay loop muted playsinline style="${cropStyle(crop)}"></video>` : `<img src="${url}" alt="" style="${cropStyle(crop)}">`;
 async function hydrate(root = document) {
   for (const el of $$('[data-mid]:not([data-done])', root)) {
     el.dataset.done = '1';
     const url = await mediaURL(el.dataset.mid);
-    if (url) el.innerHTML = mediaHTML(url, el.dataset.mtype);
+    let crop = null; try { crop = el.dataset.crop ? JSON.parse(el.dataset.crop) : null; } catch {}
+    if (url) el.innerHTML = mediaHTML(url, el.dataset.mtype, crop);
   }
 }
 
@@ -92,7 +106,9 @@ const ICONS = {
   smile: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01', image: 'M3 3h18v18H3zM8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM21 15l-5-5L5 21',
   sticker: 'M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5zM15 3v6h6', shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
   folder: 'M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', check: 'M20 6L9 17l-5-5', user: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
-  micoff: 'M2 2l20 20M9 9v3a3 3 0 0 0 5.1 2.1M15 9.3V5a3 3 0 0 0-5.9-.7M17 16.9A7 7 0 0 1 5 12v-2m14 0v2c0 .8-.1 1.5-.4 2.2M12 19v3'
+  micoff: 'M2 2l20 20M9 9v3a3 3 0 0 0 5.1 2.1M15 9.3V5a3 3 0 0 0-5.9-.7M17 16.9A7 7 0 0 1 5 12v-2m14 0v2c0 .8-.1 1.5-.4 2.2M12 19v3',
+  pencil: 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z', fullscreen: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5',
+  repeat: 'M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3', trash: 'M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14', flag: 'M4 22V4h12l-1.5 4L16 12H4', copy: 'M9 9h11v11H9zM5 15H4V4h11v1', speaker: 'M11 5L6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14'
 };
 const icon = (n, s = 20) => `<svg class="ic" viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${ICONS[n] || ''}"/></svg>`;
 const CLOUD_PATH = 'M52 92 C22 92 8 72 18 56 C6 40 22 18 46 24 C52 6 84 0 100 16 C112 0 150 0 160 20 C180 8 214 16 214 40 C236 46 238 78 216 86 C210 94 196 94 186 92 Z';
@@ -140,14 +156,14 @@ const visibleUsers = () => (NET.online ? [...NET.users.values()].filter(u => u.i
 const myFriends = () => SO.friends.filter(id => !SO.blocked.includes(id)).map(userById).filter(Boolean);
 const COLOR0 = 'linear-gradient(135deg,#93C572,#2f5a1e)';
 function meAvatar(size = 40) {
-  if (S.profile.avatar) return `<span class="av" style="--sz:${size}px" data-mid="${S.profile.avatar}" data-mtype="${esc(S.profile.avatarType)}"></span>`;
+  if (S.profile.avatar) return `<span class="av" style="--sz:${size}px" data-mid="${S.profile.avatar}" data-mtype="${esc(S.profile.avatarType)}" data-crop="${esc(JSON.stringify(S.profile.avatarCrop || null))}"></span>`;
   const ch = (S.profile.name || '?')[0].toUpperCase();
   return `<span class="av me" style="--sz:${size}px">${esc(ch)}</span>`;
 }
 const userAvatar = (u, size = 40) => {
   if (!u) return `<span class="av" style="--sz:${size}px">?</span>`;
   const st = (STATUS[u.status] || STATUS.offline)[1];
-  const inner = u.avatar && NET.online ? mediaHTML(NET.fileUrl(u.avatar), u.avatarType) : esc((u.name || '?')[0]);
+  const inner = u.avatar && NET.online ? mediaHTML(NET.fileUrl(u.avatar), u.avatarType, u.avatarCrop) : esc((u.name || '?')[0]);
   return `<span class="av" style="--sz:${size}px;background:${esc(u.color || COLOR0)}">${inner}<i class="st" style="background:${st}"></i></span>`;
 };
 const avatarOf = (id, size) => id === 'me' ? meAvatar(size) : userAvatar(userById(id), size);
@@ -168,6 +184,129 @@ function applyAppearance() {
   $$('[data-i18n-ph]').forEach(el => { el.placeholder = T(el.dataset.i18nPh); });
   const chip = $('#eraChip'); if (chip) chip.innerHTML = `<b>${S.year}</b> ${ERA_NAMES[eraFor(S.year)]}`;
   applyBg();
+  ThemeFX.set(S.theme);
+  if (typeof I18n !== 'undefined') I18n.apply();
+}
+
+/* ---------- Animated theme scenes ---------- */
+const ThemeFX = (() => {
+  let mode = null, raf = 0, cv = null, g = null, drops = [], splashes = [], boltTimer = 0, embers = [], last = 0;
+  const reduce = () => S.graphics && S.graphics.fps === 'balanced' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function size() { if (!cv) return; cv.width = innerWidth * Math.min(devicePixelRatio, 1.5); cv.height = innerHeight * Math.min(devicePixelRatio, 1.5); }
+  function start(m) {
+    stop(); mode = m;
+    const host = $('#fx'); if (!host) return;
+    host.innerHTML = m === 'noir'
+      ? `<div class="noir-scene">${noirSceneSVG()}</div><canvas id="fxCanvas"></canvas><div class="bolt" id="bolt"></div>`
+      : `<div class="wild-scene">${wildSceneSVG()}</div><canvas id="fxCanvas"></canvas>`;
+    cv = $('#fxCanvas'); g = cv.getContext('2d'); size();
+    const n = m === 'noir' ? 520 : 70;
+    if (m === 'noir') drops = Array.from({ length: n }, () => newDrop(true));
+    else embers = Array.from({ length: n }, () => newEmber(true));
+    if (m === 'noir') scheduleBolt();
+    last = performance.now(); raf = requestAnimationFrame(frame);
+  }
+  function stop() {
+    cancelAnimationFrame(raf); raf = 0; clearTimeout(boltTimer); mode = null; drops = []; splashes = []; embers = [];
+    const host = $('#fx'); if (host) host.innerHTML = '';
+    cv = g = null;
+  }
+  const newDrop = init => { const z = Math.random(); return { x: Math.random() * 1.2 - 0.1, y: init ? Math.random() : -0.05 - Math.random() * 0.2, z, len: 0.012 + z * 0.03, v: 0.9 + z * 1.4 }; };
+  const newEmber = init => ({ x: Math.random(), y: init ? Math.random() : 1.05, r: 0.6 + Math.random() * 2.2, v: 0.02 + Math.random() * 0.06, w: Math.random() * 6.28, a: 0.3 + Math.random() * 0.6 });
+  function frame(t) {
+    raf = requestAnimationFrame(frame);
+    if (document.hidden || !g) return;
+    const dt = Math.max(0, Math.min(0.05, (t - last) / 1000)); last = t;
+    const W = cv.width, H = cv.height;
+    g.clearRect(0, 0, W, H);
+    if (mode === 'noir') {
+      g.lineCap = 'round';
+      for (const d of drops) {
+        d.y += d.v * dt; d.x -= 0.08 * d.v * dt;
+        if (d.y > 0.82 + d.z * 0.18) { if (d.z > 0.55 && splashes.length < 160) splashes.push({ x: d.x, y: d.y, r: 0, a: 0.5 }); Object.assign(d, newDrop(false)); continue; }
+        g.strokeStyle = `rgba(190,205,225,${0.08 + d.z * 0.32})`; g.lineWidth = (0.6 + d.z * 1.3) * (W / innerWidth);
+        g.beginPath(); g.moveTo(d.x * W, d.y * H); g.lineTo((d.x + d.len * 0.25) * W, (d.y - d.len) * H); g.stroke();
+      }
+      for (let i = splashes.length - 1; i >= 0; i--) {
+        const s = splashes[i]; s.r += dt * 26; s.a -= dt * 1.4;
+        if (s.a <= 0) { splashes.splice(i, 1); continue; }
+        g.strokeStyle = `rgba(200,215,235,${s.a * 0.5})`; g.lineWidth = 1;
+        g.beginPath(); g.ellipse(s.x * W, s.y * H, s.r * (W / innerWidth), s.r * 0.28 * (W / innerWidth), 0, 0, Math.PI * 2); g.stroke();
+      }
+    } else if (mode === 'wild') {
+      for (const e of embers) {
+        e.y -= e.v * dt; e.w += dt * 2; const x = e.x + Math.sin(e.w) * 0.004;
+        if (e.y < -0.05) Object.assign(e, newEmber(false));
+        g.fillStyle = `rgba(255,${120 + Math.floor(e.a * 90)},40,${e.a * (0.4 + 0.6 * Math.abs(Math.sin(e.w)))})`;
+        g.beginPath(); g.arc(x * W, e.y * H, e.r * (W / innerWidth), 0, Math.PI * 2); g.fill();
+      }
+    }
+  }
+  function scheduleBolt() {
+    boltTimer = setTimeout(() => {
+      if (mode !== 'noir') return;
+      const b = $('#bolt'), scene = $('.noir-scene');
+      if (b && !document.hidden) {
+        b.innerHTML = boltSVG(); b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash');
+        if (scene) { scene.classList.remove('lit'); void scene.offsetWidth; scene.classList.add('lit'); }
+        if (Math.random() < 0.45) setTimeout(() => { if (b.isConnected) { b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); } }, 180);
+      }
+      scheduleBolt();
+    }, 5000 + Math.random() * 11000);
+  }
+  function boltSVG() {
+    let x = 20 + Math.random() * 60, y = 0, d = `M${x} 0`;
+    while (y < 46) { y += 3 + Math.random() * 6; x += (Math.random() - 0.5) * 9; d += ` L${x.toFixed(1)} ${y.toFixed(1)}`; }
+    return `<svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="${d}" fill="none" stroke="#eef4ff" stroke-width=".7"/><path d="${d}" fill="none" stroke="#9fc0ff" stroke-width="2.4" opacity=".35"/></svg>`;
+  }
+  addEventListener('resize', () => size());
+  return { set(theme) { const m = theme === 'noir' || theme === 'wild' ? theme : null; if (m === mode) return; if (m && !reduce()) start(m); else stop(); } };
+})();
+/* Original noir scene: rainy night skyline, a street lamp and a lone figure in a long coat (not any specific character) */
+function noirSceneSVG() {
+  const bld = [[0, 52, 9], [8, 40, 7], [14, 58, 6], [19, 33, 8], [26, 47, 6], [31, 28, 7], [37, 44, 9], [45, 36, 6], [50, 55, 8], [57, 30, 7], [63, 42, 9], [71, 26, 6], [76, 48, 8], [83, 35, 7], [89, 50, 11]];
+  const wins = bld.map(([x, h, w], i) => Array.from({ length: 10 }, (_, k) => {
+    const wx = x + 1 + (k % 3) * (w / 3.2), wy = 100 - h + 3 + Math.floor(k / 3) * 5;
+    return (i * 7 + k * 3) % 5 === 0 ? `<rect x="${wx.toFixed(1)}" y="${wy}" width="1.2" height="2" fill="#d8b46a" opacity="${0.35 + ((i + k) % 3) * 0.2}"/>` : '';
+  }).join('')).join('');
+  return `<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMax slice" class="noir-svg">
+  <defs><linearGradient id="nsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b1220"/><stop offset=".6" stop-color="#121b2b"/><stop offset="1" stop-color="#05070a"/></linearGradient>
+  <radialGradient id="nlamp" cx="50%" cy="0%" r="70%"><stop offset="0" stop-color="#ffd98a" stop-opacity=".55"/><stop offset="1" stop-color="#ffd98a" stop-opacity="0"/></radialGradient>
+  <linearGradient id="nfog" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8aa0b8" stop-opacity="0"/><stop offset="1" stop-color="#8aa0b8" stop-opacity=".18"/></linearGradient></defs>
+  <rect width="100" height="100" fill="url(#nsky)"/>
+  <g class="n-far" fill="#0c1422">${bld.map(([x, h, w]) => `<rect x="${x}" y="${100 - h - 6}" width="${w}" height="${h + 6}"/>`).join('')}</g>
+  <g fill="#070b12">${bld.map(([x, h, w]) => `<rect x="${x + 1}" y="${100 - h * 0.8}" width="${w - 1}" height="${h}"/>`).join('')}</g>${wins}
+  <rect y="70" width="100" height="30" fill="url(#nfog)"/>
+  <rect y="86" width="100" height="14" fill="#05070b"/>
+  <path d="M0 86 H100" stroke="#2a3446" stroke-width=".3"/>
+  <g class="n-lamp"><rect x="71.6" y="52" width=".8" height="34" fill="#0b0f16"/><path d="M72 52 q0 -3 4 -3" stroke="#0b0f16" stroke-width=".8" fill="none"/><rect x="75" y="48.6" width="3" height="1.4" fill="#ffd98a"/>
+  <path d="M76.5 50 L68 86 L85 86 Z" fill="url(#nlamp)"/><ellipse cx="76.5" cy="87" rx="9" ry="1.2" fill="#ffd98a" opacity=".18"/></g>
+  <g class="n-man" fill="#020306">
+    <ellipse cx="62" cy="86.4" rx="4.4" ry=".7" fill="#000" opacity=".6"/>
+    <ellipse cx="62" cy="66.9" rx="2.6" ry=".42"/>
+    <path d="M60.7 66.9 q.1 -1.7 1.3 -1.8 q1.2 .1 1.3 1.8 Z"/>
+    <ellipse cx="62" cy="67.9" rx=".95" ry="1.05"/>
+    <path d="M60.6 69.4 q1.4 -.7 2.8 0 l.3 .5 h-3.4 Z"/>
+    <path d="M59.7 69.9 q2.3 -.6 4.6 0 q.5 .3 .6 1 l.8 9.6 q-3.7 .7 -7.4 0 l.8 -9.6 q.1 -.7 .6 -1 Z"/>
+    <path d="M59.8 70.6 q-.7 2.8 -.9 6.2 l.8 .1 q.3 -3 .8 -5.4 Z"/><path d="M64.2 70.6 q.7 2.8 .9 6.2 l-.8 .1 q-.3 -3 -.8 -5.4 Z"/>
+    <path d="M62 75.4 v5.4" stroke="#0b0f16" stroke-width=".25"/>
+    <rect x="60.4" y="80.4" width="1.1" height="5.6" rx=".3"/><rect x="62.5" y="80.4" width="1.1" height="5.6" rx=".3"/>
+    <path d="M60.1 86 h1.7 v.5 h-1.9 Z M62.3 86 h1.7 l.2 .5 h-1.9 Z"/>
+  </g>
+  <g class="n-puddles" fill="#9fb2c9" opacity=".12"><ellipse cx="30" cy="92" rx="12" ry="1.2"/><ellipse cx="62" cy="95" rx="9" ry="1"/><ellipse cx="88" cy="91" rx="7" ry=".8"/></g>
+</svg>`;
+}
+/* Original tactical "wild assault" scene: dusty canyon, hazard stripes, claw slashes */
+function wildSceneSVG() {
+  return `<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMax slice" class="wild-svg">
+  <defs><linearGradient id="wsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a0f06"/><stop offset=".55" stop-color="#3b1d08"/><stop offset="1" stop-color="#120c06"/></linearGradient>
+  <radialGradient id="wsun" cx="70%" cy="38%" r="40%"><stop offset="0" stop-color="#ff9a3c" stop-opacity=".55"/><stop offset="1" stop-color="#ff7a1a" stop-opacity="0"/></radialGradient></defs>
+  <rect width="100" height="100" fill="url(#wsky)"/><rect width="100" height="100" fill="url(#wsun)"/>
+  <path d="M0 70 L10 58 L18 63 L27 50 L36 61 L45 54 L55 66 L64 52 L74 60 L83 48 L92 58 L100 54 V100 H0 Z" fill="#1d1108"/>
+  <path d="M0 80 L12 72 L24 78 L38 70 L52 79 L66 71 L80 78 L100 70 V100 H0 Z" fill="#120a05"/>
+  <g opacity=".5" stroke="#ff7a1a" stroke-width="1.2" stroke-linecap="round" fill="none"><path d="M78 14 L66 40"/><path d="M83 15 L71 43"/><path d="M88 17 L77 44"/></g>
+  <g opacity=".22"><path d="M0 96 L4 92 H10 L6 96 Z M12 96 L16 92 H22 L18 96 Z M24 96 L28 92 H34 L30 96 Z M36 96 L40 92 H46 L42 96 Z" fill="#ffd23f"/></g>
+</svg>`;
 }
 async function applyBg() {
   const el = $('#bgMedia');
@@ -223,14 +362,33 @@ async function boot() {
   setAppIcon();
   AudioEngine.setSfxVol(S.sfxVol);
 
-  if (localStorage.getItem('kz_preban')) return applyBan('Kizuna AI uyarısına rağmen uygunsuz kelimeler yazmaya devam ettin ve ban sayacından kaçmaya çalıştın.');
+  const pre = localStorage.getItem('kz_preban');
+  if (pre) { let lv = 'mild'; try { lv = JSON.parse(pre).level || 'mild'; } catch {} await readBanRecord(); return applyBan('Kizuna AI uyarısına rağmen uygunsuz kelimeler yazmaya devam ettin ve ban sayacından kaçmaya çalıştın.', lv); }
   const b = await getBan();
   if (b) return showBan(b);
   if (api && api.onGameExit) api.onGameExit(() => netSync({ playing: '' }));
-  bindHostEvents(); bindUpdateEvents();
-  if (!S.setupDone) showIntro(); else showApp(false);
+  bindHostEvents(); bindUpdateEvents(); bindEmuEvents(); bindCovers(); Pad.init(); bindDevices();
+  if (!S.setupDone) showIntro(); else { showApp(false); setTimeout(checkWhatsNew, 1200); }
   connectSaved();
 }
+/* ---------- What's new: shown once after every update + from the news button on the right edge ---------- */
+const APP_VERSION = CHANGELOG[0].v;
+function checkWhatsNew() {
+  const seen = S.seenVersion;
+  if (!seen) { S.seenVersion = APP_VERSION; save(); return; } // fresh install: no "what's new"
+  if (seen !== APP_VERSION) showWhatsNew(seen);
+}
+function showWhatsNew(since) {
+  const newer = CHANGELOG.filter(c => !since || cmpVer(c.v, since) > 0);
+  const list = newer.length ? newer : CHANGELOG.slice(0, 1);
+  openModal(`<div class="wn"><div class="wn-head">${logoSVG(56, 'wn')}<div><small>Güncelleme tamamlandı</small><h2>Kizuna v${esc(list[0].v)} — ${esc(list[0].title)}</h2></div></div>
+    ${list.map(c => `${list.length > 1 ? `<h3 class="wn-ver">v${esc(c.v)} · ${esc(c.title)}</h3>` : ''}<div class="wn-list">${c.items.map(([i, t, d]) => `<div class="wn-it"><span>${i}</span><div><b>${esc(t)}</b><p>${esc(d)}</p></div></div>`).join('')}</div>`).join('')}
+    <p class="wn-thanks">💚 Bizim için vaktinizi ayırdığınız için teşekkür ederiz.<br><span class="makers">Tv Man &amp; FKOAC</span></p>
+    <div class="row-btns center"><button class="btn primary big" data-close>Harika, devam et ›</button></div></div>`, 'wide wn-card');
+  S.seenVersion = APP_VERSION; save();
+  const nb = $('#newsBtn'); if (nb) nb.classList.remove('has-new');
+}
+function cmpVer(a, b) { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; }
 function setAppIcon() {
   if (!api) return;
   const img = new Image();
@@ -250,9 +408,7 @@ function bindGlobal() {
     if (e.target.closest('button, a, .clickable, select, input[type=checkbox], input[type=range], .gcard, .ucard')) AudioEngine.click(S.clickSound);
   }, true);
   document.addEventListener('keydown', e => {
-    if (e.target.matches('input, textarea') && e.key.length <= 2 || ['Backspace', 'Enter', ' '].includes(e.key)) {
-      if (e.target.matches('input, textarea')) AudioEngine.key(S.keySound);
-    }
+    if (e.target.matches('input, textarea') && (e.key.length <= 2 || ['Backspace', 'Enter', ' ', 'Delete', 'Tab'].includes(e.key))) AudioEngine.key(S.keySound);
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k' && !$('#app').classList.contains('hidden')) { e.preventDefault(); $('#search').focus(); }
     if (e.key === 'Escape') { closeModal(); $('#searchRes').classList.add('hidden'); }
   });
@@ -264,7 +420,7 @@ function bindGlobal() {
   });
   $('#modal').addEventListener('click', e => { if (e.target.id === 'modal' || e.target.closest('[data-close]')) closeModal(); });
   window.addEventListener('resize', () => { if (!$('#tour').classList.contains('hidden')) placeTour(); });
-  window.addEventListener('gamepadconnected', e => { $('#padBtn').classList.add('on'); toast(`🎮 Kontrolcü bağlandı: <b>${esc(e.gamepad.id)}</b>`, 'ok'); log('Kontrolcü bağlandı: ' + e.gamepad.id); });
+  window.addEventListener('gamepadconnected', e => { $('#padBtn').classList.add('on'); toast(`🎮 Kontrolcü bağlandı: <b>${esc(e.gamepad.id)}</b> — artık Kizuna’yı kolunla gezebilirsin (A: seç, B: geri, LB/RB: bölümler)`, 'ok', 5000); log('Kontrolcü bağlandı: ' + e.gamepad.id); Pad.start(); });
   window.addEventListener('gamepaddisconnected', () => { $('#padBtn').classList.remove('on'); toast('🎮 Kontrolcü bağlantısı kesildi', 'warn'); });
 }
 function showTip(el) {
@@ -326,14 +482,14 @@ const OB = [
     title: 'Ses & müzik', render(b) {
       const opt = (n, cur, list) => list.map(([v, l]) => `<button class="opt ${cur === v ? 'on' : ''}" data-${n}="${v}">${l}</button>`).join('');
       b.innerHTML = `<h2>Sesler & müzik 🎧</h2><p class="muted">Seçtiğin an duyarsın. Hepsini daha sonra Ayarlar'dan değiştirebilirsin.</p>
-      <div class="field"><label>Fare tıklama sesi</label><div class="opts">${opt('click', S.clickSound, SOUND_OPTS)}</div></div>
-      <div class="field"><label>Klavye sesi</label><div class="opts">${opt('key', S.keySound, SOUND_OPTS)}</div><input class="try" placeholder="Klavye sesini denemek için buraya yaz..."></div>
-      <div class="field"><label>Kizuna müziği</label><div class="opts">${opt('mus', S.autoMusic ? S.musicStyle : 'off', [['relax', '🌸 Rahatlatıcı'], ['rock', '🎸 Rock / Aksiyon'], ['mix', '🔀 Karışık'], ['off', '🔇 Kapalı']])}</div></div>`;
+      <div class="field"><label>Fare tıklama sesi</label><div class="opts">${opt('click', S.clickSound, CLICK_OPTS)}</div></div>
+      <div class="field"><label>Klavye sesi</label><div class="opts">${opt('key', S.keySound, KEY_OPTS)}</div><input class="try" placeholder="Klavye sesini denemek için buraya yaz..."></div>
+      <div class="field"><label>Kizuna müziği</label><div class="opts">${opt('mus', S.autoMusic ? S.musicStyle : 'off', [['relax', '🌸 Rahatlatıcı'], ['rock', '🎸 Rock / Aksiyon'], ['drama', '🎻 Dram'], ['mix', '🔀 Karışık'], ['off', '🔇 Kapalı']])}</div></div>`;
       $$('[data-click]', b).forEach(x => x.onclick = () => { S.clickSound = x.dataset.click; save(); AudioEngine.click(S.clickSound); renderOb(); });
       $$('[data-key]', b).forEach(x => x.onclick = () => { S.keySound = x.dataset.key; save(); AudioEngine.key(S.keySound); renderOb(); });
       $$('[data-mus]', b).forEach(x => x.onclick = () => {
         const v = x.dataset.mus;
-        if (v === 'off') { S.autoMusic = false; Music.stop(); } else { S.autoMusic = true; S.musicStyle = v; Music.play(v === 'rock' ? 'katana' : v === 'mix' ? 'neon' : 'sakura'); }
+        if (v === 'off') { S.autoMusic = false; Music.stop(); } else { S.autoMusic = true; S.musicStyle = v; Music.play(Music.defaultId()); }
         save(); renderOb();
       });
     }
@@ -391,14 +547,14 @@ function finishOb() { if (!S.profile.joined) S.profile.joined = Date.now(); save
 let wzI = 0;
 const WZ = [
   { t: 'Oyun Klasörü', r: renderWzFolder },
-  { t: 'Emülatörler', r(b) { b.innerHTML = `<h2>Emülatörler</h2><p class="muted">Kizuna oyunları bu resmi, açık kaynak ve güvenli emülatörlerle çalıştırır. Her birini kendi resmi sitesinden indir, sonra <b>.exe seç</b> ile Kizuna'ya bağla.</p><div class="emu-list" id="wzEmu">${emuRowsHTML()}</div>${tipBox('BIOS / firmware dosyalarını kendi konsolundan almalısın. PS3 firmware\'i Sony\'nin resmi sitesinden ücretsiz indirilir.')}`; bindEmuRows(b, () => renderWz()); } },
+  { t: 'Emülatörler', r(b) { b.innerHTML = `<h2>Emülatörler</h2><p class="muted">Kizuna oyunları resmi, açık kaynak ve güvenli emülatörlerle çalıştırır. <b>Kizuna’ya kur</b>’a bas — emülatör resmi kaynağından indirilip uygulamanın içine kurulur, hiçbir siteye gitmene gerek yok.</p><div class="emu-list" id="wzEmu">${emuRowsHTML()}</div>${tipBox('PS1 ve PS2 için BIOS dosyasını kendi konsolundan almalısın; “BIOS klasörü” ile açılan klasöre kopyalaman yeterli. PS3 sistem yazılımı RPCS3’ün içinden yüklenir.')}`; bindEmuRows(b, () => renderWz()); } },
   { t: 'Grafik', r(b) { b.innerHTML = `<h2>Grafik ayarları</h2><p class="muted">Oyunları nasıl başlatmak istediğini seç.</p>${graphicsHTML()}${tipBox('Yüksek FPS Modu ve tam ekran tercihin oyun başlatılırken emülatöre iletilir. Çözünürlük ölçeği her emülatörün kendi grafik menüsünden de ince ayarlanabilir.')}`; bindKeys(b); } },
   {
     t: 'Hesap', r(b) {
-      b.innerHTML = `<h2>Hesap bağlama</h2><p class="muted">Kizuna hesabın bu bilgisayarda oluşturuldu.</p>
-      <div class="acc-cards"><div class="acc on"><span>${meAvatar(48)}</span><div><b>${esc(S.profile.name)}</b><small>Kizuna Yerel Hesap · Aktif ✓</small></div></div>
-      <div class="acc"><span class="acc-ic">☁️</span><div><b>Bulut Kayıt</b><small>E-postanı bağla — Kizuna sunucusu açıldığında profilin ve kayıtların otomatik senkronlanır.</small></div></div></div>
-      <h3 style="margin-top:18px">🌐 Kizuna Sunucusu (arkadaşlar & sohbet)</h3><div id="hostSet"></div><div id="netSet"></div>`;
+      b.innerHTML = `<h2>Kizuna Topluluğu</h2><p class="muted">Dünyanın her yerindeki gerçek oyuncularla arkadaş olmak, mesajlaşmak ve sesli sohbet etmek için bir Kizuna hesabı oluştur.</p>
+      <div class="acc-cards"><div class="acc on"><span>${meAvatar(48)}</span><div><b>${esc(S.profile.name)}</b><small>Bu bilgisayardaki profilin · Aktif ✓</small></div></div></div>
+      <div id="netSet" style="margin-top:14px"></div>
+      <details class="host-adv" style="margin-top:14px"><summary>Kendi sunucunu barındır (isteğe bağlı)</summary><div id="hostSet"></div></details>`;
       hydrate(b); renderHostSettings($('#hostSet', b)); renderNetSettings($('#netSet', b));
     }
   },
@@ -408,7 +564,7 @@ const WZ = [
       const emus = Object.values(S.emulators).filter(Boolean).length;
       b.innerHTML = `<h2>Her şey hazır! 🎉</h2><p class="muted">Özet:</p>
       <ul class="sum"><li>${ok(1)} Profil: <b>${esc(S.profile.name)}</b></li><li>${ok(1)} Tema: <b>${THEMES.find(t => t.id === S.theme).name}</b> · Yıl: <b>${S.year}</b></li>
-      <li>${ok(S.gameFolder)} Oyun klasörü: ${esc(S.gameFolder || 'daha sonra')}</li><li>${ok(emus)} Bağlı emülatör: ${emus}/4</li>
+      <li>${ok(S.gameFolder)} Oyun klasörü: ${esc(S.gameFolder || 'daha sonra')}</li><li>${ok(emus)} Kurulu emülatör: ${emus}/4</li><li>${ok(NET.online)} Kizuna Topluluğu: ${NET.online ? esc(NET.me.name) + ' olarak bağlı' : 'daha sonra (Arkadaşlar bölümünden)'}</li>
       <li>${ok(1)} Grafik: ${S.graphics.fps === 'high' ? 'Yüksek FPS Modu' : S.graphics.fps === 'unlimited' ? 'Sınırsız' : 'Dengeli'} · ${S.graphics.fullscreen ? 'Tam ekran' : 'Pencere'}</li></ul>
       <p>Bitir'e bastığında sana kısa bir <b>ürün turu</b> göstereceğim. 🗺️</p>`;
     }
@@ -456,21 +612,57 @@ async function scanAndOffer(box) {
     if (current === 'library') go('library');
   };
 }
+/* ---------- Emulators: installed inside Kizuna with one click (official GitHub releases) ---------- */
+let emuInfo = {}; const emuProg = {};
+const EMU_ORDER = ['ps1', 'ps2', 'ps3', 'ps4', 'ps5']; // oldest → newest
 function emuRowsHTML() {
-  return ['ps1', 'ps2', 'ps3', 'ps4', 'ps5'].map(k => {
-    const c = CONSOLES[k];
-    return `<div class="emu-row"><div class="emu-badge c-${k}">${c.short}</div>
-    <div class="emu-info"><b>${c.emu || 'Emülatör yok'}</b><small>${c.status} · ${c.note}</small>${c.emu ? `<code>${esc(S.emulators[k] || 'Bağlanmadı')}</code>` : ''}</div>
-    <div class="emu-act">${c.url ? `<button class="btn sm primary" data-ext="${c.url}">${icon('download', 14)} Resmi siteden indir</button><button class="btn sm ghost" data-emu="${k}">.exe seç</button>` : '<span class="muted small">PC için çalışan emülatör yok</span>'}</div></div>`;
+  return EMU_ORDER.map(k => {
+    const c = CONSOLES[k], inst = emuInfo[k], pr = emuProg[k], linked = S.emulators[k];
+    const state = !c.emu ? '<span class="muted small">PC için çalışan bir PS5 emülatörü henüz yok</span>'
+      : pr && pr.phase !== 'done' && pr.phase !== 'error'
+        ? `<div class="emu-prog"><div class="upd-bar"><i style="width:${pr.percent || 0}%"></i></div><small>${pr.phase === 'extract' ? 'Kuruluyor…' : pr.phase === 'info' ? 'Hazırlanıyor…' : `İndiriliyor… %${pr.percent || 0}`}</small></div>`
+        : inst ? `<span class="emu-ok">✓ Kurulu ${esc(inst.version || '')}</span><button class="btn sm ghost" data-emurun="${k}">Aç</button>${c.bios ? `<button class="btn sm ghost" data-emubios="${k}" data-tip="Konsolundan aldığın BIOS dosyasını bu klasöre kopyala">${icon('folder', 14)} BIOS klasörü</button>` : ''}<button class="btn sm ghost" data-emuinst="${k}" data-tip="En yeni sürüme güncelle">↻</button>`
+          : `<button class="btn sm primary" data-emuinst="${k}">${icon('download', 14)} Kizuna’ya kur</button>`;
+    return `<div class="emu-row"><div class="emu-art c-${k}">${consoleArt(k, 58)}<b>${c.short}</b></div>
+    <div class="emu-info"><b>${c.emu || 'Emülatör yok'} <small class="muted">· ${c.name} (${c.year})</small></b><small>${c.status} · ${c.note}</small>${c.emu ? `<code>${esc(linked || 'Kurulmadı')}</code>` : ''}</div>
+    <div class="emu-act">${state}${c.emu && !inst ? `<button class="btn sm link" data-emu="${k}" data-tip="Zaten kurulu bir emülatörün varsa .exe dosyasını seç">.exe seç</button>` : ''}</div></div>`;
   }).join('');
 }
+function rerenderEmuRows() { $$('.emu-list').forEach(el => { el.innerHTML = emuRowsHTML(); bindEmuRows(el.parentElement, rerenderEmuRows); cloudify(el); }); }
 function bindEmuRows(root, rerender) {
-  $$('[data-ext]', root).forEach(b => b.onclick = () => { openExt(b.dataset.ext); toast('Resmi site tarayıcıda açılıyor 🔒'); });
   $$('[data-emu]', root).forEach(b => b.onclick = async () => {
     if (!api) return toast('Emülatör bağlama masaüstü uygulamasında çalışır', 'warn');
     const p = await api.pickFile({ filters: [{ name: 'Uygulama', extensions: ['exe'] }] });
-    if (p) { S.emulators[b.dataset.emu] = p; save(); toast(`${CONSOLES[b.dataset.emu].emu} bağlandı ✓`, 'ok'); rerender(); }
+    if (p) { S.emulators[b.dataset.emu] = p; save(); toast(`${CONSOLES[b.dataset.emu].emu} bağlandı ✓`, 'ok'); (rerender || rerenderEmuRows)(); }
   });
+  $$('[data-emuinst]', root).forEach(b => b.onclick = () => installEmu(b.dataset.emuinst));
+  $$('[data-emurun]', root).forEach(b => b.onclick = () => api.emu.run(b.dataset.emurun));
+  $$('[data-emubios]', root).forEach(b => b.onclick = () => { api.emu.open(b.dataset.emubios, 'bios'); toast('📁 BIOS klasörü açıldı — konsolundan aldığın BIOS dosyasını buraya kopyala'); });
+}
+async function installEmu(id) {
+  if (!api || !api.emu) return toast('Emülatör kurulumu masaüstü uygulamasında çalışır', 'warn');
+  const c = CONSOLES[id];
+  emuProg[id] = { phase: 'info', percent: 0 }; rerenderEmuRows();
+  toast(`⬇️ <b>${c.emu}</b> resmi kaynağından indiriliyor ve Kizuna’ya kuruluyor…`);
+  const r = await api.emu.install(id);
+  delete emuProg[id];
+  if (!r.ok) { toast(`${c.emu} kurulamadı: ${esc(r.error)}`, 'err', 6000); return rerenderEmuRows(); }
+  emuInfo[id] = r; S.emulators[id] = r.path; save();
+  log(`${c.emu} Kizuna’ya kuruldu (${r.version || ''})`);
+  toast(`✅ <b>${c.emu}</b> kuruldu ve bağlandı!${c.bios ? ' Şimdi BIOS dosyanı “BIOS klasörü”ne kopyala.' : ''}`, 'ok', 6000);
+  AudioEngine.notify(); rerenderEmuRows();
+}
+function bindEmuEvents() {
+  if (!api || !api.emu) return;
+  api.emu.status().then(st => {
+    emuInfo = Object.fromEntries(Object.entries(st).filter(([, v]) => v));
+    let ch = false;
+    for (const [k, v] of Object.entries(emuInfo)) if (!S.emulators[k]) { S.emulators[k] = v.path; ch = true; }
+    if (ch) save();
+    rerenderEmuRows();
+  }).catch(() => {});
+  let lastR = 0;
+  api.emu.onProgress(p => { if (p.phase === 'done' || p.phase === 'error') return; emuProg[p.id] = p; if (Date.now() - lastR > 250) { lastR = Date.now(); rerenderEmuRows(); } });
 }
 function graphicsHTML() {
   return `<div class="form-grid">
@@ -492,6 +684,7 @@ function bindKeys(root) {
 }
 function onKeyChange(k, v) {
   if (['font', 'fontSize', 'accent', 'lang', 'bgDim'].includes(k)) applyAppearance();
+  if (k === 'privacy.hideJoin' && current === 'profile') go('profile');
   if (k === 'musicVol') AudioEngine.setMusicVol(v);
   if (k === 'sfxVol') { AudioEngine.setSfxVol(v); AudioEngine.click(S.clickSound); }
   if (k === 'clickSound') AudioEngine.click(v);
@@ -503,10 +696,7 @@ function onKeyChange(k, v) {
 function finishSetup() {
   S.setupDone = true;
   if (!S.profile.joined) S.profile.joined = Date.now();
-  if (NET.online) { log('Kizuna kurulumu tamamlandı'); save(); return showApp(true); }
-  if (!SO.chats.u1) SO.chats.u1 = [{ id: uid(), from: 'u1', kind: 'text', text: `Selam ${S.profile.name}! Kizuna'ya hoş geldin 🎮 Bu akşam bir şeyler oynayalım mı?`, time: Date.now() }];
-  if (!SO.chats.u3) SO.chats.u3 = [{ id: uid(), from: 'u3', kind: 'sticker', sticker: 'gg', time: Date.now() - 3600e3 }];
-  SO.unread.u1 = 1;
+  S.seenVersion = APP_VERSION;
   log('Kizuna kurulumu tamamlandı'); save();
   showApp(true);
 }
@@ -523,7 +713,16 @@ function showApp(first) {
   $('#nav').innerHTML = NAV.map(n => `<button class="nav-item" data-nav="${n.id}" data-tip="${esc(n.tip)}">${icon(n.id, 22)}<span data-i18n="nav.${n.id}">${T('nav.' + n.id)}</span><em class="badge" id="badge-${n.id}"></em>${S.visited.includes(n.id) ? '' : '<b class="new-dot" title="Yeni"></b>'}</button>`).join('');
   $$('#nav .nav-item').forEach(b => b.onclick = () => go(b.dataset.nav));
   $('#app').classList.toggle('rail-min', !S.rail);
-  $('#railToggle').onclick = () => { S.rail = !S.rail; save(); $('#app').classList.toggle('rail-min', !S.rail); $('#railToggle em').textContent = S.rail ? 'Rayı daralt' : ''; };
+  // Rail toggle: a single class switch (no animated grid relayout → no stutter); labels fade in on their own layer
+  $('#railToggle').onclick = () => {
+    S.rail = !S.rail; save();
+    requestAnimationFrame(() => { $('#app').classList.toggle('rail-min', !S.rail); if (!$('#tour').classList.contains('hidden')) requestAnimationFrame(placeTour); });
+  };
+  $('#newsBtn').innerHTML = `<span>📰</span><em>Yenilikler</em>`;
+  $('#newsBtn').classList.toggle('has-new', S.seenVersion !== APP_VERSION && !!S.seenVersion);
+  $('#newsBtn').onclick = () => showWhatsNew('');
+  $('#fsBtn').innerHTML = icon('fullscreen');
+  $('#fsBtn').onclick = () => { if (api && api.fullscreen) api.fullscreen(); else if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => {}); };
   $('#meBtn').onclick = () => go('profile');
   $('#eraChip').onclick = () => go('settings', 'year');
   $('#musicBtn').onclick = () => Music.toggle();
@@ -535,7 +734,6 @@ function showApp(first) {
   go(first ? 'catalog' : 'library');
   if (S.autoMusic && !Music.playing) Music.play(Music.defaultId());
   if (first || !S.tourDone) setTimeout(startTour, 900);
-  setTimeout(() => { if (!SO.blocked.includes('u4') && SO.friends.includes('u4')) incoming('u4', 'Selam! Retro maraton yapıyoruz, gelir misin? 🕹️'); }, 45000);
 }
 function updateMe() {
   $('#meAv').innerHTML = meAvatar(30); hydrate($('#meAv'));
@@ -589,32 +787,200 @@ function bindSearch() {
   document.addEventListener('click', e => { if (!e.target.closest('#searchWrap')) box.classList.add('hidden'); });
 }
 
+/* ---------- Controller navigation (spatial focus) ----------
+   D-pad / left stick move a highlight between clickable things, A clicks, B goes back / closes,
+   LB/RB switch sections, Y focuses search, X toggles music, right stick scrolls, START toggles the rail. */
+const Pad = (() => {
+  let raf = 0, prev = [], focusEl = null, repeatAt = 0, lastDir = '';
+  const SEL = 'button:not([disabled]), a.lnk, [data-game], [data-user], .gcard, .ucard, input, select, textarea, summary, .clickable, [data-chat], [data-copy]';
+  const visible = el => { const r = el.getBoundingClientRect(); return r.width > 2 && r.height > 2 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth && getComputedStyle(el).visibility !== 'hidden'; };
+  function scope() {
+    if (!$('#modal').classList.contains('hidden')) return $('#modalCard');
+    if (!$('#tour').classList.contains('hidden')) return $('#tourBubble');
+    for (const id of ['intro', 'onboard', 'wizard']) if (!$('#' + id).classList.contains('hidden')) return $('#' + id);
+    return $('#app');
+  }
+  const candidates = () => $$(SEL, scope()).filter(el => visible(el) && !el.closest('.hidden') && !(el.matches('.gcard *, .ucard *') && !el.matches('button')));
+  function setFocus(el) {
+    if (focusEl) focusEl.classList.remove('pad-focus');
+    focusEl = el; if (!el) return;
+    el.classList.add('pad-focus');
+    el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    if (el.matches('input, textarea, select')) el.focus({ preventScroll: true });
+  }
+  function move(dir) {
+    const list = candidates();
+    if (!focusEl || !focusEl.isConnected || !list.includes(focusEl)) return setFocus(list[0]);
+    const a = focusEl.getBoundingClientRect(), ax = a.left + a.width / 2, ay = a.top + a.height / 2;
+    let best = null, bs = Infinity;
+    for (const el of list) {
+      if (el === focusEl) continue;
+      const b = el.getBoundingClientRect(), bx = b.left + b.width / 2, by = b.top + b.height / 2, dx = bx - ax, dy = by - ay;
+      const ok = dir === 'left' ? dx < -4 : dir === 'right' ? dx > 4 : dir === 'up' ? dy < -4 : dy > 4;
+      if (!ok) continue;
+      const main = dir === 'left' || dir === 'right' ? Math.abs(dx) : Math.abs(dy), side = dir === 'left' || dir === 'right' ? Math.abs(dy) : Math.abs(dx);
+      const s = main + side * 2.2;
+      if (s < bs) { bs = s; best = el; }
+    }
+    if (best) { setFocus(best); AudioEngine.click(S.clickSound); }
+  }
+  function back() {
+    if (!$('#modal').classList.contains('hidden')) return closeModal();
+    if (!$('#searchRes').classList.contains('hidden')) return $('#searchRes').classList.add('hidden');
+    if (document.activeElement && document.activeElement.matches('input, textarea')) return document.activeElement.blur();
+    if (current !== 'library' && !$('#app').classList.contains('hidden')) go('library');
+  }
+  function section(d) {
+    if ($('#app').classList.contains('hidden')) return;
+    const ids = NAV.map(n => n.id), i = ids.indexOf(current);
+    go(ids[(i + d + ids.length) % ids.length]); setFocus(null);
+  }
+  function loop() {
+    raf = requestAnimationFrame(loop);
+    if (!S.padNav || document.hidden) return;
+    const pad = [...(navigator.getGamepads ? navigator.getGamepads() : [])].find(Boolean);
+    if (!pad) { cancelAnimationFrame(raf); raf = 0; return; }
+    const b = pad.buttons.map(x => x.pressed), ax = pad.axes, now = performance.now();
+    const pressed = i => b[i] && !prev[i];
+    let dir = '';
+    if (b[12] || ax[1] < -0.55) dir = 'up'; else if (b[13] || ax[1] > 0.55) dir = 'down'; else if (b[14] || ax[0] < -0.55) dir = 'left'; else if (b[15] || ax[0] > 0.55) dir = 'right';
+    if (dir && (dir !== lastDir || now > repeatAt)) { move(dir); repeatAt = now + (dir !== lastDir ? 380 : 130); }
+    lastDir = dir;
+    if (pressed(0) && focusEl && focusEl.isConnected) { if (focusEl.matches('input[type=checkbox]')) focusEl.click(); else if (focusEl.matches('select')) { const s = focusEl; s.selectedIndex = (s.selectedIndex + 1) % s.options.length; s.dispatchEvent(new Event('change', { bubbles: true })); } else focusEl.click(); }
+    else if (pressed(0) && !focusEl) move('down');
+    if (pressed(1)) back();
+    if (pressed(4)) section(-1);
+    if (pressed(5)) section(1);
+    if (pressed(3) && !$('#app').classList.contains('hidden')) { $('#search').focus(); setFocus($('#search')); }
+    if (pressed(2)) Music.toggle();
+    if (pressed(9)) { const t = $('#railToggle'); if (t && !$('#app').classList.contains('hidden')) t.click(); }
+    if (Math.abs(ax[3] || 0) > 0.2) { const v = $('#modal').classList.contains('hidden') ? $('#view') : $('#modalCard'); if (v) v.scrollTop += (ax[3] || 0) * 18; }
+    prev = b;
+  }
+  return {
+    init() { document.addEventListener('pointerdown', () => setFocus(null), true); if ([...(navigator.getGamepads ? navigator.getGamepads() : [])].some(Boolean)) this.start(); },
+    start() { if (!raf) raf = requestAnimationFrame(loop); }
+  };
+})();
 /* ---------- Controller ---------- */
 function padCheck() {
   const pads = [...(navigator.getGamepads ? navigator.getGamepads() : [])].filter(Boolean);
   if (pads.length) { $('#padBtn').classList.add('on'); toast(`🎮 Bağlı kontrolcü: <b>${esc(pads[0].id)}</b>`, 'ok'); return; }
   const c = openModal(`<div class="pad-modal"><div class="pad-anim">${icon('pad', 90)}</div><h2>Kontrolcünü bağla</h2>
     <p>Kolunu (DualShock / DualSense / Xbox) USB kablo veya Bluetooth ile bağla, sonra <b>herhangi bir tuşa bas</b>.</p>
-    <p class="muted small" id="padStatus">Kontrolcü bekleniyor...</p>${tipBox('Oyun içi tuş eşleştirmesi emülatörün kendi “Controller / Kontrolcü” menüsünden yapılır.')}</div>`);
+    <p class="muted small" id="padStatus">Kontrolcü bekleniyor...</p>${tipBox('Bağlandıktan sonra Kizuna’yı kolunla gezebilirsin: yön tuşları ile seç, Ⓐ ile tıkla, Ⓑ ile geri, LB/RB ile bölümler arasında geç. Oyun içi tuş eşleştirmesi emülatörün kendi “Controller” menüsünden yapılır.')}</div>`);
   const iv = setInterval(() => {
     if (!c.isConnected || $('#modal').classList.contains('hidden')) return clearInterval(iv);
     const p = [...navigator.getGamepads()].filter(Boolean)[0];
-    if (p) { clearInterval(iv); $('#padStatus').innerHTML = `<b class="ok">✓ Bağlandı: ${esc(p.id)}</b>`; $('#padBtn').classList.add('on'); AudioEngine.notify(); }
+    if (p) { clearInterval(iv); $('#padStatus').innerHTML = `<b class="ok">✓ Bağlandı: ${esc(p.id)}</b>`; $('#padBtn').classList.add('on'); AudioEngine.notify(); Pad.start(); }
   }, 300);
 }
 
 /* ---------- Voice commands ---------- */
-let listening = false;
-function startVoice() {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { toast('Bu sistemde sesli tanıma yok — komutu yazabilirsin', 'warn'); return typedCommand(); }
-  if (listening) return;
-  const r = new SR(); r.lang = LANGS[S.lang].sp; r.interimResults = false;
-  r.onstart = () => { listening = true; $('#voiceBtn').classList.add('rec'); toast('🎙️ Dinliyorum... (ör. “kütüphaneyi aç”, “yıl 2077”, “müziği çal”)'); };
-  r.onend = () => { listening = false; $('#voiceBtn').classList.remove('rec'); };
-  r.onerror = e => { toast('Sesli komut kullanılamadı (' + esc(e.error) + '). Komutu yazarak verebilirsin.', 'warn'); typedCommand(); };
-  r.onresult = e => handleCommand(e.results[0][0].transcript);
-  try { r.start(); } catch { typedCommand(); }
+/* Offline speech recognition (Vosk, runs on this PC). The browser speech API needs Google's cloud and fails in
+   desktop apps, so Kizuna downloads a small model for your language once (~35 MB) and recognizes locally. */
+const Voice = {
+  model: null, lang: '', loading: null, active: null,
+  async ensure() {
+    if (this.model && this.lang === S.lang) return this.model;
+    if (this.loading) return this.loading;
+    this.loading = (async () => {
+      if (!api || !api.voice || typeof Vosk === 'undefined') throw new Error('Sesli komut masaüstü uygulamasında çalışır');
+      let shown = false;
+      api.voice.onProgress(p => { if (!shown) { shown = true; toast('⬇️ Sesli komut modeli indiriliyor (yalnızca ilk sefer, ~35 MB)…', 'info', 4000); } const b = $('#voiceBtn'); if (b) b.dataset.prog = p; });
+      const r = await api.voice.model(S.lang);
+      if (!r.ok) throw new Error(r.error || 'Model indirilemedi');
+      const b = $('#voiceBtn'); if (b) delete b.dataset.prog;
+      if (this.model) { try { this.model.terminate(); } catch {} }
+      this.model = await Vosk.createModel(r.url);
+      this.lang = S.lang;
+      if (r.lang !== S.lang) toast('Bu dil için sesli komut modeli yok — İngilizce model kullanılıyor', 'warn');
+      return this.model;
+    })();
+    try { return await this.loading; } finally { this.loading = null; }
+  },
+  stop() {
+    const a = this.active; if (!a) return; this.active = null;
+    clearTimeout(a.timer); try { a.proc.disconnect(); a.src.disconnect(); } catch {}
+    a.stream.getTracks().forEach(t => t.stop()); try { a.ctx.close(); } catch {} try { a.rec.remove(); } catch {}
+    $('#voiceBtn').classList.remove('rec');
+  },
+  async start() {
+    if (this.active) return this.stop();
+    const btn = $('#voiceBtn');
+    btn.classList.add('busy');
+    let model;
+    try { model = await this.ensure(); }
+    catch (e) { btn.classList.remove('busy'); toast('Sesli komut hazırlanamadı: ' + esc(e.message) + ' — komutu yazarak verebilirsin.', 'warn', 5000); return typedCommand(); }
+    let stream;
+    try { stream = await openMic(); }
+    catch (e) { btn.classList.remove('busy'); toast('Mikrofona erişilemedi: ' + esc(e.message) + '. Ayarlar › Ses cihazları’ndan mikrofonunu seç.', 'err', 6000); return; }
+    btn.classList.remove('busy');
+    const ctx = new AudioContext(), src = ctx.createMediaStreamSource(stream);
+    const rec = new model.KaldiRecognizer(ctx.sampleRate);
+    const proc = ctx.createScriptProcessor(4096, 1, 1);
+    let heard = '';
+    const finish = text => { const t = (text || heard || '').trim(); this.stop(); if (t) handleCommand(t); else toast('🎙️ Bir şey duyamadım — tekrar dene ya da sağ tıklayıp komutu yaz.', 'warn'); };
+    rec.on('result', m => { const t = m.result && m.result.text; if (t) finish(t); });
+    rec.on('partialresult', m => { const t = m.result && m.result.partial; if (t) { heard = t; showVoiceBubble(t); } });
+    proc.onaudioprocess = e => { try { rec.acceptWaveform(e.inputBuffer); } catch {} };
+    src.connect(proc); proc.connect(ctx.destination);
+    this.active = { ctx, src, proc, rec, stream, timer: setTimeout(() => finish(heard), 7000) };
+    btn.classList.add('rec');
+    toast('🎙️ Dinliyorum… (ör. “kütüphaneyi aç”, “tema hawaii”, “müziği çal”)', 'info', 2500);
+  }
+};
+function showVoiceBubble(t) { let b = $('#voiceBubble'); if (!b) { b = document.createElement('div'); b.id = 'voiceBubble'; document.body.appendChild(b); } b.textContent = '🎙️ ' + t; b.classList.add('on'); clearTimeout(b._t); b._t = setTimeout(() => b.classList.remove('on'), 1800); }
+function startVoice() { Voice.start(); }
+/* Microphone / speaker selection */
+async function openMic(extra = {}) {
+  const base = { echoCancellation: true, noiseSuppression: true, autoGainControl: true, ...extra };
+  try { return await navigator.mediaDevices.getUserMedia({ audio: S.micId ? { ...base, deviceId: { exact: S.micId } } : base }); }
+  catch (e) { if (S.micId && /NotFound|Overconstrained/i.test(e.name)) { toast('Seçili mikrofon bulunamadı — varsayılan mikrofon kullanılıyor', 'warn'); return navigator.mediaDevices.getUserMedia({ audio: base }); } throw e; }
+}
+let knownMics = null;
+async function listDevices() {
+  try { const d = await navigator.mediaDevices.enumerateDevices(); return { mics: d.filter(x => x.kind === 'audioinput'), spks: d.filter(x => x.kind === 'audiooutput') }; }
+  catch { return { mics: [], spks: [] }; }
+}
+function bindDevices() {
+  if (!navigator.mediaDevices) return;
+  AudioEngine.setSink(S.spkId);
+  listDevices().then(d => { knownMics = new Set(d.mics.map(m => m.deviceId)); });
+  navigator.mediaDevices.addEventListener('devicechange', async () => {
+    const d = await listDevices();
+    const fresh = d.mics.filter(m => m.deviceId && knownMics && !knownMics.has(m.deviceId) && m.deviceId !== 'default' && m.deviceId !== 'communications');
+    if (fresh.length) toast(`🎙️ Yeni mikrofon algılandı: <b>${esc(fresh[0].label || 'Mikrofon')}</b> — Ayarlar › Ses cihazları’ndan seçebilirsin`, 'ok', 5000);
+    knownMics = new Set(d.mics.map(m => m.deviceId));
+    renderDeviceSettings();
+  });
+}
+async function renderDeviceSettings() {
+  const box = $('#devSet'); if (!box) return;
+  let d = await listDevices();
+  if (d.mics.length && !d.mics[0].label) { // labels appear after the first permission grant
+    try { (await navigator.mediaDevices.getUserMedia({ audio: true })).getTracks().forEach(t => t.stop()); d = await listDevices(); } catch {}
+  }
+  const opt = (list, sel, def) => `<option value="">${def}</option>` + list.filter(x => x.deviceId && x.deviceId !== 'default' && x.deviceId !== 'communications').map(x => `<option value="${esc(x.deviceId)}" ${x.deviceId === sel ? 'selected' : ''}>${esc(x.label || 'Cihaz')}</option>`).join('');
+  box.innerHTML = `<div class="form-grid">
+    <div class="field"><label>🎙️ Mikrofon (giriş) <small class="muted">— ${d.mics.length ? d.mics.filter(x => x.deviceId !== 'default' && x.deviceId !== 'communications').length + ' cihaz algılandı' : 'mikrofon bulunamadı'}</small></label><select id="devMic">${opt(d.mics, S.micId, 'Windows varsayılanı')}</select></div>
+    <div class="field"><label>🔊 Hoparlör / kulaklık (çıkış)</label><select id="devSpk">${opt(d.spks, S.spkId, 'Windows varsayılanı')}</select></div></div>
+    <div class="row-btns"><button class="btn ghost" id="devTest">🎙️ Mikrofonu test et</button><button class="btn ghost" id="devSpkTest">🔊 Hoparlörü test et</button><div class="mic-meter"><i id="devLvl"></i></div></div>
+    <p class="muted small">Sesli komutlar ve sesli sohbet seçtiğin mikrofonu, müzik ve sesler seçtiğin hoparlörü kullanır. Yeni bir cihaz takınca Kizuna otomatik algılar.</p>`;
+  $('#devMic', box).onchange = e => { S.micId = e.target.value; save(); toast('Mikrofon seçildi ✓', 'ok'); };
+  $('#devSpk', box).onchange = async e => { S.spkId = e.target.value; save(); const ok = await AudioEngine.setSink(S.spkId); const ra = $('#remoteAudio'); if (ra && ra.setSinkId) ra.setSinkId(S.spkId).catch(() => {}); toast(ok ? 'Hoparlör seçildi ✓' : 'Bu cihaz seçilemedi', ok ? 'ok' : 'err'); AudioEngine.notify(); };
+  $('#devSpkTest', box).onclick = () => AudioEngine.notify();
+  $('#devTest', box).onclick = async () => {
+    let st; try { st = await openMic(); } catch (e) { return toast('Mikrofona erişilemedi: ' + esc(e.message), 'err'); }
+    const ctx = new AudioContext(), an = ctx.createAnalyser(); an.fftSize = 512; ctx.createMediaStreamSource(st).connect(an);
+    const buf = new Uint8Array(an.fftSize), end = Date.now() + 5000;
+    const tick = () => {
+      an.getByteTimeDomainData(buf); let pk = 0; for (const v of buf) pk = Math.max(pk, Math.abs(v - 128));
+      const el = $('#devLvl'); if (el) el.style.width = Math.min(100, pk / 1.1) + '%';
+      if (Date.now() < end && el) requestAnimationFrame(tick); else { st.getTracks().forEach(t => t.stop()); ctx.close(); if (el) el.style.width = '0'; }
+    };
+    tick(); toast('🎙️ 5 saniye konuş — çubuk hareket ediyorsa mikrofon çalışıyor');
+  };
 }
 function typedCommand() {
   openModal(`<h2>${icon('mic', 22)} Komut ver</h2><p class="muted">Sesli komutlarla aynı komutlar: “kütüphane”, “oyunlar”, “ara tekken”, “yıl 1985”, “tema hawaii”, “müziği çal”, “müziği durdur”, “ayarlar”...</p>
@@ -622,10 +988,33 @@ function typedCommand() {
   const run = () => { const v = $('#cmdIn').value; closeModal(); handleCommand(v); };
   $('#cmdGo').onclick = run; $('#cmdIn').onkeydown = e => { if (e.key === 'Enter') run(); }; $('#cmdIn').focus();
 }
+/* "iki bin yetmiş yedi" / "nineteen eighty five" → 2077 / 1985 */
+function wordsToYear(t) {
+  const TR = { sifir: 0, bir: 1, iki: 2, uc: 3, dort: 4, bes: 5, alti: 6, yedi: 7, sekiz: 8, dokuz: 9, on: 10, yirmi: 20, otuz: 30, kirk: 40, elli: 50, altmis: 60, yetmis: 70, seksen: 80, doksan: 90 };
+  let total = 0, cur = 0, any = false;
+  for (const w of t.split(/\s+/)) {
+    if (w in TR) { cur += TR[w]; any = true; } else if (w === 'yuz') { cur = (cur || 1) * 100; any = true; } else if (w === 'bin') { total += (cur || 1) * 1000; cur = 0; any = true; }
+  }
+  if (any && total + cur >= 1900) return total + cur;
+  const EN = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90 };
+  const ws = t.split(/\s+/).filter(w => w in EN || w === 'thousand' || w === 'hundred');
+  if (!ws.length) return null;
+  let n = 0, part = 0;
+  for (const w of ws) { if (w === 'thousand') { n += (part || 1) * 1000; part = 0; } else if (w === 'hundred') part *= 100; else part += EN[w]; }
+  n += part;
+  if (n < 1900 && ws.length >= 2) { const a = EN[ws[0]], rest = ws.slice(1).reduce((s, w) => s + (EN[w] || 0), 0); if (a >= 10 && a <= 30) n = a * 100 + rest; }
+  return n >= 1900 && n <= 3000 ? n : null;
+}
 function handleCommand(raw) {
   const t = fold(raw);
   toast(`🎙️ “${esc(raw)}”`);
   let m;
+  const wy = wordsToYear(t); if (wy && /yil|year|yap|arayuz|\d/.test(t + ' yil')) return setYear(wy);
+  if (/tam ekran|fullscreen/.test(t)) return api && api.fullscreen ? api.fullscreen() : null;
+  if (/yenilik|guncelleme|news|what.?s new/.test(t)) return showWhatsNew('');
+  if (/noir|kara yagmur|max payne|yagmur tema/.test(t)) return setTheme('noir');
+  if (/vahsi|wild assault/.test(t)) return setTheme('wild');
+  if (/dram|keman|drama|violin/.test(t)) return Music.play('kara');
   if ((m = t.match(/(?:ara|bul|search)\s+(.+)/))) { $('#search').value = m[1]; $('#search').dispatchEvent(new Event('input')); $('#search').focus(); return; }
   if ((m = t.match(/(\d{4})/))) return setYear(+m[1]);
   if (/hawaii|pembe|vice/.test(t)) return setTheme('hawaii');
@@ -708,35 +1097,52 @@ let catFilter = 'all';
 VIEWS.catalog = v => {
   const list = GAMES.filter(g => catFilter === 'all' || g.c === catFilter);
   const c = CONSOLES[catFilter];
-  v.innerHTML = head(T('nav.catalog'), 'PS1’den PS5’e efsane oyunlar. İndir butonu seni her zaman resmi ve güvenli kaynağa götürür.')
-    + `<div class="tabs">${['all', 'ps1', 'ps2', 'ps3', 'ps4', 'ps5'].map(k => `<button class="tab ${catFilter === k ? 'on' : ''}" data-cf="${k}">${k === 'all' ? 'Tümü' : CONSOLES[k].short}<small>${k === 'all' ? GAMES.length : GAMES.filter(g => g.c === k).length}</small></button>`).join('')}</div>`
-    + (c ? `<div class="con-strip panel c-${catFilter}"><div><b>${c.name}</b><small>${c.emu ? `Emülatör: ${c.emu} · ${c.status}` : c.status} — ${c.note}</small></div>${c.url ? `<button class="btn sm primary" data-ext="${c.url}">${icon('download', 14)} ${c.emu} indir (resmi)</button>` : ''}</div>` : '')
+  const inst = c && (emuInfo[catFilter] || S.emulators[catFilter]);
+  v.innerHTML = head(T('nav.catalog'), 'PS1’den PS5’e efsane oyunlar. Emülatörler tek tıkla Kizuna’ya kurulur; İndir butonu her zaman resmi ve güvenli kaynağı kullanır.')
+    + `<div class="tabs">${['all', ...EMU_ORDER].map(k => `<button class="tab ${catFilter === k ? 'on' : ''}" data-cf="${k}">${k === 'all' ? 'Tümü' : `<span class="tab-art">${consoleArt(k, 22)}</span>` + CONSOLES[k].short}<small>${k === 'all' ? GAMES.length : GAMES.filter(g => g.c === k).length}</small></button>`).join('')}</div>`
+    + (c ? `<div class="con-strip panel c-${catFilter}"><span class="cs-art">${consoleArt(catFilter, 54)}</span><div><b>${c.name} <small class="muted">(${c.year})</small></b><small>${c.emu ? `Emülatör: ${c.emu} · ${c.status}` : c.status} — ${c.note}</small></div>${c.emu ? (inst ? `<span class="emu-ok">✓ ${c.emu} kurulu</span>` : `<button class="btn sm primary" id="csInstall">${icon('download', 14)} ${c.emu}’u Kizuna’ya kur</button>`) : ''}</div>` : '')
     + `<div class="game-grid">${list.map(gameCard).join('')}</div>`;
   $$('[data-cf]', v).forEach(b => b.onclick = () => { catFilter = b.dataset.cf; go('catalog'); });
-  $$('[data-ext]', v).forEach(b => b.onclick = () => openExt(b.dataset.ext));
+  const ci = $('#csInstall', v); if (ci) ci.onclick = async () => { await installEmu(catFilter); if (current === 'catalog') go('catalog'); };
 };
+/* ---------- Cover art (fetched by the main process from Wikipedia, cached on disk) ---------- */
+const COVERS = {};
+const coverImg = id => COVERS[id] ? `<img class="cv-img" src="${esc(COVERS[id])}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : '';
+function bindCovers() {
+  if (!api || !api.covers) return;
+  api.covers.onCover(({ id, u }) => {
+    COVERS[id] = u;
+    $$(`[data-cover="${CSS.escape(id)}"]`).forEach(el => { if (!el.querySelector('.cv-img')) el.insertAdjacentHTML('afterbegin', coverImg(id)); });
+  });
+  api.covers.get(GAMES.map(g => [g.id, g.wiki])).then(map => {
+    Object.assign(COVERS, map);
+    $$('[data-cover]').forEach(el => { if (!el.querySelector('.cv-img') && COVERS[el.dataset.cover]) el.insertAdjacentHTML('afterbegin', coverImg(el.dataset.cover)); });
+  }).catch(() => {});
+}
 function gameCard(g) {
   const saved = S.saved.includes(g.id), owned = S.library.some(l => l.catalogId === g.id);
-  return `<article class="gcard" data-game="${g.id}"><div class="cover" style="${coverStyle(g.t)}">${coverInner(g.t, g.c)}${owned ? '<span class="owned">✓ Kütüphanede</span>' : ''}${g.pc ? '<span class="pcb" data-tip="Resmi PC sürümü var">PC</span>' : ''}</div>
+  return `<article class="gcard" data-game="${g.id}"><div class="cover ${COVERS[g.id] ? 'has-img' : ''}" data-cover="${g.id}" style="${coverStyle(g.t)}">${coverImg(g.id)}${coverInner(g.t, g.c)}${owned ? '<span class="owned">✓ Kütüphanede</span>' : ''}${g.pc ? '<span class="pcb" data-tip="Resmi PC sürümü var">PC</span>' : ''}</div>
   <div class="gbody"><h4 title="${esc(g.t)}">${esc(g.t)}</h4><p>${g.y} · ${esc(g.g)}</p>
   <div class="gact"><button class="btn sm primary" data-dl="${g.id}" data-tip="${g.pc ? 'Resmi mağazadan güvenli indir' : 'Yasal ve güvenli kurulum rehberi'}">${icon('download', 14)} ${T('download')}</button>
   <button class="btn sm ghost" data-add="${g.id}" data-tip="Kendi oyun dosyanı ekle">${icon('plus', 14)}</button>
   <button class="btn sm ghost ${saved ? 'on' : ''}" data-save="${g.id}" data-tip="${saved ? 'Kaydedilenlerden çıkar' : 'Kaydet'}">${icon('saved', 14)}</button></div></div></article>`;
 }
 function downloadGame(id) {
-  const g = GAMES.find(x => x.id === id), c = CONSOLES[g.c];
-  log(`İndirme sayfası açıldı: ${g.t}`);
-  openModal(`<h2>${icon('download', 22)} ${esc(g.t)} — güvenli indirme</h2>
-  <p class="muted">Kizuna korsan veya değiştirilmiş dosya dağıtmaz. Aşağıdaki yollar resmi, virüssüz ve yasaldır.</p>
-  ${g.pc ? `<div class="dl-opt best"><div><b>🖥️ Resmi PC sürümü</b><small>Bu oyun bilgisayar için resmi olarak satılıyor — emülatöre gerek yok, en akıcı deneyim.</small></div><button class="btn primary" data-store="steam">Steam'de aç</button></div>` : ''}
-  ${c.emu ? `<div class="dl-opt"><div><b>1 · ${c.emu} emülatörünü indir</b><small>Resmi site: ${esc(c.url)}</small></div><button class="btn ghost" data-ext="${c.url}">${icon('download', 14)} İndir</button></div>
-  <div class="dl-opt"><div><b>2 · Kendi kopyanı yedekle</b><small>Sahip olduğun diski / dijital oyunu kendi konsolundan veya disk sürücünden yedekle. BIOS da kendi konsolundan alınır.</small></div></div>
-  <div class="dl-opt"><div><b>3 · Dosyanı Kizuna'ya ekle</b><small>Yedeklediğin dosyayı seç — kütüphanene eklenir ve tek tıkla oynarsın.</small></div><button class="btn primary" id="dlAdd">${icon('plus', 14)} Dosyamı ekle</button></div>`
-    : `<div class="dl-opt"><div><b>🎮 Yalnızca PS5'te</b><small>Bu oyunun şu an PC sürümü ve çalışan bir PS5 emülatörü yok. PC'ye çıktığında bu buton seni resmi mağazaya götürecek.</small></div></div>`}
+  const g = GAMES.find(x => x.id === id), c = CONSOLES[g.c], inst = emuInfo[g.c] || S.emulators[g.c];
+  log(`İndirme penceresi açıldı: ${g.t}`);
+  const steamUrl = 'https://store.steampowered.com/search/?term=' + encodeURIComponent(g.t);
+  const m = openModal(`<h2>${icon('download', 22)} ${esc(g.t)}</h2>
+  <p class="muted">Kizuna korsan veya değiştirilmiş oyun dosyası dağıtmaz — oyunlar telif hakkıyla korunur. Aşağıdaki yolların hepsi resmi, virüssüz ve yasaldır.</p>
+  ${g.pc ? `<div class="dl-opt best"><div><b>🖥️ Resmi PC sürümü — doğrudan Steam’e indir</b><small>Bu oyunun resmi PC sürümü var. Steam yüklüyse oyun sayfası Steam uygulamasında açılır; satın alıp “Yükle” ile doğrudan indirirsin.</small></div><div class="row-btns"><button class="btn primary" id="dlSteam">${icon('download', 14)} Steam’de indir</button><button class="btn ghost sm" id="dlWeb">Tarayıcıda aç</button></div></div>` : ''}
+  ${c.emu ? `<div class="dl-opt ${inst ? 'done' : ''}"><div><b>1 · ${c.emu} emülatörü ${inst ? '✓ kurulu' : ''}</b><small>${inst ? 'Emülatör Kizuna’nın içinde hazır.' : 'Tek tıkla resmi kaynağından indirilir ve Kizuna’ya kurulur.'}</small></div>${inst ? '' : `<button class="btn primary" id="dlEmu">${icon('download', 14)} Kizuna’ya kur</button>`}</div>
+  <div class="dl-opt"><div><b>2 · Kendi kopyanı yedekle</b><small>Sahip olduğun diski / dijital oyunu kendi konsolundan veya disk sürücünden yedekle.${c.bios ? ' BIOS dosyası da kendi konsolundan alınır.' : ''}</small></div></div>
+  <div class="dl-opt"><div><b>3 · Dosyanı Kizuna’ya ekle</b><small>Yedeklediğin dosyayı seç — kütüphanene eklenir ve tek tıkla oynarsın.</small></div><button class="btn primary" id="dlAdd">${icon('plus', 14)} Dosyamı ekle</button></div>`
+    : `<div class="dl-opt"><div><b>🎮 Yalnızca PS5’te</b><small>Bu oyunun şu an PC sürümü ve çalışan bir PS5 emülatörü yok. PC’ye çıktığında bu buton seni resmi mağazaya götürecek.</small></div></div>`}
   <p class="safe">${icon('shield', 16)} Sadece resmi kaynaklar · virüs ve korsan yok</p>`);
-  $$('[data-ext]', $('#modalCard')).forEach(b => b.onclick = () => openExt(b.dataset.ext));
-  const st = $('[data-store]', $('#modalCard')); if (st) st.onclick = () => { openExt('https://store.steampowered.com/search/?term=' + encodeURIComponent(g.t)); toast('Resmi Steam mağazası açılıyor 🔒'); };
-  const ad = $('#dlAdd'); if (ad) ad.onclick = () => addGameModal(id);
+  const st = $('#dlSteam', m); if (st) st.onclick = () => { openExt('steam://openurl/' + steamUrl); toast('Steam uygulaması açılıyor 🔒 — Steam yüklü değilse “Tarayıcıda aç”a bas', 'ok', 5000); };
+  const wb = $('#dlWeb', m); if (wb) wb.onclick = () => openExt(steamUrl);
+  const em = $('#dlEmu', m); if (em) em.onclick = () => { closeModal(); installEmu(g.c); };
+  const ad = $('#dlAdd', m); if (ad) ad.onclick = () => addGameModal(id);
 }
 function toggleSave(id) {
   const i = S.saved.indexOf(id);
@@ -746,8 +1152,8 @@ function toggleSave(id) {
 function openGame(id) {
   const g = GAMES.find(x => x.id === id), c = CONSOLES[g.c];
   const lib = S.library.find(l => l.catalogId === id);
-  const fans = visibleUsers().filter(u => !u.hideGames && u.games.includes(g.t));
-  openModal(`<div class="gm"><div class="gm-cover cover" style="${coverStyle(g.t)}">${coverInner(g.t, g.c)}</div>
+  const fans = visibleUsers().filter(u => !u.hideGames && (u.games || []).includes(g.t));
+  openModal(`<div class="gm"><div class="gm-cover cover ${COVERS[id] ? 'has-img' : ''}" data-cover="${id}" style="${coverStyle(g.t)}">${coverImg(id)}${coverInner(g.t, g.c)}</div>
   <div class="gm-info"><span class="cbadge c-${g.c}">${c.name}</span><h2>${esc(g.t)}</h2><p class="muted">${g.y} · ${esc(g.g)}</p>
   <p>Emülatör: <b>${c.emu || 'yok'}</b> · ${c.status}${g.pc ? ' · <b class="ok">Resmi PC sürümü var</b>' : ''}</p>
   ${fans.length ? `<p class="muted small">Bu oyunu oynayan oyuncular: ${fans.map(u => `<a class="lnk" data-user="${u.id}">${esc(u.name)}</a>`).join(', ')}</p>` : ''}
@@ -793,19 +1199,30 @@ VIEWS.history = v => {
 };
 
 /* ---------- Profile (mine) ---------- */
+let pfEdit = false;
 VIEWS.profile = v => {
   const p = S.profile;
   v.innerHTML = `<div class="profile">
-  <div class="pf-banner" ${p.banner ? `data-mid="${p.banner}" data-mtype="${esc(p.bannerType)}"` : ''}></div>
-  <button class="btn sm ghost pf-bn-btn" id="pfBanner">🖼️ Kapak: fotoğraf / GIF / video</button>
-  <div class="pf-head"><div class="pf-av">${meAvatar(132)}<button class="pf-av-btn" id="pfAv" data-tip="Profil resmi: fotoğraf, GIF veya video">📷</button></div>
-  <div class="pf-id"><h1>${esc(p.name)}</h1><p class="muted"><i class="dot" style="background:${STATUS[p.status][1]}"></i>${STATUS[p.status][0]} · ${S.privacy.hideJoin ? '🔒 Katılma tarihi gizli' : 'Katıldı: ' + fmtDate(p.joined || Date.now())}</p><p>${esc(p.bio) || '<span class="muted">Hakkımda yazısı yok</span>'}</p></div></div>
+  <div class="pf-banner" ${p.banner ? `data-mid="${p.banner}" data-mtype="${esc(p.bannerType)}" data-crop="${esc(JSON.stringify(p.bannerCrop || null))}"` : ''}></div>
+  <div class="pf-head"><div class="pf-av">${meAvatar(132)}</div>
+   <button class="pf-pen ${pfEdit ? 'on' : ''}" id="pfPen" data-tip="${pfEdit ? 'Düzenleme panelini kapat' : 'Profili özelleştir'}">${icon('pencil', 20)}</button>
+   <div class="pf-id"><h1>${esc(p.name)}</h1><p class="muted"><i class="dot" style="background:${STATUS[p.status][1]}"></i>${STATUS[p.status][0]}${S.privacy.hideJoin ? '' : ' · Katıldı: ' + fmtDate(p.joined || Date.now())}${NET.online && NET.me.code ? ` · <span class="fcode clickable" data-copy="${esc(NET.me.code)}" data-tip="Arkadaş kodunu kopyala">#${esc(NET.me.code)}</span>` : ''}</p><p>${esc(p.bio) || '<span class="muted">Hakkımda yazısı yok</span>'}</p></div></div>
+  <section class="card pf-editor ${pfEdit ? '' : 'hidden'}" id="pfEditor"><h3>${icon('pencil', 18)} Profili özelleştir</h3>
+   <div class="pf-ed-grid">
+    <div class="pf-ed-media">
+     <button class="pf-ed-tile" id="pfAv"><span class="pf-ed-prev">${meAvatar(86)}</span><b>Profil resmi</b><small>Fotoğraf, GIF veya video · kırpabilirsin</small></button>
+     <button class="pf-ed-tile wide" id="pfBanner"><span class="pf-ed-prev bn" ${p.banner ? `data-mid="${p.banner}" data-mtype="${esc(p.bannerType)}" data-crop="${esc(JSON.stringify(p.bannerCrop || null))}"` : ''}></span><b>Kapak (profil arka planı)</b><small>Fotoğraf, GIF veya video · kırpabilirsin</small></button>
+     ${p.avatar || p.banner ? `<div class="row-btns">${p.avatar ? '<button class="btn sm ghost" id="pfAvCrop">✂️ Profil resmini kırp</button>' : ''}${p.banner ? '<button class="btn sm ghost" id="pfBnCrop">✂️ Kapağı kırp</button>' : ''}</div>` : ''}
+    </div>
+    <div class="pf-ed-fields">
+     <div class="field"><label>Kullanıcı adı</label><input id="pfName" maxlength="20" value="${esc(p.name)}"></div>
+     <div class="field"><label>Hakkımda</label><textarea id="pfBio" rows="3" maxlength="160">${esc(p.bio)}</textarea></div>
+     <div class="field"><label>Durum</label><select data-k="profile.status">${Object.entries(STATUS).map(([k, s]) => `<option value="${k}">${s[0]}</option>`).join('')}</select></div>
+     <div class="field row"><label>Profil oluşturma tarihimi gizle</label><label class="switch"><input type="checkbox" data-k="privacy.hideJoin"><i></i></label></div>
+     <div class="row-btns"><button class="btn primary" id="pfSave">${icon('check', 16)} Kaydet</button><button class="btn ghost" id="pfCancel">Vazgeç</button></div>
+    </div>
+   </div></section>
   <div class="pf-grid">
-   <section class="card"><h3>Profili düzenle</h3>
-    <div class="field"><label>Kullanıcı adı</label><input id="pfName" maxlength="20" value="${esc(p.name)}"></div>
-    <div class="field"><label>Hakkımda</label><textarea id="pfBio" rows="3" maxlength="160">${esc(p.bio)}</textarea></div>
-    <div class="field"><label>Durum</label><select data-k="profile.status">${Object.entries(STATUS).map(([k, s]) => `<option value="${k}">${s[0]}</option>`).join('')}</select></div>
-    <button class="btn primary" id="pfSave">${icon('check', 16)} Kaydet</button></section>
    <section class="card"><h3>Gizlilik</h3>
     <div class="field row"><label>Profil oluşturma tarihimi gizle</label><label class="switch"><input type="checkbox" data-k="privacy.hideJoin"><i></i></label></div>
     <div class="field row"><label>Oynadığım oyunları gizle</label><label class="switch"><input type="checkbox" data-k="privacy.hideGames"><i></i></label></div>
@@ -815,40 +1232,99 @@ VIEWS.profile = v => {
    <section class="card"><h3>Hızlı kişiselleştirme</h3>${themeTilesHTML()}<div class="field row"><label>Özel vurgu rengi</label><input type="color" data-k="accent" value="${S.accent || '#93C572'}"></div></section>
   </div></div>`;
   bindKeys(v); bindThemeTiles(v);
+  $$('[data-copy]', v).forEach(el => el.onclick = () => navigator.clipboard.writeText(el.dataset.copy).then(() => toast('📋 Arkadaş kodun kopyalandı'), () => {}));
+  $('#pfPen').onclick = () => { pfEdit = !pfEdit; go('profile'); if (pfEdit) setTimeout(() => { const e = $('#pfEditor'); if (e) e.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 60); };
+  $('#pfCancel').onclick = () => { pfEdit = false; go('profile'); };
   $('#pfSave').onclick = async () => {
     const n = $('#pfName').value.trim(), bio = $('#pfBio').value;
     if (n.length < 3) return toast('Kullanıcı adı en az 3 karakter olmalı', 'warn');
     if (hasProfanity(n) || hasProfanity(bio)) return toast('Profilinde uygunsuz kelime olamaz', 'err');
     if (NET.online) { try { await NET.updateMe({ name: n, bio }); } catch (e) { return toast(esc(e.message), 'err'); } }
-    S.profile.name = n; S.profile.bio = bio; save(); updateMe(); toast('Profil kaydedildi ✓', 'ok'); go('profile');
+    S.profile.name = n; S.profile.bio = bio; save(); updateMe(); toast('Profil kaydedildi ✓', 'ok');
+    pfEdit = false; go('profile'); // the editor closes after saving; the pencil opens it again
   };
   const up = async (key) => {
     const f = await pickLocal('image/*,video/*'); if (!f) return;
     if (f.size > 80e6) return toast('Dosya çok büyük (en fazla 80 MB)', 'err');
-    if (NET.online) {
-      if (f.size > 25e6) return toast('Sunucuya en fazla 25 MB yüklenebilir', 'err');
-      try { await NET.setMedia(key, f); } catch (e) { return toast(esc(e.message), 'err'); }
-    }
-    const m = await storeMedia(f); S.profile[key] = m.id; S.profile[key + 'Type'] = m.type; save(); updateMe(); go('profile');
+    if (NET.online && f.size > 25e6) return toast('Sunucuya en fazla 25 MB yüklenebilir', 'err');
+    const url = URL.createObjectURL(f);
+    cropModal(key, url, f.type || '', null, async crop => {
+      if (NET.online) { try { await NET.setMedia(key, f); await NET.updateMe({ [key + 'Crop']: crop }); } catch (e) { return toast(esc(e.message), 'err'); } }
+      const m = await storeMedia(f); S.profile[key] = m.id; S.profile[key + 'Type'] = m.type; S.profile[key + 'Crop'] = crop; save(); updateMe(); go('profile');
+      toast(key === 'avatar' ? 'Profil resmi güncellendi ✓' : 'Kapak güncellendi ✓', 'ok');
+    }, () => URL.revokeObjectURL(url));
+  };
+  const recrop = async key => {
+    const url = await mediaURL(S.profile[key]); if (!url) return;
+    cropModal(key, url, S.profile[key + 'Type'], S.profile[key + 'Crop'], async crop => {
+      if (NET.online) { try { await NET.updateMe({ [key + 'Crop']: crop }); } catch (e) { return toast(esc(e.message), 'err'); } }
+      S.profile[key + 'Crop'] = crop; save(); updateMe(); go('profile'); toast('Kırpma kaydedildi ✓', 'ok');
+    });
   };
   $('#pfAv').onclick = () => up('avatar');
   $('#pfBanner').onclick = () => up('banner');
+  const ac = $('#pfAvCrop'); if (ac) ac.onclick = () => recrop('avatar');
+  const bc = $('#pfBnCrop'); if (bc) bc.onclick = () => recrop('banner');
 };
+/* Crop panel: drag to move, wheel / slider to zoom. Left: "Eski haline döndür" (reset), right: "Kaydet". */
+function cropModal(kind, url, type, start, onSave, onClose) {
+  const isAv = kind === 'avatar';
+  const init = { x: 50, y: 50, z: 1 }, prev = start ? { ...start } : { ...init };
+  let c = { ...prev };
+  const m = openModal(`<h2>✂️ ${isAv ? 'Profil resmini kırp' : 'Kapağı kırp'}</h2>
+    <p class="muted small">Sürükleyerek konumlandır, kaydırıcı ya da fare tekerleğiyle yakınlaştır. ${(type || '').startsWith('video') || /gif/.test(type) ? 'GIF ve videolar hareketli kalır.' : ''}</p>
+    <div class="crop-stage ${isAv ? 'av' : 'bn'}" id="cropStage"><div class="crop-media" id="cropMedia">${mediaHTML(esc(url), type)}</div><div class="crop-mask"></div></div>
+    <div class="field crop-zoom"><label>🔍 Yakınlaştırma</label><input type="range" id="cropZ" min="1" max="4" step="0.01" value="${c.z}"></div>
+    <div class="crop-actions"><button class="btn ghost" id="cropReset">↺ Eski haline döndür</button><span class="muted small" id="cropInfo"></span><button class="btn primary" id="cropSave">${icon('check', 16)} Kaydet</button></div>`, 'crop-card');
+  const stage = $('#cropStage', m), el = () => $('#cropMedia img, #cropMedia video', m);
+  const apply = () => { const e = el(); if (e) e.setAttribute('style', cropStyle(c)); $('#cropZ', m).value = c.z; $('#cropInfo', m).textContent = `${Math.round(c.z * 100)}%`; };
+  apply();
+  let drag = null;
+  stage.onpointerdown = e => { drag = { x: e.clientX, y: e.clientY, c: { ...c } }; stage.setPointerCapture(e.pointerId); stage.classList.add('drag'); };
+  stage.onpointermove = e => {
+    if (!drag) return;
+    const r = stage.getBoundingClientRect(), k = 100 / (c.z * 1.0);
+    c.x = Math.min(100, Math.max(0, drag.c.x - (e.clientX - drag.x) / r.width * k));
+    c.y = Math.min(100, Math.max(0, drag.c.y - (e.clientY - drag.y) / r.height * k));
+    apply();
+  };
+  stage.onpointerup = stage.onpointercancel = () => { drag = null; stage.classList.remove('drag'); };
+  stage.onwheel = e => { e.preventDefault(); c.z = Math.min(4, Math.max(1, +(c.z - e.deltaY * 0.0015).toFixed(2))); apply(); };
+  $('#cropZ', m).oninput = e => { c.z = +e.target.value; apply(); };
+  $('#cropReset', m).onclick = () => { c = { ...init }; apply(); toast('Kırpma sıfırlandı — orijinal görünüm'); };
+  $('#cropSave', m).onclick = async () => { const out = { x: +c.x.toFixed(1), y: +c.y.toFixed(1), z: +c.z.toFixed(2) }; closeModal(); await onSave(out.z === 1 && out.x === 50 && out.y === 50 ? null : out); onClose && onClose(); };
+  const mo = new MutationObserver(() => { if ($('#modal').classList.contains('hidden')) { mo.disconnect(); onClose && onClose(); } });
+  mo.observe($('#modal'), { attributes: true, attributeFilter: ['class'] });
+}
 
 /* ---------- Friends ---------- */
 let frTab = 'friends', frQuery = '', frResults = null;
 VIEWS.friends = v => {
+  if (!NET.online) {
+    v.innerHTML = head(T('nav.friends'), 'Dünyanın her yerinden gerçek oyuncularla arkadaş ol, mesajlaş ve sesli sohbet et.')
+      + `<div class="join-card panel"><div class="join-art">🤝</div><div class="join-body"><h2>Kizuna Topluluğuna katıl</h2>
+        <p class="muted">Steam gibi: bir hesap oluştur, arkadaşlarını <b>kullanıcı adıyla</b> ya da <b>8 haneli arkadaş koduyla</b> bul, istek gönder — onlar da sana istek gönderebilsin. Mesajlar, GIF’ler, dosyalar, anketler ve sesli sohbet gerçek zamanlı.</p>
+        <div id="netSet"></div></div></div>`;
+    renderNetSettings($('#netSet', v));
+    return;
+  }
   const fr = myFriends(), reqs = SO.requestsIn.filter(id => !SO.blocked.includes(id)).map(userById).filter(Boolean);
-  const others = (NET.online ? (frResults || []) : visibleUsers()).filter(u => !SO.friends.includes(u.id) && !SO.blocked.includes(u.id));
-  v.innerHTML = head(T('nav.friends'), 'Bir oyuncunun profiline gir, arkadaş ekle, oynadığı oyunları gör ve mesajlaş.',
-    NET.online ? `<span class="net-chip ${NET.wsUp ? 'on' : ''}" data-go="settings">${NET.wsUp ? '● Sunucuya bağlı' : '○ Yeniden bağlanıyor…'} · ${esc(NET.me.name)}</span>` : '')
-    + `<div class="tabs"><button class="tab ${frTab === 'friends' ? 'on' : ''}" data-ft="friends">Arkadaşlarım<small>${fr.length}</small></button>
-    <button class="tab ${frTab === 'req' ? 'on' : ''}" data-ft="req">İstekler<small>${reqs.length}</small></button><button class="tab ${frTab === 'find' ? 'on' : ''}" data-ft="find">Oyuncu bul${NET.online ? '' : `<small>${others.length}</small>`}</button></div>`
-    + (NET.online && frTab === 'find' ? `<div class="row-inp fr-search"><input id="frQ" placeholder="Kullanıcı adıyla oyuncu ara..." value="${esc(frQuery)}"><button class="btn primary" id="frGo">${icon('search', 16)} Ara</button></div>` : '')
-    + `<div class="user-grid">${(frTab === 'friends' ? fr : frTab === 'req' ? reqs : others).map(u => userCard(u, frTab)).join('')
-      || `<div class="empty"><h3>${frTab === 'req' ? 'Bekleyen istek yok' : NET.online && frTab === 'find' && frResults === null ? 'Aranıyor…' : 'Burada kimse yok'}</h3><p class="muted">${frTab === 'friends' ? 'Oyuncu bul sekmesinden arkadaş ekleyebilirsin.' : ''}</p></div>`}</div>`
-    + (NET.online ? '' : `<div class="demo-note tipbox"><span>ℹ️</span><p>Bunlar <b>demo oyuncular</b>. Gerçek oyuncularla arkadaş olmak ve sohbet etmek için bir Kizuna Sunucusuna bağlan.</p><button class="btn sm primary" id="frConnect">🌐 Sunucuya bağlan</button></div>`);
-  $$('[data-ft]', v).forEach(b => b.onclick = () => { frTab = b.dataset.ft; go('friends'); });
+  const outs = SO.requestsOut.filter(id => !SO.blocked.includes(id)).map(userById).filter(Boolean);
+  const others = (frResults || []).filter(u => !SO.friends.includes(u.id) && !SO.blocked.includes(u.id));
+  const online = fr.filter(u => u.status !== 'offline');
+  v.innerHTML = head(T('nav.friends'), 'Gerçek oyuncular — arkadaş ekle, oynadıkları oyunları gör ve mesajlaş.',
+    `<span class="net-chip ${NET.wsUp ? 'on' : ''}" data-go="settings">${NET.wsUp ? '● Bağlı' : '○ Yeniden bağlanıyor…'} · ${esc(NET.me.name)}</span>`)
+    + `<div class="my-code panel"><div><small class="muted">Senin arkadaş kodun</small><b class="fcode big">#${esc(NET.me.code || '—')}</b></div><p class="muted small">Bu kodu arkadaşına gönder — “Oyuncu ekle” sekmesine yazarak seni anında bulur.</p><button class="btn sm ghost" id="copyCode">${icon('copy', 14)} Kopyala</button></div>`
+    + `<div class="tabs"><button class="tab ${frTab === 'friends' ? 'on' : ''}" data-ft="friends">Arkadaşlarım<small>${online.length}/${fr.length}</small></button>
+    <button class="tab ${frTab === 'req' ? 'on' : ''}" data-ft="req">Gelen istekler<small>${reqs.length}</small></button>
+    <button class="tab ${frTab === 'out' ? 'on' : ''}" data-ft="out">Gönderilen<small>${outs.length}</small></button>
+    <button class="tab ${frTab === 'find' ? 'on' : ''}" data-ft="find">${icon('userplus', 14)} Oyuncu ekle</button></div>`
+    + (frTab === 'find' ? `<div class="row-inp fr-search"><input id="frQ" placeholder="Kullanıcı adı ya da arkadaş kodu (ör. 12345678)…" value="${esc(frQuery)}"><button class="btn primary" id="frGo">${icon('search', 16)} Ara</button></div>` : '')
+    + `<div class="user-grid">${(frTab === 'friends' ? [...online, ...fr.filter(u => u.status === 'offline')] : frTab === 'req' ? reqs : frTab === 'out' ? outs : others).map(u => userCard(u, frTab)).join('')
+      || `<div class="empty"><h3>${frTab === 'req' ? 'Bekleyen istek yok' : frTab === 'out' ? 'Gönderilmiş istek yok' : frTab === 'find' && frResults === null ? 'Aranıyor…' : frTab === 'find' ? 'Oyuncu bulunamadı' : 'Henüz arkadaşın yok'}</h3><p class="muted">${frTab === 'friends' ? '“Oyuncu ekle” sekmesinden kullanıcı adı ya da arkadaş koduyla arkadaş ekleyebilirsin.' : ''}</p></div>`}</div>`;
+  $('#copyCode', v).onclick = () => navigator.clipboard.writeText(NET.me.code || '').then(() => toast('📋 Arkadaş kodun kopyalandı — arkadaşına gönder'), () => {});
+  $$('[data-ft]', v).forEach(b => b.onclick = () => { frTab = b.dataset.ft; if (frTab === 'find') frResults = null; go('friends'); });
+  $$('[data-cancel]', v).forEach(b => b.onclick = async e => { e.stopPropagation(); try { await NET.reject(b.dataset.cancel); } catch (err) { return toast(esc(err.message), 'err'); } go('friends'); });
   $$('[data-acc]', v).forEach(b => b.onclick = e => { e.stopPropagation(); acceptReq(b.dataset.acc); });
   $$('[data-rej]', v).forEach(b => b.onclick = async e => {
     e.stopPropagation(); const id = b.dataset.rej;
@@ -858,8 +1334,7 @@ VIEWS.friends = v => {
   });
   $$('[data-msg]', v).forEach(b => b.onclick = e => { e.stopPropagation(); go('messages', b.dataset.msg); });
   $$('[data-addf]', v).forEach(b => b.onclick = async e => { e.stopPropagation(); await sendReq(b.dataset.addf); go('friends'); });
-  const cn = $('#frConnect'); if (cn) cn.onclick = () => go('settings', 'net');
-  if (NET.online && frTab === 'find') {
+  if (frTab === 'find') {
     const doSearch = () => { frQuery = $('#frQ').value.trim(); frResults = null; go('friends'); };
     $('#frGo').onclick = doSearch; $('#frQ').onkeydown = e => { if (e.key === 'Enter') doSearch(); };
     if (frResults === null) NET.search(frQuery).then(r => { frResults = r; if (current === 'friends' && frTab === 'find') go('friends'); }).catch(err => toast(esc(err.message), 'err'));
@@ -869,35 +1344,24 @@ function userCard(u, tab) {
   const st = STATUS[u.status] || STATUS.offline;
   const act = tab === 'friends' ? `<button class="btn sm primary" data-msg="${u.id}">${icon('messages', 14)} Mesaj</button>`
     : tab === 'req' ? `<button class="btn sm primary" data-acc="${u.id}">Kabul et</button><button class="btn sm ghost" data-rej="${u.id}">Reddet</button>`
-      : SO.requestsOut.includes(u.id) ? `<button class="btn sm ghost" disabled>İstek gönderildi</button>` : `<button class="btn sm primary" data-addf="${u.id}">${icon('userplus', 14)} Arkadaş ekle</button>`;
-  return `<article class="ucard panel" data-user="${u.id}">${userAvatar(u, 64)}<div class="uc-info"><b>${esc(u.name)}</b><small style="color:${st[1]}">● ${u.playing ? '🎮 ' + esc(u.playing) : st[0]}</small><p class="muted small">${esc(u.bio)}</p></div><div class="uc-act">${act}</div></article>`;
+      : tab === 'out' ? `<button class="btn sm ghost" data-cancel="${u.id}">İsteği geri çek</button>`
+        : SO.requestsOut.includes(u.id) ? `<button class="btn sm ghost" disabled>İstek gönderildi</button>`
+          : SO.requestsIn.includes(u.id) ? `<button class="btn sm primary" data-acc="${u.id}">İsteği kabul et</button>` : `<button class="btn sm primary" data-addf="${u.id}">${icon('userplus', 14)} Arkadaş ekle</button>`;
+  return `<article class="ucard panel" data-user="${u.id}">${userAvatar(u, 64)}<div class="uc-info"><b>${esc(u.name)}</b>${u.code && tab === 'find' ? `<small class="muted">#${esc(u.code)}</small>` : ''}<small style="color:${st[1]}">● ${u.playing ? '🎮 ' + esc(u.playing) : st[0]}</small><p class="muted small">${esc(u.bio)}</p></div><div class="uc-act">${act}</div></article>`;
 }
 async function sendReq(id) {
-  if (SO.requestsOut.includes(id) || SO.friends.includes(id)) return;
-  if (NET.online) {
-    try {
-      const state = await NET.request(id), u = userById(id);
-      toast(state === 'friends' ? `🤝 Artık <b>${esc(u.name)}</b> ile arkadaşsınız` : `Arkadaşlık isteği gönderildi: <b>${esc(u.name)}</b>`, 'ok');
-      log((state === 'friends' ? 'Yeni arkadaş: ' : 'Arkadaşlık isteği gönderildi: ') + u.name);
-    } catch (e) { toast(esc(e.message), 'err'); }
-    updateBadges(); return;
-  }
-  SO.requestsOut.push(id); save();
-  const u = userById(id);
-  toast(`Arkadaşlık isteği gönderildi: <b>${esc(u.name)}</b>`);
-  log('Arkadaşlık isteği gönderildi: ' + u.name);
-  setTimeout(() => {
-    if (SO.blocked.includes(id) || !SO.requestsOut.includes(id)) return;
-    SO.requestsOut = SO.requestsOut.filter(x => x !== id); SO.friends.push(id); save();
-    toast(`🤝 <b>${esc(u.name)}</b> arkadaşlık isteğini kabul etti!`, 'ok'); AudioEngine.notify();
-    log('Yeni arkadaş: ' + u.name);
-    if (current === 'friends') go('friends');
-  }, 3000 + Math.random() * 3000);
+  if (!NET.online || SO.requestsOut.includes(id) || SO.friends.includes(id)) return;
+  try {
+    const state = await NET.request(id), u = userById(id);
+    toast(state === 'friends' ? `🤝 Artık <b>${esc(u.name)}</b> ile arkadaşsınız` : `Arkadaşlık isteği gönderildi: <b>${esc(u.name)}</b> — kabul edince bildirim alacaksın`, 'ok');
+    log((state === 'friends' ? 'Yeni arkadaş: ' : 'Arkadaşlık isteği gönderildi: ') + u.name);
+  } catch (e) { toast(esc(e.message), 'err'); }
+  updateBadges();
 }
 async function acceptReq(id) {
-  if (NET.online) { try { await NET.accept(id); } catch (e) { return toast(esc(e.message), 'err'); } }
-  else { SO.requestsIn = SO.requestsIn.filter(x => x !== id); if (!SO.friends.includes(id)) SO.friends.push(id); }
-  save(); updateBadges(); toast(`🤝 Artık <b>${esc(userById(id).name)}</b> ile arkadaşsınız`, 'ok'); log('Yeni arkadaş: ' + userById(id).name);
+  if (!NET.online) return;
+  try { await NET.accept(id); } catch (e) { return toast(esc(e.message), 'err'); }
+  updateBadges(); toast(`🤝 Artık <b>${esc(userById(id).name)}</b> ile arkadaşsınız`, 'ok'); log('Yeni arkadaş: ' + userById(id).name);
   if (current === 'friends') go('friends');
 }
 async function showUser(id) {
@@ -907,16 +1371,16 @@ async function showUser(id) {
   const games = !isF ? `<p class="muted">🔒 Oynadığı oyunları görmek için arkadaş olmalısınız.</p>`
     : u.hideGames ? `<p class="muted">🔒 ${esc(u.name)} oynadığı oyunları gizlemiş.</p>`
       : (u.games || []).length ? `<div class="chips">${u.games.map(t => { const g = GAMES.find(x => x.t === t); return `<button class="chip" ${g ? `data-og="${g.id}"` : ''}>${esc(t)}</button>`; }).join('')}</div>` : `<p class="muted">Henüz oyun oynamamış.</p>`;
-  const banner = u.banner && NET.online ? mediaHTML(NET.fileUrl(u.banner), u.bannerType) : '';
+  const banner = u.banner && NET.online ? mediaHTML(NET.fileUrl(u.banner), u.bannerType, u.bannerCrop) : '';
   const c = openModal(`<div class="up"><div class="up-banner" style="background:${esc(u.color || COLOR0)}">${banner}</div><div class="up-head">${userAvatar(u, 96)}<div><h2>${esc(u.name)}</h2><p style="color:${st[1]}">● ${u.playing ? '🎮 Oynuyor: ' + esc(u.playing) : st[0]}</p></div></div>
-  <p>${esc(u.bio)}</p><p class="muted small">${u.hideJoin || !u.joined ? '🔒 Katılma tarihi gizli' : 'Katıldı: ' + fmtDate(u.joined)}</p>
+  <p>${esc(u.bio)}</p>${u.hideJoin || !u.joined ? '' : `<p class="muted small">Katıldı: ${fmtDate(u.joined)}</p>`}
   <h3>Oynadığı oyunlar</h3>${games}
   <div class="up-actions">${isF ? `<button class="btn primary" id="upMsg">${icon('messages', 16)} Mesaj</button><button class="btn ghost" id="upRem">Arkadaşlıktan çıkar</button>`
       : SO.requestsIn.includes(id) ? `<button class="btn primary" id="upAcc">Arkadaşlık isteğini kabul et</button>`
         : SO.requestsOut.includes(id) ? `<button class="btn ghost" disabled>İstek gönderildi</button>` : `<button class="btn primary" id="upAdd">${icon('userplus', 16)} Arkadaş ekle</button>`}
-  <button class="btn danger" id="upBlock">${icon('block', 16)} Engelle & Spam bildir</button></div>
-  <div class="confirm hidden" id="upConfirm"><p><b>${esc(u.name)}</b> engellenecek ve spam olarak bildirilecek. Bu kişi sana bir daha <b>hiçbir şekilde</b> mesaj gönderemez, arama yapamaz, istek atamaz ve profilini göremez.</p>
-  <div class="row-btns"><button class="btn danger" id="upYes">Evet, engelle ve bildir</button><button class="btn ghost" id="upNo">Vazgeç</button></div></div></div>`);
+  <button class="btn danger" id="upBlock">${icon('block', 16)} Engelle</button><button class="btn ghost danger-t" id="upSpam">${icon('flag', 16)} Spam bildir</button></div>
+  <div class="confirm hidden" id="upConfirm"><p id="upConfText"></p>
+  <div class="row-btns"><button class="btn danger" id="upYes">Evet</button><button class="btn ghost" id="upNo">Vazgeç</button></div></div></div>`);
   const on = (sel, fn) => { const el = $(sel, c); if (el) el.onclick = fn; };
   on('#upMsg', () => { closeModal(); go('messages', id); });
   on('#upRem', async () => {
@@ -926,27 +1390,43 @@ async function showUser(id) {
   });
   on('#upAcc', async () => { await acceptReq(id); showUser(id); });
   on('#upAdd', async () => { await sendReq(id); showUser(id); });
-  on('#upBlock', () => $('#upConfirm', c).classList.remove('hidden'));
+  let spamMode = false;
+  const ask = spam => {
+    spamMode = spam;
+    $('#upConfText', c).innerHTML = spam
+      ? `<b>${esc(u.name)}</b> <b>spam olarak bildirilecek</b> ve engellenecek. Bildirim sunucu yöneticisine iletilir.`
+      : `<b>${esc(u.name)}</b> <b>engellenecek</b>. Bu kişi sana bir daha mesaj gönderemez, arama yapamaz, istek atamaz ve profilini göremez. (Spam bildirimi yapılmaz.)`;
+    $('#upYes', c).textContent = spam ? 'Evet, spam bildir' : 'Evet, engelle';
+    $('#upConfirm', c).classList.remove('hidden');
+  };
+  on('#upBlock', () => ask(false));
+  on('#upSpam', () => ask(true));
   on('#upNo', () => $('#upConfirm', c).classList.add('hidden'));
-  on('#upYes', () => blockUser(id));
+  on('#upYes', () => blockUser(id, spamMode));
   $$('[data-og]', c).forEach(b => b.onclick = () => openGame(b.dataset.og));
 }
-async function blockUser(id) {
+/* Block = only block. Spam report = report + block. The blocked list shows which one it was. */
+async function blockUser(id, spam = false) {
   const u = userById(id);
-  if (NET.online) { try { await NET.block(id); } catch (e) { return toast(esc(e.message), 'err'); } }
-  if (!SO.blocked.includes(id)) SO.blocked.push(id);
-  S.reports.push({ id, time: Date.now(), type: 'spam' });
+  if (NET.online) { try { await NET.block(id, spam); } catch (e) { return toast(esc(e.message), 'err'); } }
+  else { if (!SO.blocked.includes(id)) SO.blocked.push(id); }
+  if (spam) S.reports.push({ id, time: Date.now(), type: 'spam' });
   SO.friends = SO.friends.filter(x => x !== id); SO.requestsIn = SO.requestsIn.filter(x => x !== id); SO.requestsOut = SO.requestsOut.filter(x => x !== id);
   delete SO.chats[id]; delete SO.unread[id];
   if (call && call.id === id) endCall();
   save(); closeModal(); updateBadges();
-  toast(`🛡️ <b>${esc(u.name)}</b> engellendi ve spam olarak bildirildi. Seni artık hiçbir şekilde rahatsız edemez.`, 'ok', 5000);
-  log('Engellendi ve spam bildirildi: ' + u.name);
+  toast(spam ? `🚩 <b>${esc(u.name)}</b> spam olarak bildirildi ve engellendi.` : `🛡️ <b>${esc(u.name)}</b> engellendi. Seni artık rahatsız edemez.`, 'ok', 5000);
+  log((spam ? 'Spam bildirildi: ' : 'Engellendi: ') + u.name);
   if (['friends', 'messages'].includes(current)) go(current);
 }
+const isSpam = id => (NET.online ? NET.spamReported : S.reports.filter(r => r.type === 'spam').map(r => r.id)).includes(id);
 
 /* ---------- Messages ---------- */
 VIEWS.messages = (v, arg) => {
+  if (!NET.online) {
+    v.innerHTML = head(T('nav.messages'), 'Arkadaşlarınla yazılı ve sesli sohbet.') + empty('💬', 'Mesajlaşmak için Kizuna Topluluğuna katıl', 'Arkadaşlar bölümünden hesap oluştur ya da giriş yap; sonra gerçek arkadaşlarınla burada sohbet edersin.', `<button class="btn primary" data-go="friends">Topluluğa katıl ›</button>`);
+    return;
+  }
   const fr = myFriends();
   const sel = (arg && fr.find(f => f.id === arg)?.id) || (fr.find(f => f.id === S.lastChat)?.id) || fr[0]?.id;
   v.innerHTML = `<div class="chat-wrap panel"><aside class="chat-list" id="chatList"></aside><section class="chat-main" id="chatMain"></section></div>`;
@@ -1012,9 +1492,15 @@ function renderMsgs(id) {
       const total = m.poll.opts.reduce((a, o) => a + o.votes.length, 0) || 0;
       body = `<div class="bubble poll"><b>📊 ${esc(m.poll.q)}</b>${m.poll.opts.map((o, i) => { const pc = total ? Math.round(o.votes.length / total * 100) : 0; return `<button class="poll-opt ${o.votes.includes('me') ? 'on' : ''}" data-poll="${m.id}" data-oi="${i}"><i style="width:${pc}%"></i><span>${esc(o.t)}</span><em>${pc}% · ${o.votes.length}</em></button>`; }).join('')}<small class="muted">${total} oy</small></div>`;
     }
-    return `<div class="msg ${mine ? 'mine' : ''}">${mine ? '' : avatarOf(m.from, 30)}<div class="m-col">${body}<time>${fmtTime(m.time)}</time></div></div>`;
+    return `<div class="msg ${mine ? 'mine' : ''}" data-mid-row="${esc(m.id)}">${mine ? '' : avatarOf(m.from, 30)}<div class="m-col">${body}<time>${fmtTime(m.time)}${mine ? `<button class="m-del" data-delmsg="${esc(m.id)}" data-tip="Mesajı herkesten sil">${icon('trash', 12)}</button>` : ''}</time></div></div>`;
   }).join('') || `<div class="empty small"><p class="muted">Henüz mesaj yok. İlk mesajı sen gönder! 👋</p></div>`;
   hydrate(box);
+  $$('[data-delmsg]', box).forEach(b => b.onclick = async () => {
+    const mid = b.dataset.delmsg;
+    if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.classList.add('sure'); b.innerHTML = 'Sil?'; setTimeout(() => { if (b.isConnected) { b.dataset.sure = ''; b.classList.remove('sure'); b.innerHTML = icon('trash', 12); } }, 2500); return; }
+    try { await NET.deleteMsg(id, mid); } catch (e) { return toast(esc(e.message), 'err'); }
+    renderMsgs(id); renderChatList(id);
+  });
   $$('[data-poll]', box).forEach(b => b.onclick = () => votePoll(id, b.dataset.poll, +b.dataset.oi));
   $$('[data-open]', box).forEach(b => b.onclick = async () => { const url = await mediaURL(b.dataset.open); if (!url) return toast('Dosya bulunamadı', 'err'); const a = document.createElement('a'); a.href = url; a.download = b.dataset.name; a.click(); });
   $$('[data-url]', box).forEach(b => b.onclick = async () => {
@@ -1030,46 +1516,15 @@ function renderMsgs(id) {
 }
 function sendMsg(id, msg) {
   const texts = [msg.text, msg.poll && msg.poll.q, ...(msg.poll ? msg.poll.opts.map(o => o.t) : [])].filter(Boolean);
-  if (texts.some(hasProfanity)) return applyBan('Sohbette kötü / uygunsuz kelimeler kullandın.');
-  if (SO.blocked.includes(id)) return;
-  if (NET.online) {
-    NET.send(id, msg).then(() => { if (S.lastChat === id && current === 'messages') { renderMsgs(id); renderChatList(id); } })
-      .catch(e => { if (e.message !== 'banned') toast(esc(e.message), 'err'); });
-    return;
-  }
-  (SO.chats[id] ||= []).push({ id: uid(), from: 'me', time: Date.now(), ...msg });
-  SO.chats[id] = SO.chats[id].slice(-300);
-  save(); renderMsgs(id);
-  simulateReply(id, msg);
-}
-const REPLIES = ['Haha 😂', 'Aynen kanka!', 'Bu akşam bir maç atalım mı? 🎮', 'GG! 🏆', 'Şu an {game} oynuyorum, efsane.', 'Bekle 5 dk geliyorum ⏳', 'Süper fikir 🔥', 'Hangi oyunu öneriyorsun?', 'Kizuna’nın Vice Hawaii temasını gördün mü? 🌴', 'Yılı 2077 yaptım, arayüz çıldırdı 😎', 'Tamamdır 👍'];
-function simulateReply(id, msg) {
-  const u = userById(id);
-  setTimeout(() => {
-    if (SO.blocked.includes(id) || !SO.friends.includes(id)) return;
-    if (S.lastChat === id && current === 'messages') { const t = $('#typing'); if (t) t.classList.remove('hidden'); }
-    setTimeout(() => {
-      if (SO.blocked.includes(id)) return;
-      const t = $('#typing'); if (t) t.classList.add('hidden');
-      if (msg.kind === 'poll') { const last = (SO.chats[id] || []).slice().reverse().find(m => m.kind === 'poll'); if (last) { pick(last.poll.opts).votes.push(id); } incoming(id, 'Oyumu verdim! 🗳️'); }
-      else if (msg.kind === 'sticker' && Math.random() < 0.5) incoming(id, null, { kind: 'sticker', sticker: pick(STICKERS).id });
-      else incoming(id, pick(REPLIES).replace('{game}', pick(u.games)));
-    }, 1200 + Math.random() * 1800);
-  }, 600);
-}
-function incoming(id, text, extra) {
-  if (SO.blocked.includes(id)) return;
-  (SO.chats[id] ||= []).push({ id: uid(), from: id, time: Date.now(), ...(extra || { kind: 'text', text }) });
-  const viewing = current === 'messages' && S.lastChat === id;
-  if (!viewing) { SO.unread[id] = (SO.unread[id] || 0) + 1; toast(`💬 <b>${esc(userById(id).name)}</b>: ${esc(text || 'Çıkartma gönderdi')}`); }
-  save(); updateBadges(); AudioEngine.notify();
-  if (viewing) renderMsgs(id); else if (current === 'messages') go('messages', S.lastChat);
+  const lv = texts.map(profanityLevel).filter(Boolean);
+  if (lv.length) { const level = lv.includes('severe') ? 'severe' : 'mild'; return applyBan(level === 'severe' ? 'Sohbette başkalarına ağır hakaret / küfür ettin.' : 'Sohbette kötü / uygunsuz kelimeler kullandın.', level); }
+  if (SO.blocked.includes(id) || !NET.online) return;
+  NET.send(id, msg).then(() => { if (S.lastChat === id && current === 'messages') { renderMsgs(id); renderChatList(id); } })
+    .catch(e => { if (e.message !== 'banned') toast(esc(e.message), 'err'); });
 }
 function votePoll(cid, mid, oi) {
-  if (NET.online) { NET.vote(mid, oi).then(() => renderMsgs(cid)).catch(e => toast(esc(e.message), 'err')); return; }
-  const m = (SO.chats[cid] || []).find(x => x.id === mid); if (!m) return;
-  m.poll.opts.forEach(o => { o.votes = o.votes.filter(v => v !== 'me'); });
-  m.poll.opts[oi].votes.push('me'); save(); renderMsgs(cid);
+  if (!NET.online) return;
+  NET.vote(mid, oi).then(() => renderMsgs(cid)).catch(e => toast(esc(e.message), 'err'));
 }
 async function chatTool(id, tool) {
   const pk = $('#picker');
@@ -1127,7 +1582,7 @@ async function detectRoute(pc) {
   } catch { return ''; }
 }
 async function getMic() {
-  try { return await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
+  try { return await openMic(); }
   catch (e) { toast('Mikrofona erişilemedi: ' + esc(e.message), 'err'); return null; }
 }
 function micAnalyser(stream) { const ctx = AudioEngine.context; const an = ctx.createAnalyser(); an.fftSize = 256; ctx.createMediaStreamSource(stream).connect(an); return an; }
@@ -1142,7 +1597,7 @@ async function setupPc() {
   pc.onicecandidate = e => { if (e.candidate && call) NET.signal({ type: 'call_ice', to: call.id, candidate: e.candidate.toJSON() }); };
   pc.ontrack = e => {
     let a = $('#remoteAudio');
-    if (!a) { a = document.createElement('audio'); a.id = 'remoteAudio'; a.autoplay = true; document.body.appendChild(a); }
+    if (!a) { a = document.createElement('audio'); a.id = 'remoteAudio'; a.autoplay = true; document.body.appendChild(a); if (S.spkId && a.setSinkId) a.setSinkId(S.spkId).catch(() => {}); }
     a.srcObject = e.streams[0]; a.play().catch(() => {});
     if (call) call.ran = micAnalyser(e.streams[0]);
   };
@@ -1164,7 +1619,7 @@ function flushIce(from) {
   list.forEach(c => call.pc.addIceCandidate(c).catch(() => {}));
 }
 async function startCall(id) {
-  if (!NET.online) return startDemoCall(id);
+  if (!NET.online) return toast('Sesli sohbet için Kizuna Topluluğuna bağlı olmalısın', 'warn');
   if (call) endCall();
   if (!NET.wsUp) return toast('Sunucu bağlantısı yok — biraz sonra tekrar dene', 'err');
   const stream = await getMic(); if (!stream) return;
@@ -1221,17 +1676,6 @@ async function onCallSignal(m) {
     if (call && call.id === m.from) endCall(false);
     delete iceBuf[m.from];
   }
-}
-async function startDemoCall(id) {
-  if (call) endCall();
-  let stream = null;
-  try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); }
-  catch (e) { toast('Mikrofona erişilemedi: ' + esc(e.message), 'err'); }
-  call = { id, stream, muted: false, start: Date.now(), an: null, state: 'live', demo: true };
-  if (stream) { const ctx = AudioEngine.context; const src = ctx.createMediaStreamSource(stream); const an = ctx.createAnalyser(); an.fftSize = 256; src.connect(an); call.an = an; }
-  log('Sesli sohbet başlatıldı: ' + userById(id).name);
-  renderCallBar();
-  call.iv = setInterval(tickCall, 120);
 }
 function renderCallBar() {
   const bar = $('#callBar'); if (!bar || !call || S.lastChat !== call.id) return;
@@ -1303,6 +1747,15 @@ function netEvent(m) {
       updateBadges();
       if (current === 'messages') go('messages'); else refreshSocial();
       break;
+    case 'message_deleted': {
+      // a deleted message disappears for both sides — and no longer counts as unread
+      const mine = m.from === NET.me.id, peer = mine ? m.to : m.from;
+      NET.removeMsg(peer, m.id);
+      if (!mine && m.wasUnread && NET.unread[peer]) NET.unread[peer] = Math.max(0, NET.unread[peer] - 1);
+      updateBadges();
+      if (current === 'messages') { if (S.lastChat === peer) renderMsgs(peer); renderChatList(S.lastChat); }
+      break;
+    }
     case 'message': case 'message_update': {
       const msg = NET.upsertMsg(m.msg), peer = msg.peer;
       const viewing = current === 'messages' && S.lastChat === peer;
@@ -1329,24 +1782,38 @@ function netEvent(m) {
 }
 function serverBan(b) {
   if (!b || !b.until) return;
+  b = { ...b, offenses: mergeOff(banRecord && banRecord.offenses, b.offenses) };
+  banRecord = b;
   localStorage.setItem('kz_ban', JSON.stringify(b));
   if (api) api.setBan(b);
   if (!document.body.classList.contains('banned')) showBan(b);
 }
+/* Kizuna Community server address lives in the GitHub repo (community.json), so it can change without an app update */
+let COMMUNITY = null;
+async function loadCommunity() {
+  if (COMMUNITY) return COMMUNITY;
+  try {
+    const r = await fetch(COMMUNITY_URL + '?t=' + Math.floor(Date.now() / 3e5), { cache: 'no-store' });
+    const j = await r.json();
+    COMMUNITY = { url: typeof j.url === 'string' ? j.url.trim() : '', name: j.name || 'Kizuna Topluluğu' };
+  } catch { COMMUNITY = { url: '', name: '' }; }
+  return COMMUNITY;
+}
 async function connectSaved() {
+  loadCommunity();
   if (!S.net || !S.net.token) return;
   try {
     await NET.resume(S.net.url, S.net.token);
     updateMe(); updateBadges(); refreshSocial();
   } catch (e) {
     if (e.status === 401) { S.net.token = ''; save(); toast('Sunucu oturumun sona erdi — Ayarlar › Sunucu’dan tekrar giriş yap', 'warn', 5000); }
-    else if (e.status !== 403) { toast('Kizuna Sunucusuna bağlanılamadı — demo modundasın. 30 sn sonra tekrar denenecek.', 'warn', 5000); setTimeout(connectSaved, 30000); }
+    else if (e.status !== 403) { toast('Kizuna Topluluğuna bağlanılamadı — 30 sn sonra tekrar denenecek.', 'warn', 5000); setTimeout(connectSaved, 30000); }
   }
 }
 async function pushLocalProfile() {
   try {
     await NET.updateMe({ bio: S.profile.bio, status: S.profile.status, hideJoin: S.privacy.hideJoin, hideGames: S.privacy.hideGames, played: S.played });
-    for (const k of ['avatar', 'banner']) if (S.profile[k]) { const b = await DB.get(S.profile[k]); if (b && b.size <= 25e6) await NET.setMedia(k, b); }
+    for (const k of ['avatar', 'banner']) if (S.profile[k]) { const b = await DB.get(S.profile[k]); if (b && b.size <= 25e6) { await NET.setMedia(k, b); if (S.profile[k + 'Crop']) await NET.updateMe({ [k + 'Crop']: S.profile[k + 'Crop'] }); } }
   } catch (e) { toast('Profilin sunucuya tam aktarılamadı: ' + esc(e.message), 'warn'); }
 }
 function netSync(patch) { if (NET.online) NET.updateMe(patch).catch(e => toast(esc(e.message), 'err')); }
@@ -1455,7 +1922,7 @@ function bindHostEvents() {
 function renderNetSettings(box) {
   if (!box) return;
   if (NET.online) {
-    box.innerHTML = `<div class="ai-state on"><b>● Bağlı: ${esc(NET.me.name)}</b><small>${esc(NET.url)} · ${NET.wsUp ? 'anlık bağlantı açık' : 'anlık bağlantı yeniden kuruluyor…'} · ${NET.friends.length} arkadaş</small></div>
+    box.innerHTML = `<div class="ai-state on"><b>● Bağlı: ${esc(NET.me.name)} <span class="fcode">#${esc(NET.me.code || '')}</span></b><small>${esc(COMMUNITY && COMMUNITY.url === NET.url ? (COMMUNITY.name || 'Kizuna Topluluğu') : NET.url)} · ${NET.wsUp ? 'anlık bağlantı açık' : 'anlık bağlantı yeniden kuruluyor…'} · ${NET.friends.length} arkadaş</small></div>
     <div class="field row"><label>Sesli sohbette IP adresimi gizle <small class="muted">(ses yalnızca TURN sunucusu üzerinden gider; biraz daha yüksek gecikme)</small></label><label class="switch"><input type="checkbox" data-k="callRelay"><i></i></label></div>
     <p class="muted small" id="iceInfo">Sesli sohbet aktarımı kontrol ediliyor…</p>
     <div class="row-btns"><button class="btn ghost" id="netOut">Çıkış yap</button></div>
@@ -1466,17 +1933,22 @@ function renderNetSettings(box) {
       el.innerHTML = ice.turn ? `🛡️ Sesli sohbet: <b>TURN aktif</b> (${ice.mode === 'builtin' ? 'Kizuna sunucusunun içinde' : 'harici TURN sunucusu'}) — kısıtlı ağlarda da bağlanır.`
         : '⚠️ Sesli sohbet: TURN kapalı — bazı ağlarda (okul/iş, mobil hotspot) arama bağlanmayabilir.';
     });
-    $('#netOut', box).onclick = async () => { await NET.logout(); S.net.token = ''; save(); toast('Sunucudan çıkış yapıldı — demo moduna dönüldü'); renderNetSettings(box); };
+    $('#netOut', box).onclick = async () => { await NET.logout(); S.net.token = ''; save(); toast('Kizuna Topluluğundan çıkış yapıldı'); renderNetSettings(box); if (['friends', 'messages'].includes(current)) go(current); };
     return;
   }
-  box.innerHTML = `<p class="muted">Gerçek oyuncularla arkadaş olmak, mesajlaşmak ve sesli sohbet etmek için bir <b>Kizuna Sunucusuna</b> bağlan. Sunucuyu yukarıdaki <b>“Bu bilgisayarda sunucu barındır”</b> ile kendin açabilir ya da bir arkadaşının sunucu adresini girebilirsin.</p>
-  <div class="field"><label>Sunucu adresi</label><input id="netUrl" value="${esc((S.net && S.net.url) || 'http://localhost:3777')}" placeholder="http://192.168.1.20:3777" spellcheck="false"></div>
+  const com = COMMUNITY || { url: '' };
+  const custom = S.net && S.net.url && S.net.url !== com.url;
+  box.innerHTML = `<div class="com-state ${com.url ? 'on' : 'off'}" id="comState">${COMMUNITY === null ? '… Kizuna Topluluk Sunucusu aranıyor' : com.url ? `🌍 <b>${esc(com.name || 'Kizuna Topluluğu')}</b> — dünyanın her yerinden oyuncular burada` : '⚠️ Topluluk sunucusu şu an tanımlı değil — aşağıdan bir sunucu adresi girebilirsin'}</div>
   <div class="form-grid"><div class="field"><label>Kullanıcı adı</label><input id="netName" maxlength="20" value="${esc(S.profile.name)}" autocomplete="username"></div>
   <div class="field"><label>Şifre</label><input id="netPass" type="password" maxlength="200" autocomplete="current-password" placeholder="en az 6 karakter"></div></div>
-  <div class="row-btns"><button class="btn primary" id="netLogin">Giriş yap</button><button class="btn ghost" id="netReg">Yeni hesap oluştur</button><span class="muted small" id="netMsg"></span></div>`;
+  <div class="row-btns"><button class="btn primary" id="netReg">🎉 Hesap oluştur</button><button class="btn ghost" id="netLogin">Giriş yap</button><span class="muted small" id="netMsg"></span></div>
+  <details class="host-adv" ${custom || !com.url ? 'open' : ''}><summary>Farklı bir sunucu kullan (arkadaşının ya da kendi sunucun)</summary>
+   <div class="field"><label>Sunucu adresi <small class="muted">— boş bırakırsan Kizuna Topluluğu kullanılır</small></label><input id="netUrl" value="${esc(custom ? S.net.url : '')}" placeholder="${esc(com.url || 'http://192.168.1.20:3777')}" spellcheck="false"></div></details>`;
+  if (COMMUNITY === null) loadCommunity().then(() => renderNetSettings(box));
   const doAuth = async kind => {
-    const url = $('#netUrl', box).value.trim(), name = $('#netName', box).value.trim(), pw = $('#netPass', box).value, msg = $('#netMsg', box);
-    if (!url || !name || !pw) { msg.textContent = '⚠ Adres, kullanıcı adı ve şifre gerekli.'; return; }
+    const url = $('#netUrl', box).value.trim() || com.url, name = $('#netName', box).value.trim(), pw = $('#netPass', box).value, msg = $('#netMsg', box);
+    if (!url) { msg.textContent = '⚠ Sunucu adresi yok — “Farklı bir sunucu kullan”dan adres gir.'; return; }
+    if (!name || !pw) { msg.textContent = '⚠ Kullanıcı adı ve şifre gerekli.'; return; }
     if (hasProfanity(name)) { msg.textContent = '⚠ Kullanıcı adında uygunsuz kelime olamaz.'; return; }
     msg.textContent = 'Bağlanılıyor…';
     try {
@@ -1487,9 +1959,9 @@ function renderNetSettings(box) {
       save();
       if (kind === 'register') await pushLocalProfile();
       updateMe(); updateBadges();
-      toast(kind === 'register' ? `🎉 Hesabın oluşturuldu: <b>${esc(me.name)}</b>` : `👋 Tekrar hoş geldin <b>${esc(me.name)}</b>`, 'ok');
-      log('Kizuna Sunucusuna bağlanıldı: ' + NET.url);
-      renderNetSettings(box); refreshSocial();
+      toast(kind === 'register' ? `🎉 Hesabın oluşturuldu: <b>${esc(me.name)}</b> — arkadaş kodun: <b>#${esc(me.code || '')}</b>` : `👋 Tekrar hoş geldin <b>${esc(me.name)}</b>`, 'ok', 5000);
+      log('Kizuna Topluluğuna bağlanıldı: ' + NET.url);
+      renderNetSettings(box); refreshSocial(); if (current === 'friends' || current === 'messages') go(current);
     } catch (e) { msg.textContent = '⚠ ' + (e.message === 'banned' ? 'Bu hesap banlı.' : e.message); }
   };
   $('#netLogin', box).onclick = () => doAuth('login');
@@ -1499,7 +1971,7 @@ function renderNetSettings(box) {
 
 /* ---------- Kizuna AI ---------- */
 VIEWS.ai = v => {
-  if (!S.aiChat.length) S.aiChat.push({ from: 'ai', text: `Hoş geldin ${S.profile.name}! 👋 Ben **Kizuna AI**. Nasılsın? Sana oyun önerebilir, temayı veya arayüz yılını değiştirebilir, müzik açabilir ya da Kizuna’yı anlatabilirim.`, time: Date.now() });
+  if (!S.aiChat.length) S.aiChat.push({ from: 'ai', text: I18n.fmt('Hoş geldin {0}! 👋 Ben **Kizuna AI**. Nasılsın? Sana oyun önerebilir, temayı veya arayüz yılını değiştirebilir, müzik açabilir ya da Kizuna’yı anlatabilirim.', S.profile.name), time: Date.now() });
   v.innerHTML = `<div class="ai-wrap panel"><header class="ai-head">${logoSVG(52, 'ai')}<div><h1>Kizuna AI</h1><p class="muted">Oyun asistanın — sohbet et, öneri al, ayarları söyle yapayım.</p></div><span class="ai-badge" id="aiBadge">…</span><button class="btn sm ghost" id="aiClear">Sohbeti temizle</button></header>
   <div class="msgs" id="aiMsgs"></div><div class="typing hidden" id="aiTyping">Kizuna AI düşünüyor<span>.</span><span>.</span><span>.</span></div>
   <div class="chips ai-chips">${['Merhaba, nasılsın?', 'Bana PS2 oyunu öner', 'Korku oyunu öner', 'Temayı Vice Hawaii yap', 'Yılı 2077 yap', 'Rock müzik aç', 'Nasıl oyun eklerim?', 'Bir şaka yap'].map(c => `<button class="chip" data-q="${esc(c)}">${c}</button>`).join('')}</div>
@@ -1532,15 +2004,17 @@ function renderAi() {
 }
 function aiSend(text) {
   text = String(text || '').trim(); if (!text) return;
-  if (hasProfanity(text)) {
+  const lvl = profanityLevel(text);
+  if (lvl) {
     S.aiChat.push({ from: 'me', text: '•••••• (uygunsuz içerik gizlendi)', time: Date.now() });
+    const next = nextBanDays(lvl);
     if (!S.aiWarned) {
       S.aiWarned = true;
-      S.aiChat.push({ from: 'ai', warn: true, time: Date.now(), text: '⚠️ **Lütfen uygunsuz kelimeler yazmayınız.** Eğer uygunsuz kelimeleri yazmaya devam ederseniz **6 aylık ban** yiyeceksiniz.' });
+      S.aiChat.push({ from: 'ai', warn: true, time: Date.now(), text: `⚠️ **Lütfen uygunsuz kelimeler yazmayınız.** Eğer uygunsuz kelimeleri yazmaya devam ederseniz **${next} günlük ban** yiyeceksiniz — ve her tekrarında süre iki katına çıkar.` });
       save(); renderAi(); AudioEngine.alarm(); return;
     }
-    S.aiChat.push({ from: 'ai', warn: true, time: Date.now(), text: '⛔ Uyarıma rağmen devam ettin. **20 saniye** sonra 6 aylık ban otomatik olarak başlayacak.' });
-    save(); renderAi(); startPreBan(); return;
+    S.aiChat.push({ from: 'ai', warn: true, time: Date.now(), text: `⛔ Uyarıma rağmen devam ettin. **20 saniye** sonra **${next} günlük** ban otomatik olarak başlayacak.` });
+    save(); renderAi(); startPreBan(lvl); return;
   }
   if (aiBusy) return toast('Kizuna AI hâlâ cevap yazıyor…', 'warn');
   S.aiChat.push({ from: 'me', text, time: Date.now() }); S.aiChat = S.aiChat.slice(-120); save(); renderAi();
@@ -1553,7 +2027,7 @@ async function aiStatus() {
   try { return { ...(await api.ai.status()), desktop: true }; } catch { return { hasKey: false, desktop: true }; }
 }
 function aiContext() {
-  return `kullanıcı adı: ${S.profile.name}; arayüz dili: ${S.lang}; tema: ${S.theme}; arayüz yılı: ${S.year}; çalan müzik: ${Music.playing ? Music.cur : 'yok'}; `
+  return `kullanıcı adı: ${S.profile.name}; arayüz dili: ${S.lang} (${(LANGS[S.lang] || {}).name || ''}); tema: ${S.theme}; arayüz yılı: ${S.year}; çalan müzik: ${Music.playing ? Music.cur : 'yok'}; topluluğa bağlı: ${NET.online ? 'evet, ' + myFriends().filter(f => f.status !== 'offline').length + ' arkadaş çevrimiçi' : 'hayır'}; `
     + `kütüphanedeki oyunlar: ${S.library.map(g => g.title).slice(0, 30).join(', ') || 'boş'}; son oynananlar: ${S.played.slice(0, 10).join(', ') || 'yok'}; `
     + `bağlı emülatörler: ${Object.entries(S.emulators).filter(([, v]) => v).map(([k]) => k.toUpperCase()).join(', ') || 'yok'}; arkadaş sayısı: ${myFriends().length}; şu an: ${new Date().toLocaleString('tr-TR')}`;
 }
@@ -1595,7 +2069,7 @@ async function aiSendReal(text) {
 function aiSendOffline(text) {
   const t = $('#aiTyping'); if (t) t.classList.remove('hidden');
   setTimeout(() => {
-    const r = aiReply(text);
+    const r = aiReply(text); r.text = I18n.t(r.text);
     const tt = $('#aiTyping'); if (tt) tt.classList.add('hidden');
     S.aiChat.push({ from: 'ai', time: Date.now(), ...r }); save();
     if (current === 'ai') renderAi();
@@ -1629,10 +2103,14 @@ function aiReply(raw) {
   if (has('tema', 'renk', 'theme')) return { text: 'Hangi temayı istersin? 🎨', actions: THEMES.map(th => ({ label: th.name, act: 'theme:' + th.id })) };
   if (has('rock', 'aksiyon muzik', 'metal')) return { text: '🎸 Rock zamanı! **Katana Fırtınası** çalıyor.', auto: 'music:katana' };
   if (has('muzik', 'sarki', 'music')) return { text: 'Hangi tarz? 🎧', actions: [{ label: '🌸 Rahatlatıcı', act: 'music:sakura' }, { label: '🌧️ Lo-fi', act: 'music:yagmur' }, { label: '🎸 Rock', act: 'music:katana' }, { label: '⚡ Aksiyon', act: 'music:neon' }, { label: '🔇 Durdur', act: 'music:stop' }] };
-  if (has('oyun ekle', 'nasil oyna', 'emulator', 'iso', 'bios')) return { text: 'Oyun eklemek çok kolay:\n1. **Ayarlar › Emülatörler**’den konsolun emülatörünü resmi sitesinden indirip bağla.\n2. Kendi diskinden/kopyandan aldığın oyun yedeğini **Kütüphane › Oyun Ekle** ile seç.\n3. **Oyna**’ya bas! 🎮', actions: [{ label: 'Emülatör ayarları', act: 'go:settings' }, { label: 'Kütüphane', act: 'go:library' }] };
-  if (has('arkadas', 'friend')) return { text: 'Arkadaş eklemek için **Arkadaşlar › Oyuncu bul** sekmesine gir, birinin profiline tıkla ve **Arkadaş ekle**’ye bas. Arkadaş olunca birbirinizin oynadığı oyunları görürsünüz 🤝', actions: [{ label: 'Arkadaşlar', act: 'go:friends' }] };
-  if (has('engel', 'spam', 'taciz', 'rahatsiz')) return { text: 'Seni rahatsız eden biri mi var? Profiline gir ve **Engelle & Spam bildir**’e bas. O kişi sana bir daha hiçbir şekilde ulaşamaz 🛡️' };
-  if (has('ban', 'kufur', 'kural')) return { text: 'Kizuna kuralları basit: saygılı ol 💚 Sohbette kötü kelime kullanan **6 ay ban** yer. Bana uygunsuz yazarsan önce uyarırım; devam edersen 20 saniye sonra ban başlar.' };
+  if (has('oyun ekle', 'nasil oyna', 'emulator', 'iso', 'bios')) return { text: 'Oyun eklemek çok kolay:\n1. **Ayarlar › Emülatörler**’de konsolun emülatörü için **Kizuna’ya kur**’a bas — tek tıkla kurulur.\n2. Kendi diskinden/kopyandan aldığın oyun yedeğini **Kütüphane › Oyun Ekle** ile seç.\n3. **Oyna**’ya bas! 🎮', actions: [{ label: 'Emülatör ayarları', act: 'go:settings' }, { label: 'Kütüphane', act: 'go:library' }] };
+  if (has('arkadas', 'friend')) return { text: 'Arkadaş eklemek Steam’deki gibi 🤝\n1. **Arkadaşlar** bölümünden Kizuna Topluluğuna katıl (hesap oluştur).\n2. **Oyuncu ekle** sekmesine arkadaşının kullanıcı adını ya da 8 haneli **arkadaş kodunu** yaz.\n3. **Arkadaş ekle**’ye bas — kabul edince mesajlaşıp sesli sohbet edebilirsiniz. Onlar da sana istek gönderebilir.', actions: [{ label: 'Arkadaşlar', act: 'go:friends' }] };
+  if (has('engel', 'spam', 'taciz', 'rahatsiz')) return { text: 'Seni rahatsız eden biri mi var? Profiline gir:\n• **Engelle** — o kişi sana bir daha ulaşamaz.\n• **Spam bildir** — hem bildirir hem engeller. 🛡️' };
+  if (has('ban', 'kufur', 'kural', 'ceza')) return { text: 'Kizuna kuralları basit: saygılı ol 💚 Ceza süresi suçun ağırlığına göre:\n• **Küfür:** ilk seferde **1 gün**\n• **Başkasına ağır hakaret:** ilk seferde **3 gün**\nAynı ihlali her tekrarlayışta süre **iki katına** çıkar (1 → 2 → 4 → 8 gün…). Bana uygunsuz yazarsan önce uyarırım; devam edersen 20 saniye sonra ban başlar.' };
+  if (has('emulator kur', 'emulatoru kur', 'duckstation', 'pcsx2', 'rpcs3', 'shadps4')) return { text: 'Emülatörler artık **Kizuna’nın içine** kuruluyor 🎮 **Ayarlar › Emülatörler**’de **Kizuna’ya kur**’a bas — resmi kaynaktan indirilir, kurulur ve otomatik bağlanır. PS1/PS2 için BIOS’u kendi konsolundan alıp **BIOS klasörü**’ne kopyalaman yeterli.', actions: [{ label: 'Emülatörler', act: 'go:settings' }] };
+  if (has('arkadas kodu', 'kod', 'friend code')) return { text: NET.online ? `Senin arkadaş kodun: **#${NET.me.code}** — arkadaşın bunu **Arkadaşlar › Oyuncu ekle**’ye yazarak seni anında bulur 🤝` : 'Arkadaş kodu almak için önce **Arkadaşlar** bölümünden Kizuna Topluluğuna katıl 🤝', actions: [{ label: 'Arkadaşlar', act: 'go:friends' }] };
+  if (has('dram', 'keman', 'huzunlu')) return { text: '🎻 **Kara Yağmur** çalıyor — keman, yağmur ve gece…', auto: 'music:kara' };
+  if (has('noir', 'max payne', 'kara yagmur')) return { text: '🌧️ **Kara Yağmur** teması açılıyor — yağmurlu, karanlık bir şehir ve arada bir çakan şimşekler.', auto: 'theme:noir' };
   if (has('saat', 'tarih', 'bugun', 'gun ne')) return { text: `📅 Bugün ${new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}, saat ${fmtTime(Date.now())}.` };
   if (has('saka', 'fikra', 'joke', 'guldur')) return { text: pick(['Neden samuray emülatör kullanmaz? Çünkü kılıcı zaten **Kızuna**’da (kınında) duruyor 😄', 'Bir oyuncu doktora gitmiş: “Doktor, her gece rüyamda yükleme ekranı görüyorum.” Doktor: “Sabırlı ol, %99’da takılı kalmaz.” 😂', 'Bir boss’a neden kek götürülmez? Çünkü her şeyi iki aşamada yer! 🐉']) };
   if (has('tesekkur', 'sag ol', 'sagol', 'thanks', 'eyvallah')) return { text: 'Rica ederim! Her zaman buradayım 💚' };
@@ -1662,21 +2140,31 @@ function actionLabel(a) {
 }
 
 /* ---------- Music ---------- */
+/* Repeat modes: off = stop when the playlist ends · all = loop the whole playlist · one = loop the current track */
+const REPEAT = { off: ['Tekrar kapalı — liste bitince durur', ''], all: ['Tümünü tekrarla — liste bitince başa döner', ''], one: ['Tek parçayı tekrarla — bu şarkı sürekli döner', '1'] };
 const Music = {
   cur: null, playing: false,
-  all() { return [...TRACKS.map(t => ({ id: t.id, name: t.name, mood: t.mood })), ...S.userTracks.map(t => ({ id: t.id, name: t.name, mood: 'Bilgisayarımdan', user: true }))]; },
-  defaultId() { return S.musicStyle === 'rock' ? 'katana' : S.musicStyle === 'mix' ? pick(TRACKS).id : 'sakura'; },
+  all() { return [...TRACKS.map(t => ({ id: t.id, name: t.name, mood: t.mood, style: t.style })), ...S.userTracks.map(t => ({ id: t.id, name: t.name, mood: 'Bilgisayarımdan', user: true }))]; },
+  defaultId() { const st = { rock: 'katana', drama: 'kara', relax: 'sakura' }[S.musicStyle]; return st || pick(TRACKS).id; },
   async play(id) {
     AudioEngine.setMusicVol(S.musicVol);
     const tr = TRACKS.find(t => t.id === id);
-    if (tr) AudioEngine.playSynth(tr);
+    if (tr) AudioEngine.playSynth(tr, () => this.ended());
     else {
       const ut = S.userTracks.find(t => t.id === id); if (!ut) return;
       const url = await mediaURL(ut.mid); if (!url) return toast('Müzik dosyası bulunamadı', 'err');
-      AudioEngine.playUser(url, () => this.next());
+      AudioEngine.playUser(url, () => this.ended());
     }
     this.cur = id; this.playing = true; this.ui();
   },
+  ended() {
+    if (!this.playing) return;
+    const mode = S.musicRepeat || 'all', l = this.all(), i = l.findIndex(t => t.id === this.cur);
+    if (mode === 'one') return this.play(this.cur);
+    if (i === l.length - 1 && mode === 'off') { this.playing = false; this.ui(); return; }
+    this.play(l[(i + 1) % l.length].id);
+  },
+  cycleRepeat() { const order = ['off', 'all', 'one']; S.musicRepeat = order[(order.indexOf(S.musicRepeat || 'all') + 1) % 3]; save(); toast('🔁 ' + REPEAT[S.musicRepeat][0]); this.ui(); },
   stop() { AudioEngine.stopAll(); this.playing = false; this.ui(); },
   toggle() { this.playing ? this.stop() : this.play(this.cur || this.defaultId()); },
   step(d) { const l = this.all(); const i = l.findIndex(t => t.id === this.cur); this.play(l[(i + d + l.length) % l.length].id); },
@@ -1687,13 +2175,12 @@ let vizRaf = null;
 VIEWS.music = v => {
   v.innerHTML = head(T('nav.music'), 'Kizuna’nın kendi müzikleri ve bilgisayarındaki şarkıların.', `<button class="btn primary" id="addMusic">${icon('plus', 18)} Bilgisayarımdan müzik ekle</button>`)
     + `<section class="now panel" id="nowBox"></section>
-    <div class="music-cols"><section class="card"><h3>🌸 Rahatlatıcı</h3>${trackRows(TRACKS.filter(t => ['relax', 'lofi'].includes(t.style)))}</section>
-    <section class="card"><h3>🎸 Rock & Aksiyon</h3>${trackRows(TRACKS.filter(t => ['rock', 'action'].includes(t.style)))}</section>
+    <div class="music-cols">${MUSIC_GROUPS.map(([k, title, styles]) => `<section class="card mg-${k}"><h3>${title}</h3>${trackRows(TRACKS.filter(t => styles.includes(t.style)))}</section>`).join('')}
     <section class="card"><h3>💾 Benim müziklerim</h3>${S.userTracks.length ? trackRows(S.userTracks.map(t => ({ ...t, mood: 'Bilgisayarımdan', user: true }))) : '<p class="muted">MP3, WAV, OGG, M4A, FLAC dosyalarını ekleyebilirsin.</p>'}</section></div>
     <section class="card"><h3>Müzik ayarları</h3><div class="form-grid">
      <div class="field"><label>Müzik ses seviyesi</label><input type="range" min="0" max="1" step="0.01" data-k="musicVol"></div>
      <div class="field"><label>Efekt (tıklama/klavye) ses seviyesi</label><input type="range" min="0" max="1" step="0.01" data-k="sfxVol"></div>
-     <div class="field"><label>Varsayılan tarz</label><select data-k="musicStyle"><option value="relax">Rahatlatıcı</option><option value="rock">Rock / Aksiyon</option><option value="mix">Karışık</option></select></div>
+     <div class="field"><label>Varsayılan tarz</label><select data-k="musicStyle"><option value="relax">Rahatlatıcı</option><option value="rock">Rock / Aksiyon</option><option value="drama">Dram (keman)</option><option value="mix">Karışık</option></select></div>
      <div class="field row"><label>Kizuna açılınca müzik çalsın</label><label class="switch"><input type="checkbox" data-k="autoMusic"><i></i></label></div></div></section>`;
   bindKeys(v); renderMusicNow(); bindTrackRows(v);
   $('#addMusic').onclick = async () => {
@@ -1716,8 +2203,11 @@ function renderMusicNow() {
   const box = $('#nowBox'); if (!box) return;
   const t = Music.all().find(x => x.id === Music.cur);
   box.innerHTML = `<canvas id="viz" width="900" height="120"></canvas><div class="now-info"><small>${Music.playing ? '▶ Şimdi çalıyor' : '⏸ Duraklatıldı'}</small><h2>${t ? esc(t.name) : 'Bir şarkı seç'}</h2><p class="muted">${t ? esc(t.mood) : 'Kizuna müzikleri bu bilgisayarda gerçek zamanlı üretilir — telifsiz ve özgün.'}</p></div>
-  <div class="now-ctl"><button class="icon-btn" id="mPrev">${icon('prev')}</button><button class="icon-btn big" id="mPlay">${icon(Music.playing ? 'pause' : 'play', 28)}</button><button class="icon-btn" id="mNext">${icon('next')}</button></div>`;
+  <div class="now-ctl"><button class="icon-btn" id="mPrev" data-tip="Önceki">${icon('prev')}</button><button class="icon-btn big" id="mPlay">${icon(Music.playing ? 'pause' : 'play', 28)}</button><button class="icon-btn" id="mNext" data-tip="Sonraki">${icon('next')}</button>
+   <button class="icon-btn rep rep-${S.musicRepeat || 'all'}" id="mRep" data-tip="${esc(REPEAT[S.musicRepeat || 'all'][0])}">${icon('repeat')}<em>${REPEAT[S.musicRepeat || 'all'][1]}</em></button></div>
+  <div class="now-prog"><i id="mProg"></i></div>`;
   $('#mPrev').onclick = () => Music.prev(); $('#mNext').onclick = () => Music.next(); $('#mPlay').onclick = () => Music.toggle();
+  $('#mRep').onclick = () => Music.cycleRepeat();
   $$('.trk').forEach(r => { const on = r.dataset.trk === Music.cur; r.classList.toggle('on', on); const b = $('[data-tplay]', r); if (b) b.innerHTML = icon(on && Music.playing ? 'pause' : 'play', 16); });
   if (!vizRaf) viz();
 }
@@ -1728,6 +2218,7 @@ function viz() {
   const w = cv.width = cv.clientWidth * devicePixelRatio, h = cv.height = cv.clientHeight * devicePixelRatio;
   g.clearRect(0, 0, w, h);
   const accent = getComputedStyle(document.body).getPropertyValue('--accent').trim() || '#93C572';
+  const pg = $('#mProg'); if (pg) pg.style.width = (Music.playing ? AudioEngine.progress() * 100 : 0) + '%';
   if (an) {
     const d = new Uint8Array(an.frequencyBinCount); an.getByteFrequencyData(d);
     const n = 64, bw = w / n;
@@ -1740,23 +2231,26 @@ function viz() {
 VIEWS.settings = (v, arg) => {
   const sec = (id, t, body) => `<section class="card" id="set-${id}"><h3>${t}</h3>${body}</section>`;
   v.innerHTML = head(T('nav.settings'), 'Kizuna’yı tamamen kendine göre ayarla.')
-    + `<div class="tabs sticky">${[['net', 'Sunucu'], ['ai', 'Kizuna AI'], ['theme', 'Tema'], ['year', 'Yıl'], ['bg', 'Arka plan'], ['font', 'Yazı tipi'], ['sound', 'Sesler'], ['lang', 'Dil'], ['privacy', 'Gizlilik'], ['emu', 'Emülatörler'], ['gfx', 'Grafik'], ['blocked', 'Engellenenler'], ['app', 'Uygulama']].map(([k, l]) => `<button class="tab" data-jump="${k}">${l}</button>`).join('')}</div>`
+    + `<div class="tabs sticky">${[['net', 'Topluluk'], ['ai', 'Kizuna AI'], ['theme', 'Tema'], ['year', 'Yıl'], ['bg', 'Arka plan'], ['font', 'Yazı tipi'], ['sound', 'Sesler'], ['devices', 'Ses cihazları'], ['lang', 'Dil'], ['privacy', 'Gizlilik'], ['emu', 'Emülatörler'], ['gfx', 'Grafik'], ['pad', 'Kontrolcü'], ['blocked', 'Engellenenler'], ['app', 'Uygulama']].map(([k, l]) => `<button class="tab" data-jump="${k}">${l}</button>`).join('')}</div>`
     + `<div class="settings">`
-    + sec('net', '🌐 Kizuna Sunucusu — arkadaşlar & sohbet', `<div id="hostSet"></div><div id="netSet"></div>`)
+    + sec('net', '🌐 Kizuna Topluluğu — arkadaşlar & sohbet', `<div id="netSet"></div><details class="host-adv" style="margin-top:12px"><summary>🖥️ Kendi sunucunu barındır (isteğe bağlı)</summary><div id="hostSet"></div></details>`)
     + sec('ai', '🤖 Kizuna AI — gerçek yapay zekâ', `<div id="aiSet"><p class="muted">Yükleniyor…</p></div>`)
     + sec('theme', '🎨 Tema', themeTilesHTML() + `<div class="field row"><label>Özel vurgu rengi</label><div class="row-btns"><input type="color" data-k="accent" value="${S.accent || '#93C572'}"><button class="btn sm ghost" id="accReset">Sıfırla</button></div></div>`)
     + sec('year', '🕰️ Yıla göre arayüz', `<p class="muted">Bir yıl yaz — arayüz o yılın tasarım ruhuna bürünür (yazı tipi, renkler, köşeler, arka plan). 1960 → 60’lar pop · 1985 → synthwave · 1995 → piksel · 2077 → siberpunk.</p>${yearHTML()}`)
     + sec('bg', '🖼️ Arka plan', `<p class="muted">Arka plan olarak fotoğraf, GIF veya video kullanabilirsin.</p><div class="row-btns"><button class="btn primary" id="bgPick">Fotoğraf / GIF / Video seç</button>${S.bg ? '<button class="btn ghost" id="bgDel">Kaldır</button>' : ''}</div><div class="field"><label>Karartma</label><input type="range" min="0" max="0.9" step="0.05" data-k="bgDim"></div>`)
     + sec('font', '🔤 Yazı tipi', `<div class="font-grid">${FONTS.map(f => `<button class="font-btn ${S.font === f ? 'on' : ''}" data-font="${f}" style="${f === 'auto' ? '' : `font-family:'${f}'`}">${f === 'auto' ? 'Otomatik (tema/yıla göre)' : f}<small>Kizuna Aa 123</small></button>`).join('')}</div><div class="field"><label>Yazı boyutu</label><input type="range" min="12" max="20" step="1" data-k="fontSize"></div>`)
-    + sec('sound', '🔊 Sesler', `<div class="form-grid"><div class="field"><label>Fare tıklama sesi</label><select data-k="clickSound">${SOUND_OPTS.map(([v_, l]) => `<option value="${v_}">${l}</option>`).join('')}</select></div>
-      <div class="field"><label>Klavye sesi</label><select data-k="keySound">${SOUND_OPTS.map(([v_, l]) => `<option value="${v_}">${l}</option>`).join('')}</select></div>
+    + sec('sound', '🔊 Sesler', `<div class="form-grid"><div class="field"><label>Fare tıklama sesi</label><select data-k="clickSound">${CLICK_OPTS.map(([v_, l]) => `<option value="${v_}">${l}</option>`).join('')}</select></div>
+      <div class="field"><label>Klavye sesi</label><select data-k="keySound">${KEY_OPTS.map(([v_, l]) => `<option value="${v_}">${l}</option>`).join('')}</select></div>
       <div class="field"><label>Efekt ses seviyesi</label><input type="range" min="0" max="1" step="0.01" data-k="sfxVol"></div><div class="field"><label>Dene</label><input placeholder="Klavye sesini denemek için yaz..."></div></div><button class="btn ghost" data-go="music">${icon('music', 16)} Müzik ayarları ›</button>`)
-    + sec('lang', '🌍 Dil', `<div class="lang-grid">${Object.entries(LANGS).map(([k, l]) => `<button class="lang-btn ${S.lang === k ? 'on' : ''}" data-lang="${k}"><span>${l.flag}</span>${l.name}</button>`).join('')}</div><p class="muted small">Menüler ve ana butonlar 13 dilde çevrilidir; yeni diller kolayca eklenebilir.</p>`)
+    + sec('devices', '🎧 Ses cihazları — mikrofon & hoparlör', `<div id="devSet"><p class="muted">Cihazlar algılanıyor…</p></div>`)
+    + sec('lang', '🌍 Dil', `<div class="lang-grid">${Object.entries(LANGS).map(([k, l]) => `<button class="lang-btn ${S.lang === k ? 'on' : ''}" data-lang="${k}"><span>${l.flag}</span>${l.name}</button>`).join('')}</div><p class="muted small" id="langNote">${I18n.note()}</p>`)
     + sec('privacy', '🔒 Gizlilik', `<div class="field row"><label>Profil oluşturma tarihimi gizle</label><label class="switch"><input type="checkbox" data-k="privacy.hideJoin"><i></i></label></div><div class="field row"><label>Oynadığım oyunları başkalarından gizle</label><label class="switch"><input type="checkbox" data-k="privacy.hideGames"><i></i></label></div>`)
-    + sec('emu', '🎮 Emülatörler', `<div class="emu-list">${emuRowsHTML()}</div><div class="path-row"><code>${esc(S.gameFolder || 'Oyun klasörü seçilmedi')}</code><button class="btn ghost" id="setFolder">${icon('folder', 16)} Oyun klasörü seç</button></div>`)
-    + sec('gfx', '⚡ Grafik', graphicsHTML())
-    + sec('blocked', '🛡️ Engellenenler', SO.blocked.length ? SO.blocked.map(id => { const u = userById(id); return `<div class="blk">${userAvatar(u, 36)}<b>${esc(u.name)}</b><small class="muted">Engellendi · spam bildirildi</small><button class="btn sm ghost" data-unblock="${id}">Engeli kaldır</button></div>`; }).join('') : '<p class="muted">Engellediğin kimse yok.</p>')
-    + sec('app', '⚙️ Uygulama', `<h4>Güncellemeler</h4><div id="updSet"></div><h4 style="margin-top:14px">Diğer</h4><div class="row-btns"><button class="btn ghost" id="reTour">🗺️ Ürün turunu tekrar başlat</button><button class="btn ghost" id="reOb">📘 Öğreticiyi tekrar aç</button><button class="btn danger" id="resetAll">Tüm verileri sıfırla</button></div><div class="confirm hidden" id="resetConfirm"><p>Profil, kütüphane, sohbetler ve ayarlar silinecek. Emin misin?</p><div class="row-btns"><button class="btn danger" id="resetYes">Evet, sıfırla</button><button class="btn ghost" id="resetNo">Vazgeç</button></div></div><p class="muted small">Kizuna · Yapımcılar: Tv Man & FKOAC</p>`)
+    + sec('emu', '🎮 Emülatörler (eskiden yeniye)', `<p class="muted small">Emülatörler resmi kaynaklarından indirilip Kizuna’nın içine kurulur ve otomatik bağlanır.</p><div class="emu-list">${emuRowsHTML()}</div><div class="path-row"><code>${esc(S.gameFolder || 'Oyun klasörü seçilmedi')}</code><button class="btn ghost" id="setFolder">${icon('folder', 16)} Oyun klasörü seç</button></div>`)
+    + sec('gfx', '⚡ Grafik', graphicsHTML() + `<div class="field row"><label>Kizuna’yı tam ekran kullan <small class="muted">(F11 — tercih bir sonraki açılışta hatırlanır)</small></label><button class="btn sm ghost" id="fsToggle">${icon('fullscreen', 14)} Tam ekranı aç / kapat</button></div>`)
+    + sec('pad', '🕹️ Kontrolcü ile kullanım', `<div class="field row"><label>Kizuna’yı kontrolcüyle gez</label><label class="switch"><input type="checkbox" data-k="padNav"><i></i></label></div>
+      <div class="pad-help">${[['✚ / Sol çubuk', 'Seçimi hareket ettir'], ['Ⓐ', 'Seç / tıkla'], ['Ⓑ', 'Geri / kapat'], ['LB / RB', 'Önceki / sonraki bölüm'], ['Ⓨ', 'Arama'], ['Ⓧ', 'Müzik çal / durdur'], ['Sağ çubuk', 'Sayfayı kaydır'], ['START', 'Menü rayını aç / kapat']].map(([k, d]) => `<div><kbd>${k}</kbd><span>${d}</span></div>`).join('')}</div>`)
+    + sec('blocked', '🛡️ Engellenenler', SO.blocked.length ? SO.blocked.map(id => { const u = userById(id) || { name: 'Oyuncu' }; return `<div class="blk">${userAvatar(u, 36)}<b>${esc(u.name)}</b><small class="muted">${isSpam(id) ? '🚩 Spam bildirildi · engellendi' : '🛡️ Engellendi'}</small><button class="btn sm ghost" data-unblock="${id}">Engeli kaldır</button></div>`; }).join('') : '<p class="muted">Engellediğin kimse yok.</p>')
+    + sec('app', '⚙️ Uygulama', `<h4>Güncellemeler</h4><div id="updSet"></div><div class="row-btns" style="margin-top:8px"><button class="btn ghost" id="showNews">📰 Yenilikleri göster</button></div><h4 style="margin-top:14px">Diğer</h4><div class="row-btns"><button class="btn ghost" id="reTour">🗺️ Ürün turunu tekrar başlat</button><button class="btn ghost" id="reOb">📘 Öğreticiyi tekrar aç</button><button class="btn danger" id="resetAll">Tüm verileri sıfırla</button></div><div class="confirm hidden" id="resetConfirm"><p>Profil, kütüphane, sohbetler ve ayarlar silinecek. Emin misin?</p><div class="row-btns"><button class="btn danger" id="resetYes">Evet, sıfırla</button><button class="btn ghost" id="resetNo">Vazgeç</button></div></div><p class="muted small">Kizuna · Yapımcılar: Tv Man & FKOAC</p>`)
     + `</div>`;
   bindKeys(v); bindThemeTiles(v); bindYear(v);
   bindEmuRows(v, () => go('settings', 'emu'));
@@ -1782,12 +2276,15 @@ VIEWS.settings = (v, arg) => {
   $('#resetAll').onclick = () => $('#resetConfirm').classList.remove('hidden');
   $('#resetNo').onclick = () => $('#resetConfirm').classList.add('hidden');
   $('#resetYes').onclick = () => { localStorage.removeItem('kz_state'); indexedDB.deleteDatabase('kizuna'); location.reload(); };
-  renderAiSettings(); renderHostSettings($('#hostSet')); renderNetSettings($('#netSet')); renderUpdateSettings();
+  $('#showNews').onclick = () => showWhatsNew('');
+  $('#fsToggle').onclick = () => api && api.fullscreen && api.fullscreen();
+  renderAiSettings(); renderHostSettings($('#hostSet')); renderNetSettings($('#netSet')); renderUpdateSettings(); renderDeviceSettings();
   if (arg) setTimeout(() => { const s = $('#set-' + arg); if (s) { s.scrollIntoView({ block: 'start' }); s.classList.add('flash'); } }, 50);
 };
 async function renderAiSettings() {
   const box = $('#aiSet'); if (!box) return;
   const st = await aiStatus();
+  if (!box.isConnected) return; // the user already left Settings
   if (!st.desktop) { box.innerHTML = '<p class="muted">Gerçek yapay zekâ bağlantısı Kizuna masaüstü uygulamasında çalışır (Baslat.bat).</p>'; return; }
   box.innerHTML = `<div class="ai-state ${st.hasKey ? 'on' : 'off'}"><b>${st.hasKey ? '● Bağlı — Kizuna AI, Claude ile çalışıyor' : '○ Çevrimdışı mod — basit hazır cevaplar'}</b>
     <small>Model: ${esc(st.model || 'claude-opus-5-5')}${st.hasKey && !st.stored ? ' · anahtar ortam değişkeninden okunuyor' : ''}</small></div>
@@ -1809,19 +2306,22 @@ async function renderAiSettings() {
 VIEWS.help = v => {
   const faq = [
     ['Kizuna nedir?', 'Kizuna; PS1, PS2, PS3 ve PS4 oyunlarını resmi açık kaynak emülatörlerle tek bir yerden başlatan bir oyun başlatıcısı ve oyuncu topluluğudur.'],
-    ['Oyunları nereden indiririm?', 'Her oyunun İndir butonu seni resmi ve güvenli kaynağa götürür: resmi PC sürümü varsa Steam mağazasına; yoksa emülatörün resmi sitesine ve kendi kopyanı yedekleme rehberine. Kizuna korsan veya değiştirilmiş dosya dağıtmaz — bu yüzden virüs riski yoktur.'],
+    ['Oyunları nereden indiririm?', 'Resmi PC sürümü olan oyunlarda İndir butonu oyunu Steam uygulamasında açar, oradan doğrudan indirirsin. Diğer oyunlarda emülatörü tek tıkla Kizuna’ya kurar, kendi diskinden/kopyandan aldığın yedeği eklersin. Kizuna korsan veya değiştirilmiş oyun dosyası dağıtmaz — oyunlar telif hakkıyla korunur ve bu yüzden virüs riski de yoktur.'],
+    ['Emülatörleri nasıl kurarım?', 'Ayarlar › Emülatörler’de “Kizuna’ya kur”a bas. DuckStation, PCSX2, RPCS3 ve shadPS4 resmi GitHub sürümlerinden indirilir, Kizuna’nın içine kurulur ve otomatik bağlanır. PS1/PS2 için BIOS’u kendi konsolundan alıp “BIOS klasörü”ne kopyala.'],
+    ['Arkadaşlarımı nasıl eklerim?', 'Arkadaşlar bölümünden Kizuna Topluluğuna hesap aç. “Oyuncu ekle” sekmesine arkadaşının kullanıcı adını ya da 8 haneli arkadaş kodunu yaz ve istek gönder. Senin kodun Arkadaşlar sayfasının en üstünde.'],
+    ['Sesli komut çalışmıyor', 'İlk kullanımda dilin için küçük bir ses modeli (~35 MB) indirilir, sonra komutlar tamamen bilgisayarında çalışır. Mikrofonunu Ayarlar › Ses cihazları’ndan seçip “Mikrofonu test et” ile deneyebilirsin. Sağ tıkla komutu yazarak da verebilirsin.'],
     ['PS5 oyunları neden doğrudan çalışmıyor?', 'Şu an PC için çalışan bir PS5 emülatörü yok. PS5 oyunlarının birçoğunun resmi PC sürümü var; İndir butonu seni oraya götürür.'],
     ['Donma / kasma olur mu?', 'Performans bilgisayarına ve emülatöre bağlıdır. PS1/PS2 çoğu PC’de akıcıdır; PS3 güçlü işlemci ister; PS4 desteği deneyseldir. Grafik ayarlarından Yüksek FPS Modu’nu seçebilirsin.'],
-    ['Kontrolcümü nasıl bağlarım?', 'Üst çubuktaki kontrolcü ikonuna bas, kolunu USB/Bluetooth ile bağla ve bir tuşa bas. Tuş eşleştirmesi emülatörün kendi menüsünden yapılır.'],
-    ['Biri beni rahatsız ediyor', 'Profiline gir ve “Engelle & Spam bildir”e bas. O kişi sana bir daha hiçbir şekilde ulaşamaz.'],
-    ['Ban kuralları', 'Sohbette kötü kelime kullanan 6 ay ban yer. Kizuna AI’ye uygunsuz yazarsan önce uyarılırsın; devam edersen 20 saniye sonra 6 aylık ban başlar ve uygulama açılsa bile ban ekranı görünür.']
+    ['Kontrolcümü nasıl bağlarım?', 'Kolunu USB/Bluetooth ile bağla ve bir tuşa bas. Artık Kizuna’yı kolunla gezebilirsin: yön tuşları ile seç, A ile tıkla, B ile geri, LB/RB ile bölümler. Oyun içi tuş eşleştirmesi emülatörün kendi menüsünden yapılır.'],
+    ['Biri beni rahatsız ediyor', 'Profiline gir: “Engelle” o kişiyi yalnızca engeller; “Spam bildir” hem bildirir hem engeller. Engellenen biri sana bir daha ulaşamaz.'],
+    ['Ban kuralları', 'Ceza süresi suçun ağırlığına göre değişir: küfür ilk seferde 1 gün, başkasına ağır hakaret ilk seferde 3 gün. Aynı ihlali her tekrarlayışta süre iki katına çıkar (1 → 2 → 4 → 8 gün…). Kizuna AI’ye uygunsuz yazarsan önce uyarılırsın; devam edersen 20 saniye sonra ban başlar ve uygulama yeniden açılsa bile ban ekranı görünür.']
   ];
   v.innerHTML = head(T('nav.help'), 'Sık sorulan sorular, sesli komutlar ve rehberler.',
     `<button class="btn primary" id="hTour">🗺️ Ürün turunu başlat</button><button class="btn ghost" id="hOb">📘 Öğretici</button>`)
     + `<div class="help-grid"><section class="card"><h3>Sık sorulan sorular</h3>${faq.map(([q, a]) => `<details class="faq"><summary>${q}</summary><p>${a}</p></details>`).join('')}</section>
     <section class="card"><h3>🎙️ Sesli komutlar</h3><p class="muted small">Üst çubuktaki mikrofona tıkla (sağ tık: yazarak komut ver).</p>
-    <ul class="cmds">${['“kütüphaneyi aç” / “oyunlar” / “ayarlar”', '“ara tekken” — oyun arar', '“yıl 1985” — arayüzü o yıla çevirir', '“tema hawaii” — Vice Hawaii teması', '“müziği çal” / “müziği durdur” / “sonraki şarkı”', '“kontrolcü” — kontrolcü bağlama', '“tur” — ürün turunu başlatır'].map(c => `<li>${c}</li>`).join('')}</ul>
-    <h3>⌨️ Kısayollar</h3><ul class="cmds"><li><kbd>Ctrl</kbd> + <kbd>K</kbd> — arama</li><li><kbd>Esc</kbd> — pencereyi kapat</li><li><kbd>Enter</kbd> — mesaj gönder</li></ul>
+    <ul class="cmds">${['“kütüphaneyi aç” / “oyunlar” / “ayarlar”', '“ara tekken” — oyun arar', '“yıl 1985” — arayüzü o yıla çevirir', '“tema hawaii” — Vice Hawaii teması', '“kara yağmur” — noir yağmur teması', '“müziği çal” / “müziği durdur” / “sonraki şarkı” / “dram”', '“tam ekran” — tam ekranı aç / kapat', '“yenilikler” — güncelleme notları', '“kontrolcü” — kontrolcü bağlama', '“tur” — ürün turunu başlatır'].map(c => `<li>${c}</li>`).join('')}</ul>
+    <h3>⌨️ Kısayollar</h3><ul class="cmds"><li><kbd>Ctrl</kbd> + <kbd>K</kbd> — arama</li><li><kbd>Esc</kbd> — pencereyi kapat</li><li><kbd>Enter</kbd> — mesaj gönder</li><li><kbd>F11</kbd> — tam ekran</li></ul>
     <h3>⚖️ Yasal not</h3><p class="muted small">PlayStation, Sony Interactive Entertainment’ın tescilli markasıdır. Kizuna bağımsız bir projedir; Sony ile bağlantısı yoktur. Oyun ve BIOS dosyalarını yalnızca sahip olduğun kopyalardan kullan.</p></section></div>`;
   $('#hTour').onclick = startTour;
   $('#hOb').onclick = () => { Music.stop(); showOnboard(); };
@@ -1831,10 +2331,11 @@ VIEWS.help = v => {
 const TOUR = [
   { sel: '#searchWrap', text: '🔍 <b>Arama çubuğu</b> — bir oyunun adını yaz, o oyun anında çıkar. Oyuncuları ve bölümleri de bulur. Kısayol: <kbd>Ctrl</kbd>+<kbd>K</kbd>' },
   { sel: '[data-nav="catalog"]', text: '🎮 <b>Şimdi buraya tıkla</b> ve PS1 – PS5 oyun kataloğunu aç.', click: true },
-  { sel: '.view-catalog .tabs', text: 'Konsola göre filtrele. Her oyunun <b>İndir</b> butonu seni resmi ve güvenli kaynağa götürür.' },
+  { sel: '.view-catalog .tabs', text: 'Konsola göre filtrele (eskiden yeniye). Bir konsol seçince emülatörünü tek tıkla <b>Kizuna’ya kurabilirsin</b>.' },
   { sel: '#addGameBtn', before: () => go('library'), text: '➕ <b>Buradan oyun ekleyebilirsin</b> — kendi oyun dosyanı seç, kütüphanene eklensin, tek tıkla oyna.' },
   { sel: '#padBtn', text: '🕹️ <b>Şimdi buraya tıkla ve kontrolcünü bağla.</b> Kolunu USB ya da Bluetooth ile bağlayıp bir tuşa bas.', click: true, after: closeModal },
-  { sel: '[data-nav="friends"]', text: '🤝 <b>Arkadaşlar</b> — profillere gir, arkadaş ekle, birbirinizin oynadığı oyunları görün.' },
+  { sel: '[data-nav="friends"]', text: '🤝 <b>Arkadaşlar</b> — Kizuna Topluluğuna katıl, gerçek oyuncuları kullanıcı adı ya da arkadaş koduyla ekle.' },
+  { sel: '#newsBtn', text: '📰 <b>Yenilikler</b> — her güncellemede neler eklendiğini buradan görebilirsin.' },
   { sel: '[data-nav="messages"]', text: '💬 <b>Mesajlar</b> — yazılı ve sesli sohbet, GIF, emoji, çıkartma, dosya ve anket.' },
   { sel: '[data-nav="ai"]', text: '🤖 <b>Kizuna AI</b> — kendi yapay zekan. Sohbet et, oyun önerisi al, ayarları ona söyle.' },
   { sel: '#voiceBtn', text: '🎙️ <b>Sesli komut</b> — “yıl 2077”, “tema hawaii”, “müziği çal” de, gerisini Kizuna yapar.' },
@@ -1895,29 +2396,49 @@ document.addEventListener('click', e => {
 }, true);
 
 /* ======================= BAN SYSTEM ======================= */
-async function getBan() {
+/* Ban record = { until, reason, days, offenses: { mild, severe } }. It outlives the ban itself (until in the past)
+   so the next violation of the same kind gets double the time. Stored in localStorage AND the app data folder. */
+let banRecord = null;
+async function readBanRecord() {
   let b = null;
   try { b = JSON.parse(localStorage.getItem('kz_ban')); } catch {}
-  if (api) { try { const f = await api.getBan(); if (f && (!b || f.until > b.until)) b = f; } catch {} }
-  if (b && b.until > Date.now()) { localStorage.setItem('kz_ban', JSON.stringify(b)); return b; }
+  if (api) { try { const f = await api.getBan(); if (f && (!b || (f.until || 0) >= (b.until || 0))) b = { ...b, ...f, offenses: mergeOff(b && b.offenses, f.offenses) }; } catch {} }
+  banRecord = b || { until: 0, offenses: {} };
+  banRecord.offenses = banRecord.offenses || {};
+  return banRecord;
+}
+const mergeOff = (a = {}, b = {}) => ({ mild: Math.max(a.mild || 0, b.mild || 0), severe: Math.max(a.severe || 0, b.severe || 0) });
+async function getBan() {
+  const b = await readBanRecord();
+  if (b.until > Date.now()) { localStorage.setItem('kz_ban', JSON.stringify(b)); return b; }
   return null;
 }
-function startPreBan() {
-  localStorage.setItem('kz_preban', String(Date.now() + 20000));
+const nextBanDays = level => banDays(level, ((banRecord && banRecord.offenses[level]) || 0) + 1);
+let prebanLevel = 'mild';
+function startPreBan(level = 'mild') {
+  prebanLevel = level;
+  localStorage.setItem('kz_preban', JSON.stringify({ at: Date.now() + 20000, level }));
   const el = $('#preban'); el.classList.remove('hidden');
+  $('#prebanDays').textContent = nextBanDays(level);
   let n = 20; $('#prebanCount').textContent = n; AudioEngine.alarm();
   const iv = setInterval(() => {
     n--; $('#prebanCount').textContent = Math.max(n, 0); AudioEngine.alarm();
-    if (n <= 0) { clearInterval(iv); el.classList.add('hidden'); applyBan('Kizuna AI’nin uyarısına rağmen uygunsuz kelimeler yazmaya devam ettin.'); }
+    if (n <= 0) { clearInterval(iv); el.classList.add('hidden'); applyBan('Kizuna AI’nin uyarısına rağmen uygunsuz kelimeler yazmaya devam ettin.', level); }
   }, 1000);
 }
-async function applyBan(reason) {
-  const d = new Date(); d.setMonth(d.getMonth() + 6);
-  const b = { until: d.getTime(), reason, at: Date.now() };
+async function applyBan(reason, level = 'mild') {
+  if (!banRecord) await readBanRecord();
+  const off = { ...banRecord.offenses }; off[level] = (off[level] || 0) + 1;
+  let days = banDays(level, off[level]), until = Date.now() + days * 864e5;
+  if (NET.online) { // the server is the authority for its account — it keeps its own count of offenses
+    const sb = await NET.selfBan(reason, level);
+    if (sb && sb.until) { until = Math.max(until, sb.until); days = Math.max(days, sb.days || 0); if (sb.offenses) Object.assign(off, mergeOff(off, sb.offenses)); }
+  }
+  const b = { until, reason, at: Date.now(), days, level, offenses: off };
+  banRecord = b;
   localStorage.setItem('kz_ban', JSON.stringify(b));
   localStorage.removeItem('kz_preban');
   if (api) { try { await api.setBan(b); } catch {} }
-  if (NET.online) NET.selfBan(reason); // the ban is also applied to the server account
   showBan(b);
 }
 function showBan(b) {
@@ -1925,11 +2446,15 @@ function showBan(b) {
   $('#tour').classList.add('hidden'); $('#preban').classList.add('hidden');
   document.body.classList.add('banned');
   showScreen('ban');
-  $('#banReason').textContent = b.reason || 'Kizuna kurallarını ihlal ettin.';
+  const days = b.days || Math.max(1, Math.round((b.until - (b.at || Date.now())) / 864e5));
+  $('#banTitle').textContent = `HESABIN ${days} GÜN BOYUNCA BANLANDI`;
+  const cnt = b.offenses && b.level ? b.offenses[b.level] : 0;
+  $('#banReason').textContent = (b.reason || 'Kizuna kurallarını ihlal ettin.') + (cnt > 1 ? ` (Bu ${cnt}. ihlalin — süre her seferinde iki katına çıkıyor.)` : '');
+  $('#banNext').textContent = b.level ? `Bir sonraki aynı ihlalde ban süresi: ${banDays(b.level, (cnt || 1) + 1)} gün.` : '';
   $('#banUntil').textContent = 'Ban bitiş tarihi: ' + new Date(b.until).toLocaleString('tr-TR');
   const tick = () => {
     const ms = b.until - Date.now();
-    if (ms <= 0) { localStorage.removeItem('kz_ban'); if (api) api.setBan(null); location.reload(); return; }
+    if (ms <= 0) { const rec = { ...b, until: 0 }; localStorage.setItem('kz_ban', JSON.stringify(rec)); if (api) api.setBan(rec); location.reload(); return; }
     const s = Math.floor(ms / 1000), parts = [[Math.floor(s / 86400), 'GÜN'], [Math.floor(s / 3600) % 24, 'SAAT'], [Math.floor(s / 60) % 60, 'DAKİKA'], [s % 60, 'SANİYE']];
     $('#banTimer').innerHTML = parts.map(([v, l]) => `<div><b>${String(v).padStart(2, '0')}</b><span>${l}</span></div>`).join('<i>:</i>');
   };

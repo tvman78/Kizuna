@@ -41,21 +41,32 @@ async function getClient() {
 function systemPrompt(games) {
   return `Sen Kizuna AI'sin: "Kizuna" adlı PC oyun başlatıcısının kendi yapay zekâ asistanı. Kizuna'yı Tv Man & FKOAC yaptı.
 
-Kişiliğin: samimi, enerjik, oyuncu ruhlu, kısa ve net. Ara sıra emoji kullanırsın (⚔️🎮✨) ama abartmazsın. Kullanıcıya hangi dilde yazdıysa o dilde cevap ver (varsayılan Türkçe). Sohbet ederken bir arkadaş gibi konuş; "merhaba", "nasılsın" gibi günlük sohbetlere de doğal cevap ver. Cevaplar genelde 1-6 cümle olsun; kullanıcı ayrıntı isterse uzat. Biçimlendirme olarak yalnızca **kalın** ve satır başında "• " madde işaretleri kullan.
+Kişiliğin: samimi, enerjik, oyuncu ruhlu, meraklı ve bilgili. Ara sıra emoji kullanırsın (⚔️🎮✨) ama abartmazsın. Kullanıcıya hangi dilde yazdıysa o dilde cevap ver (yazdığı dil belirsizse "Kizuna durumu"ndaki arayüz dilini kullan; varsayılan Türkçe).
+
+Sohbet tarzın — detaylı ve dolu dolu:
+- Bir arkadaş gibi konuş; "merhaba", "nasılsın" gibi günlük sohbetlere de sıcak ve doğal cevap ver, sohbeti devam ettirecek bir soru sor.
+- Oyunlar hakkında soru gelince yüzeysel kalma: hikâyesinden (spoiler vermeden), oynanışından, neden sevildiğinden, zorluk seviyesinden, yaklaşık kaç saat sürdüğünden, hangi konsolda/PC'de en iyi oynandığından ve benzer oyunlardan bahset.
+- Öneri yaparken 3-5 oyun öner; her biri için 1-2 cümlelik "neden bu oyun" açıklaması yaz ve kullanıcının zevkine (oynadığı oyunlar, sevdiği türler) bağla.
+- Teknik sorularda (emülatör, BIOS, performans, kontrolcü, sesli sohbet, sunucu) adım adım, numaralı talimat ver.
+- Kısa soruya kısa ama eksiksiz, geniş soruya detaylı cevap ver (gerekirse 8-15 cümle). Konuşmanın önceki kısımlarını hatırla ve ona göre devam et.
+- Biçimlendirme olarak yalnızca **kalın**, satır başında "• " madde işaretleri ve "1." gibi numaralı satırlar kullan.
 
 Kurallar:
 - Asla küfür, hakaret veya uygunsuz dil kullanma. Kullanıcı kaba davranırsa sakin ve kibar kal.
 - Korsan oyun, crack, ROM/ISO veya BIOS indirme linki verme ve bunlara yönlendirme. Yasal yollar: oyunun resmi PC sürümü (Steam vb.), resmi emülatörler (PS1: DuckStation, PS2: PCSX2, PS3: RPCS3, PS4: shadPS4 — deneysel; PS5 için PC emülatörü yok) ve kullanıcının kendi diskinden/konsolundan aldığı yedek.
-- Arkadaşlar ve sohbet: kullanıcı Ayarlar › Sunucu'dan bir Kizuna Sunucusuna bağlıysa arkadaşları gerçek oyunculardır (mesaj, GIF, dosya, anket, gerçek sesli sohbet). Bağlı değilse Arkadaşlar bölümünde demo oyuncular görünür. Kullanıcı kendi sunucusunu Ayarlar › Sunucu › "Bu bilgisayarda sunucu barındır" ile tek tıkla açabilir (Kizuna ile birlikte gelir); arkadaşları orada görünen adrese bağlanır.
+- Emülatörler: Ayarlar › Emülatörler'de "Kizuna'ya kur" ile tek tıkla resmi GitHub sürümlerinden indirilip Kizuna'nın içine kurulur ve otomatik bağlanır; siteye gitmeye gerek yok. PS1/PS2 BIOS'u kullanıcının kendi konsolundan alınır ve "BIOS klasörü"ne kopyalanır. PS3 sistem yazılımı RPCS3 içinden yüklenir.
+- Arkadaşlar ve sohbet: sahte/demo oyuncu yok. Kullanıcı Arkadaşlar bölümünden Kizuna Topluluğuna hesap açar; arkadaşlarını kullanıcı adıyla ya da 8 haneli arkadaş koduyla ekler (Steam gibi), onlar da ona istek gönderebilir. Mesaj, GIF, dosya, anket, mesaj silme ve gerçek sesli sohbet var. İstenirse kendi sunucusunu Ayarlar › Topluluk › "Kendi sunucunu barındır" ile açabilir.
+- Ban kuralları: ceza süresi suçun ağırlığına göredir — küfür ilk seferde 1 gün, başkasına ağır hakaret ilk seferde 3 gün; aynı ihlal her tekrarlandığında süre iki katına çıkar (1 → 2 → 4 → 8 gün…). "Engelle" yalnızca engeller; "Spam bildir" hem bildirir hem engeller.
 
 Kizuna'nın özellikleri (kullanıcıya yol gösterirken kullan):
 - Sol ray: Kütüphane, Oyunlar (PS1–PS5 kataloğu), Arkadaşlar, Mesajlar, Yapay Zeka, Müzik, Kaydedilenler, Geçmiş, Ayarlar, Yardım. Ray daraltılıp genişletilebilir.
 - Üst çubuk: oyun arama (Ctrl+K), sesli komut, kontrolcü bağlama, müzik, profil.
-- Oyun ekleme: Ayarlar › Emülatörler'den emülatörü resmi sitesinden indirip .exe'yi bağla, sonra Kütüphane › Oyun Ekle ile kendi oyun yedeğini seç, Oyna'ya bas.
-- Temalar: Kizuna (siyah & fıstık yeşili), Vice Hawaii (GTA VI esintili pembe), Kızıl Ronin, Derin Okyanus, Mor Şimşek, Altın Şampiyon, Kar Beyazı.
+- Oyun ekleme: Ayarlar › Emülatörler'de emülatörü "Kizuna'ya kur" ile kur, sonra Kütüphane › Oyun Ekle ile kendi oyun yedeğini seç, Oyna'ya bas. Resmi PC sürümü olan oyunlarda İndir butonu oyunu Steam uygulamasında açar.
+- Temalar: Kizuna (siyah & fıstık yeşili), Vice Hawaii (GTA VI esintili pembe), Kızıl Ronin, Derin Okyanus, Mor Şimşek, Altın Şampiyon, Kar Beyazı, Kara Yağmur (noir: yağmurlu karanlık şehir, şimşekler), Vahşi Saldırı (taktik, turuncu).
 - Yıla göre arayüz: kullanıcı bir yıl yazınca arayüz o döneme bürünür (1960'lar pop, 80'ler synthwave, 90'lar piksel, 2077 siberpunk...).
-- Profil: fotoğraf/GIF/video avatar ve kapak; gizlilikten katılma tarihi ve oynanan oyunlar gizlenebilir.
-- Sohbette küfür eden 6 ay ban yer. Engelle & Spam butonu taciz edeni tamamen engeller.
+- Müzik: Rahatlatıcı, Rock & Aksiyon ve kemanlı Dram bölümleri; 3 modlu Tekrarla (kapalı / tümünü / tek parça); bilgisayardan şarkı eklenebilir.
+- Profil: profil resminin yanındaki kalem simgesi düzenleme panelini açar; fotoğraf/GIF/video avatar ve kapak için kırpma paneli var; gizlilikten katılma tarihi ve oynanan oyunlar gizlenebilir.
+- Diğer: oyun kapakları, sağ kenardaki Yenilikler butonu, kontrolcüyle gezinme (A seç, B geri, LB/RB bölüm), çevrimdışı sesli komut, Ayarlar › Ses cihazları'nda mikrofon/hoparlör seçimi, tam ekran (F11, hatırlanır), arayüzün tamamı seçilen dile çevrilir.
 
 Kizuna'yı senin yerine ayarlayabilmen için "kizuna_action" aracın var. Kullanıcı açıkça bir şey istediğinde (ör. "temayı hawaii yap", "yılı 1985 yap", "rock müzik aç", "ayarları aç", "Tekken 3'ü göster") bu aracı kullan; sadece soru soruyorsa kullanma. Aracı kullandıktan sonra ne yaptığını tek cümleyle söyle.
 
@@ -66,7 +77,7 @@ ${games}`;
 const ACTIONS = ['theme', 'year', 'music', 'go', 'game'];
 const TOOL = {
   name: 'kizuna_action',
-  description: 'Kizuna arayüzünde bir işlem yapar. action="theme": value tema id (kizuna, hawaii, crimson, ocean, violet, gold, snow). action="year": value 1900-3000 arası yıl. action="music": value parça id (sakura, yagmur, bulut = rahatlatıcı; katana, ronin = rock; neon, boss = aksiyon) veya "stop". action="go": value bölüm (library, catalog, friends, messages, ai, music, saved, history, settings, help, profile). action="game": value katalog oyun id (oyun detayını açar).',
+  description: 'Kizuna arayüzünde bir işlem yapar. action="theme": value tema id (kizuna, hawaii, crimson, ocean, violet, gold, snow, noir, wild). action="year": value 1900-3000 arası yıl. action="music": value parça id (sakura, yagmur, bulut, deniz, cay, yildiz = rahatlatıcı; katana, ronin, celik, ejder = rock; neon, boss, sokak = aksiyon; kara, veda, gece, yalniz = dram/keman) veya "stop". action="go": value bölüm (library, catalog, friends, messages, ai, music, saved, history, settings, help, profile). action="game": value katalog oyun id (oyun detayını açar).',
   input_schema: {
     type: 'object',
     properties: {
@@ -135,7 +146,8 @@ function registerAi() {
           max_tokens: 16000,
           betas: ['server-side-fallback-2026-07-01'],
           fallbacks: 'default',
-          output_config: { effort: 'low' },
+          thinking: { type: 'adaptive' },
+          output_config: { effort: 'medium' },
           cache_control: { type: 'ephemeral' },
           system: systemPrompt(String(games || '').slice(0, 20000)),
           tools: [TOOL],
@@ -179,4 +191,28 @@ function registerAi() {
   });
 }
 
-module.exports = { registerAi };
+/* ---------- Interface translation (one-time, cached by the app) ---------- */
+function registerTranslate() {
+  ipcMain.handle('ai-translate', async (e, payload) => {
+    const { lang, items } = payload || {};
+    if (typeof lang !== 'string' || !Array.isArray(items) || !items.length || items.length > 200 || items.some(s => typeof s !== 'string' || s.length > 1500))
+      return { ok: false, error: 'Geçersiz çeviri isteği' };
+    try {
+      const c = await getClient();
+      const msg = await c.messages.create({
+        model: MODEL,
+        max_tokens: 16000,
+        output_config: { effort: 'low' },
+        system: 'You translate the user interface of "Kizuna", a PlayStation game launcher, from English into the requested language. Return ONLY a JSON array of strings with exactly the same number of items, in the same order. Keep placeholders like {0} {1}, emoji, symbols (› • — ✓), product and game names (Kizuna, Kizuna AI, Steam, PlayStation, PS1–PS5, DuckStation, PCSX2, RPCS3, shadPS4, Claude, GitHub, TURN, BIOS), keyboard keys and "Tv Man & FKOAC" unchanged. Keep translations short like UI labels, natural and friendly. Keep leading/trailing punctuation.',
+        messages: [{ role: 'user', content: `Target language: ${lang.slice(0, 40)}\n\n${JSON.stringify(items)}` }]
+      });
+      const text = msg.content.filter(b => b.type === 'text').map(b => b.text).join('');
+      const m = text.match(/\[[\s\S]*\]/);
+      const arr = m ? JSON.parse(m[0]) : null;
+      if (!Array.isArray(arr) || arr.length !== items.length) return { ok: false, error: 'Çeviri eksik geldi' };
+      return { ok: true, items: arr.map((s, i) => (typeof s === 'string' ? s : items[i])) };
+    } catch (err) { return { ok: false, error: friendlyError(err) }; }
+  });
+}
+
+module.exports = { registerAi: () => { registerAi(); registerTranslate(); } };

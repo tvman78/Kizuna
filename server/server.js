@@ -15,7 +15,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { DatabaseSync } = require('node:sqlite');
 const { WebSocketServer } = require('ws');
-const { hasProfanity } = require('./filter');
+const { hasProfanity, profanityLevel, banDays } = require('./filter');
 const { createTurn } = require('./turn');
 
 /* Settings: server/config.json (defaults if missing) + environment variables */
@@ -59,6 +59,13 @@ CREATE TABLE IF NOT EXISTS messages(id TEXT PRIMARY KEY, from_id TEXT NOT NULL, 
 CREATE INDEX IF NOT EXISTS msg_from_to ON messages(from_id, to_id, time);
 CREATE TABLE IF NOT EXISTS files(id TEXT PRIMARY KEY, owner TEXT NOT NULL, name TEXT, type TEXT, size INTEGER, created INTEGER NOT NULL);
 `);
+// v1.1 columns: friend code, ban history, avatar / banner framing (crop)
+{
+  const cols = db.prepare('PRAGMA table_info(users)').all().map(c => c.name);
+  const add = (name, def) => { if (!cols.includes(name)) db.exec(`ALTER TABLE users ADD COLUMN ${name} ${def}`); };
+  add('code', 'TEXT'); add('offenses', "TEXT DEFAULT '{}'"); add('avatar_crop', 'TEXT'); add('banner_crop', 'TEXT');
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS users_code ON users(code)');
+}
 const stmts = new Map();
 const st = sql => { let s = stmts.get(sql); if (!s) { s = db.prepare(sql); stmts.set(sql, s); } return s; };
 const get = (sql, ...p) => st(sql).get(...p);
@@ -82,6 +89,16 @@ const COLORS = ['linear-gradient(135deg,#93C572,#2f5a1e)', 'linear-gradient(135d
   'linear-gradient(135deg,#ffc845,#7a4b00)', 'linear-gradient(135deg,#a46bff,#3a1670)', 'linear-gradient(135deg,#ff3b4f,#5a0711)', 'linear-gradient(135deg,#3ee0a1,#0b5a3c)'];
 const STATUSES = ['online', 'game', 'away', 'dnd', 'offline'];
 const KINDS = ['text', 'sticker', 'media', 'file', 'poll'];
+/* 8-digit friend code (like a Steam friend code) — shareable, unique */
+function newCode() {
+  for (;;) { const c = String(crypto.randomInt(10000000, 100000000)); if (!get('SELECT 1 FROM users WHERE code = ?', c)) return c; }
+}
+for (const u of db.prepare('SELECT id FROM users WHERE code IS NULL').all()) db.prepare('UPDATE users SET code = ? WHERE id = ?').run(newCode(), u.id);
+const parseCrop = c => {
+  if (!c || typeof c !== 'object') return null;
+  const n = (v, lo, hi, d) => (Number.isFinite(+v) ? Math.min(hi, Math.max(lo, +v)) : d);
+  return { x: n(c.x, 0, 100, 50), y: n(c.y, 0, 100, 50), z: n(c.z, 1, 4, 1) };
+};
 const ip = req => (TRUST_PROXY && String(req.headers['x-forwarded-for'] || '').split(',')[0].trim()) || req.socket.remoteAddress || '?';
 
 function hashPass(pw) { const salt = crypto.randomBytes(16); return salt.toString('hex') + ':' + crypto.scryptSync(pw, salt, 64).toString('hex'); }
@@ -127,6 +144,7 @@ function pub(u, viewer) {
   return {
     id: u.id, name: u.name, bio: u.bio || '', color: u.color, status: st_, playing: st_ === 'offline' ? '' : (u.playing || ''),
     avatar: u.avatar || '', avatarType: u.avatar_type || '', banner: u.banner || '', bannerType: u.banner_type || '',
+    avatarCrop: u.avatar_crop ? JSON.parse(u.avatar_crop) : null, bannerCrop: u.banner_crop ? JSON.parse(u.banner_crop) : null, code: u.code || '',
     joined: u.hide_join && !self ? null : u.joined, hideJoin: !!u.hide_join, hideGames: !!u.hide_games,
     games: friend && (self || !u.hide_games) ? JSON.parse(u.played || '[]') : null,
     friend: !!friend && !self
@@ -136,10 +154,11 @@ function meView(u) {
   const fr = friendIds(u.id);
   const rin = all('SELECT from_id FROM requests WHERE to_id = ?', u.id).map(r => r.from_id);
   const rout = all('SELECT to_id FROM requests WHERE from_id = ?', u.id).map(r => r.to_id);
-  const bl = all('SELECT blocked FROM blocks WHERE blocker = ?', u.id).map(r => r.blocked);
+  const blRows = all('SELECT blocked, spam FROM blocks WHERE blocker = ?', u.id);
+  const bl = blRows.map(r => r.blocked), spam = blRows.filter(r => r.spam).map(r => r.blocked);
   const ids = [...new Set([...fr, ...rin, ...rout, ...bl])];
   return {
-    ...pub(u, u.id), rawStatus: u.status, friends: fr, requestsIn: rin, requestsOut: rout, blocked: bl,
+    ...pub(u, u.id), rawStatus: u.status, friends: fr, requestsIn: rin, requestsOut: rout, blocked: bl, spamReported: spam,
     users: ids.map(userById).filter(Boolean).map(x => pub(x, u.id))
   };
 }
@@ -155,14 +174,20 @@ function broadcastUser(id) {
   const u = userById(id); if (!u) return;
   for (const fid of friendIds(id)) emit(fid, { type: 'user', user: pub(u, fid) });
 }
-function banUser(uid, reason) {
-  const d = new Date(); d.setMonth(d.getMonth() + 6);
-  run('UPDATE users SET banned_until = ?, ban_reason = ? WHERE id = ?', d.getTime(), reason, uid);
-  const banned = { until: d.getTime(), reason };
+/* Escalating bans: base days per severity, doubled on each repeat of the same severity */
+function banUser(uid, reason, level = 'mild') {
+  if (!['mild', 'severe'].includes(level)) level = 'mild';
+  const u = userById(uid); if (!u) return null;
+  let off = {}; try { off = JSON.parse(u.offenses || '{}') || {}; } catch {}
+  off[level] = (off[level] || 0) + 1;
+  const days = banDays(level, off[level]);
+  const until = now() + days * 864e5;
+  run('UPDATE users SET banned_until = ?, ban_reason = ?, offenses = ? WHERE id = ?', until, reason, JSON.stringify(off), uid);
+  const banned = { until, reason, days, level, count: off[level], offenses: off };
   emit(uid, { type: 'banned', banned });
   const set = online.get(uid);
   if (set) setTimeout(() => { for (const ws of set) ws.close(4003, 'banned'); }, 500);
-  console.log(`[ban] ${uid}: ${reason}`);
+  console.log(`[ban] ${uid}: ${days} gün (${level} #${off[level]}) — ${reason}`);
   return banned;
 }
 
@@ -252,7 +277,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 /* ---------------- API: account ---------------- */
-route('GET', /^\/api\/health$/, () => ({ ok: true, name: 'Kizuna Sunucusu', version: '1.0.0' }), { auth: false });
+route('GET', /^\/api\/health$/, () => ({ ok: true, name: 'Kizuna Sunucusu', version: '1.1.0', users: get('SELECT COUNT(*) AS n FROM users').n }), { auth: false });
 
 route('POST', /^\/api\/register$/, ({ req, body }) => {
   rate('reg:' + ip(req), 20, 3600e3);
@@ -261,8 +286,8 @@ route('POST', /^\/api\/register$/, ({ req, body }) => {
   if (pw.length < 6 || pw.length > 200) fail(400, 'Şifre en az 6 karakter olmalı.');
   if (get('SELECT 1 FROM users WHERE name = ?', name)) fail(409, 'Bu kullanıcı adı alınmış.');
   const id = rid(9);
-  run('INSERT INTO users(id, name, pass, bio, color, joined, last_seen) VALUES(?, ?, ?, ?, ?, ?, ?)',
-    id, name, hashPass(pw), cleanText(body.bio, 160, 'Hakkımda'), COLORS[crypto.randomInt(COLORS.length)], now(), now());
+  run('INSERT INTO users(id, name, pass, bio, color, joined, last_seen, code) VALUES(?, ?, ?, ?, ?, ?, ?, ?)',
+    id, name, hashPass(pw), cleanText(body.bio, 160, 'Hakkımda'), COLORS[crypto.randomInt(COLORS.length)], now(), now(), newCode());
   console.log(`[kayıt] ${name}`);
   return newSession(id);
 }, { auth: false });
@@ -299,8 +324,10 @@ route('PATCH', /^\/api\/me$/, ({ user, body }) => {
     if (!Array.isArray(body.played)) fail(400, 'Geçersiz oyun listesi');
     u.played = JSON.stringify(body.played.slice(0, 50).map(x => String(x).slice(0, 80)));
   }
-  run('UPDATE users SET name = ?, bio = ?, status = ?, playing = ?, hide_join = ?, hide_games = ?, played = ? WHERE id = ?',
-    u.name, u.bio, u.status, u.playing, u.hide_join, u.hide_games, u.played, u.id);
+  if (body.avatarCrop !== undefined) u.avatar_crop = body.avatarCrop ? JSON.stringify(parseCrop(body.avatarCrop)) : null;
+  if (body.bannerCrop !== undefined) u.banner_crop = body.bannerCrop ? JSON.stringify(parseCrop(body.bannerCrop)) : null;
+  run('UPDATE users SET name = ?, bio = ?, status = ?, playing = ?, hide_join = ?, hide_games = ?, played = ?, avatar_crop = ?, banner_crop = ? WHERE id = ?',
+    u.name, u.bio, u.status, u.playing, u.hide_join, u.hide_games, u.played, u.avatar_crop ?? null, u.banner_crop ?? null, u.id);
   broadcastUser(u.id);
   return meView(userById(u.id));
 });
@@ -312,20 +339,24 @@ for (const kind of ['avatar', 'banner']) {
     if (!/^(image|video)\/[\w.+-]+$/.test(type) || /svg/.test(type)) fail(400, 'Sadece fotoğraf, GIF veya video yüklenebilir.');
     if (!raw.length) fail(400, 'Dosya boş');
     const f = storeFile(user.id, raw, type, kind);
-    run(`UPDATE users SET ${kind} = ?, ${kind}_type = ? WHERE id = ?`, f.id, type, user.id);
+    run(`UPDATE users SET ${kind} = ?, ${kind}_type = ?, ${kind}_crop = NULL WHERE id = ?`, f.id, type, user.id);
     broadcastUser(user.id);
     return { ok: true, file: f.id, type };
   }, { raw: true });
 }
 
 route('POST', /^\/api\/me\/selfban$/, ({ user, body }) => {
-  const banned = banUser(user.id, String(body.reason || 'Kizuna kurallarını ihlal ettin.').slice(0, 200));
+  const banned = banUser(user.id, String(body.reason || 'Kizuna kurallarını ihlal ettin.').slice(0, 200), body.level);
   return { ok: true, banned };
 });
 
 /* ---------------- API: players ---------------- */
 route('GET', /^\/api\/users$/, ({ user, url }) => {
-  const q = String(url.searchParams.get('q') || '').trim().slice(0, 30);
+  const q = String(url.searchParams.get('q') || '').trim().replace(/^#/, '').slice(0, 30);
+  if (/^\d{8}$/.test(q)) { // friend code
+    const u = get('SELECT * FROM users WHERE code = ? AND id != ? AND banned_until < ?', q, user.id, now());
+    return u && !isBlocked(user.id, u.id) ? [pub(u, user.id)] : [];
+  }
   const rows = q
     ? all("SELECT * FROM users WHERE name LIKE ? ESCAPE '\\' AND id != ? AND banned_until < ? ORDER BY last_seen DESC LIMIT 40", '%' + q.replace(/[\\%_]/g, '\\$&') + '%', user.id, now())
     : all('SELECT * FROM users WHERE id != ? AND banned_until < ? ORDER BY last_seen DESC LIMIT 40', user.id, now());
@@ -429,8 +460,10 @@ route('POST', /^\/api\/messages\/([\w-]+)$/, ({ user, params, body }) => {
     poll = { q, opts: opts.map(t => ({ t, votes: [] })) };
   }
   const texts = [text, poll && poll.q, ...(poll ? poll.opts.map(o => o.t) : [])].filter(Boolean);
-  if (texts.some(hasProfanity)) {
-    const banned = banUser(user.id, 'Sohbette kötü / uygunsuz kelimeler kullandın.');
+  const levels = texts.map(profanityLevel).filter(Boolean);
+  if (levels.length) {
+    const level = levels.includes('severe') ? 'severe' : 'mild';
+    const banned = banUser(user.id, level === 'severe' ? 'Sohbette başkalarına ağır hakaret / küfür ettin.' : 'Sohbette kötü / uygunsuz kelimeler kullandın.', level);
     fail(403, 'banned', { banned });
   }
   const m = { id: rid(12), from_id: user.id, to_id: id, kind, text, sticker, file, poll: poll ? JSON.stringify(poll) : null, time: now() };
@@ -440,6 +473,19 @@ route('POST', /^\/api\/messages\/([\w-]+)$/, ({ user, params, body }) => {
   emit(id, { type: 'message', msg: view });
   emit(user.id, { type: 'message', msg: view });
   return view;
+});
+/* Delete one of my own messages for both sides — the unread counter drops with it */
+route('POST', /^\/api\/messages\/([\w-]+)\/([\w-]+)\/delete$/, ({ user, params }) => {
+  const [peer, mid] = params;
+  const m = get('SELECT * FROM messages WHERE id = ? AND from_id = ? AND to_id = ?', mid, user.id, peer);
+  if (!m) fail(404, 'Mesaj bulunamadı');
+  run('DELETE FROM messages WHERE id = ?', mid);
+  if (m.file && !get('SELECT 1 FROM messages WHERE file = ?', m.file) && !get('SELECT 1 FROM users WHERE avatar = ? OR banner = ?', m.file, m.file)) {
+    run('DELETE FROM files WHERE id = ?', m.file);
+    try { fs.unlinkSync(path.join(FILES, m.file)); } catch {}
+  }
+  const ev = { type: 'message_deleted', id: mid, from: user.id, to: peer, wasUnread: !m.read };
+  emit(peer, ev); emit(user.id, ev);
 });
 route('POST', /^\/api\/messages\/([\w-]+)\/read$/, ({ user, params }) => {
   run('UPDATE messages SET read = 1 WHERE from_id = ? AND to_id = ? AND read = 0', params[0], user.id);
