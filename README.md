@@ -1,28 +1,28 @@
 # Kizuna ⚔️
 
-PlayStation (PS1–PS5) oyun başlatıcısı ve oyuncu topluluğu — **Tv Man & FKOAC**
+PlayStation (PS1–PS5) game launcher and gamer community — **Tv Man & FKOAC**
 
-## İndir
+## Download
 
-En son sürümün kurulum dosyası: **[Releases › Kizuna Setup .exe](https://github.com/tvman78/Kizuna/releases/latest)**
+Latest installer: **[Releases › Kizuna Setup .exe](https://github.com/tvman78/Kizuna/releases/latest)**
 
-Kurulduktan sonra Kizuna kendini **otomatik olarak günceller**.
+Once installed, Kizuna **updates itself automatically**.
 
-> Kurulum dosyası imzasız olduğu için Windows SmartScreen uyarı gösterebilir: **Ek bilgi › Yine de çalıştır**.
+> The installer is unsigned, so Windows SmartScreen may show a warning: **More info › Run anyway**.
 
-## Özellikler
+## Features
 
-- PS1–PS5 oyun kataloğu, resmi emülatörlerle (DuckStation, PCSX2, RPCS3, shadPS4) tek tıkla oynatma
-- Arkadaşlar, mesajlaşma (GIF, emoji, çıkartma, dosya, anket) ve TURN destekli sesli sohbet
-- Dahili Kizuna Sunucusu — kendi bilgisayarında tek tıkla sunucu barındır
-- Claude ile çalışan Kizuna AI
-- Temalar (Vice Hawaii dahil), yıla göre arayüz, müzik, sesli komutlar, 13 dil
+- PS1–PS5 game catalog, one-click play with official emulators (DuckStation, PCSX2, RPCS3, shadPS4)
+- Friends, messaging (GIFs, emoji, stickers, files, polls) and voice chat with TURN support
+- Built-in Kizuna Server — host your own server on your PC with one click
+- Kizuna AI, powered by Claude
+- Themes (including Vice Hawaii), year-based UI, music, voice commands, 13 languages
 
-Kizuna oyun dosyası dağıtmaz; yalnızca resmi mağazalara ve emülatörlerin resmi sitelerine yönlendirir.
+Kizuna does not distribute game files; it only links to official stores and the emulators' official websites.
 
-## Geliştirici notları
+## Developer notes
 
-- `Baslat.bat` — uygulamayı geliştirme modunda açar
-- `Kurulum-Exe-Olustur.bat` — yerel kurulum dosyası oluşturur (yayınlamaz)
-- `Guncelleme-Yayinla.bat` — sürümü artırır, GitHub'a yükler ve kullanıcılara otomatik güncelleme gönderir
-- `server/` — Kizuna Sunucusu (Node.js 22.13+), ayrı bir sunucuda da çalıştırılabilir
+- `Baslat.bat` — opens the app in development mode
+- `Kurulum-Exe-Olustur.bat` — builds a local installer (does not publish)
+- `Guncelleme-Yayinla.bat` — bumps the version, uploads to GitHub and ships an automatic update to users
+- `server/` — Kizuna Server (Node.js 22.13+), can also run on a separate server

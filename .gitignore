@@ -1,9 +1,9 @@
-# Bağımlılıklar ve derleme çıktıları
+# Dependencies and build output
 node_modules/
 dist/
 build/node/
 
-# Sunucu verileri ve gizli ayarlar — ASLA GitHub'a gitmez
+# Server data and private settings — NEVER pushed to GitHub
 server/data/
 server/config.json
 *.key
