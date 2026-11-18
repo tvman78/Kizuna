@@ -1,7 +1,7 @@
 'use strict';
-/* Kizuna AI — Claude bağlantısı (ana süreç) | Yapımcılar: Tv Man & FKOAC
-   API anahtarı yalnızca bu süreçte, işletim sisteminin şifreli depolamasıyla tutulur;
-   arayüz (renderer) anahtarı hiçbir zaman göremez. */
+/* Kizuna AI — Claude connection (main process) | Made by: Tv Man & FKOAC
+   The API key lives only in this process, in the operating system's encrypted storage;
+   the UI (renderer) never sees the key. */
 const { app, ipcMain, safeStorage } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -9,9 +9,9 @@ const fs = require('fs');
 const MODEL = 'claude-opus-5-5';
 const keyFile = () => path.join(app.getPath('userData'), 'kizuna-ai.key');
 
-let sdk = null;            // dinamik import edilen @anthropic-ai/sdk modülü
+let sdk = null;            // dynamically imported @anthropic-ai/sdk module
 let client = null;
-let conversation = [];     // Anthropic MessageParam[] — sadece sona ekleme yapılır (append-only)
+let conversation = [];     // Anthropic MessageParam[] — append-only
 let activeStream = null;
 
 async function loadSdk() {
@@ -32,12 +32,12 @@ async function getClient() {
   if (client) return client;
   const Anthropic = await loadSdk();
   const key = readKey();
-  // Kayıtlı anahtar yoksa SDK ortam değişkenlerinden / `ant auth login` profilinden çözer.
+  // Without a stored key, the SDK resolves credentials from env vars / the `ant auth login` profile.
   client = key ? new Anthropic({ apiKey: key }) : new Anthropic();
   return client;
 }
 
-/* ---------- Sistem talimatı (sabit → önbelleğe alınır) ---------- */
+/* ---------- System prompt (static → cached) ---------- */
 function systemPrompt(games) {
   return `Sen Kizuna AI'sin: "Kizuna" adlı PC oyun başlatıcısının kendi yapay zekâ asistanı. Kizuna'yı Tv Man & FKOAC yaptı.
 
@@ -148,7 +148,7 @@ function registerAi() {
         }
         const msg = await stream.finalMessage();
         activeStream = null;
-        conversation.push({ role: 'assistant', content: msg.content }); // tam içerik, değiştirilmeden
+        conversation.push({ role: 'assistant', content: msg.content }); // full content, unmodified
 
         if (msg.stop_reason === 'refusal') {
           return { ok: true, refused: true, actions };
@@ -172,7 +172,7 @@ function registerAi() {
       return { ok: true, actions };
     } catch (err) {
       activeStream = null;
-      conversation.length = startLen; // başarısız turu geri al → geçmiş tutarlı kalır
+      conversation.length = startLen; // roll back the failed turn → history stays consistent
       const aborted = err && (err.name === 'APIUserAbortError' || /abort/i.test(String(err.message)));
       return { ok: false, aborted, error: aborted ? 'Durduruldu.' : friendlyError(err) };
     }

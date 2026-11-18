@@ -2,8 +2,8 @@
 chcp 65001 >nul
 title Kizuna - Guncelleme yayinlaniyor
 cd /d "%~dp0"
-rem Tek tikla yeni surum: surumu artirir, kurulum dosyasini olusturur, GitHub'a yukler.
-rem Kizuna kullanan herkes bu surumu otomatik olarak alir.
+rem One-click release: bumps the version, builds the installer, uploads it to GitHub.
+rem Everyone using Kizuna receives this version automatically.
 
 set "PATH=%LOCALAPPDATA%\Microsoft\WinGet\Links;%PATH%"
 where gh >nul 2>nul || ( echo  [!] GitHub CLI bulunamadi. & pause & exit /b 1 )

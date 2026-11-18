@@ -1,5 +1,5 @@
 'use strict';
-/* Kizuna — Electron ana süreç | Yapımcılar: Tv Man & FKOAC */
+/* Kizuna — Electron main process | Made by: Tv Man & FKOAC */
 const { app, BrowserWindow, ipcMain, dialog, shell, Menu, Tray, nativeImage, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -15,7 +15,7 @@ if (!app.requestSingleInstanceLock()) app.quit();
 app.on('second-instance', showWindow);
 function showWindow() { if (!win) return createWindow(); if (win.isMinimized()) win.restore(); win.show(); win.focus(); }
 
-/* ---------- Sistem tepsisi: pencere kapansa da sunucu çalışmaya devam eder ---------- */
+/* ---------- System tray: the server keeps running even when the window is closed ---------- */
 function ensureTray() {
   if (tray || !appIcon) return;
   tray = new Tray(appIcon.resize({ width: 16, height: 16 }));
@@ -34,7 +34,7 @@ function destroyTrayIfHidden() {
 }
 
 function createWindow() {
-  Menu.setApplicationMenu(null); // geliştirici menüsü / kısayolları kapalı
+  Menu.setApplicationMenu(null); // developer menu / shortcuts disabled
   win = new BrowserWindow({
     width: 1440, height: 900, minWidth: 1024, minHeight: 660,
     backgroundColor: '#000000', title: 'Kizuna', show: false,
@@ -52,7 +52,7 @@ function createWindow() {
   });
   win.webContents.on('will-navigate', (e, url) => { if (!url.startsWith('file://')) e.preventDefault(); });
   win.on('close', e => {
-    // Sunucu çalışıyorsa ve "tepside kal" açıksa pencereyi gizle, sunucu durmasın
+    // If the server is running and "keep in tray" is on, hide the window so the server keeps running
     if (!quitting && appIcon && serverRunning() && serverCtl().keepInTray) {
       e.preventDefault(); win.hide(); ensureTray();
       if (tray && !win.__trayTipShown) { win.__trayTipShown = true; tray.displayBalloon && tray.displayBalloon({ title: 'Kizuna', content: 'Sunucu arka planda çalışmaya devam ediyor. Kapatmak için tepsideki Kizuna simgesine sağ tıkla.' }); }
@@ -71,13 +71,13 @@ app.whenReady().then(() => {
   if (serverCtl().autoStart) startServer();
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
-app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); }); // before-quit sunucuyu düzgünce kapatır
+app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); }); // before-quit shuts the server down gracefully
 app.on('before-quit', e => {
   quitting = true;
   if (serverRunning()) { e.preventDefault(); stopServer().finally(() => app.quit()); }
 });
 
-/* ---------- Dosya / klasör seçimi ---------- */
+/* ---------- File / folder picker ---------- */
 ipcMain.handle('pick-file', async (e, opts) => {
   const r = await dialog.showOpenDialog(win, { properties: ['openFile'], filters: (opts && opts.filters) || [] });
   return r.canceled ? null : r.filePaths[0];
@@ -90,7 +90,7 @@ ipcMain.handle('open-external', (e, url) => {
   if (typeof url === 'string' && /^https:\/\//i.test(url)) shell.openExternal(url);
 });
 
-/* ---------- Oyun klasörü tarama ---------- */
+/* ---------- Game folder scanning ---------- */
 const EXT_GUESS = { cue: 'ps1', pbp: 'ps1', m3u: 'ps1', chd: 'ps1', iso: 'ps2', cso: 'ps2' };
 function guessName(p) {
   const parts = p.split(path.sep);
@@ -121,7 +121,7 @@ ipcMain.handle('scan-folder', async (e, dir) => {
   return out;
 });
 
-/* ---------- Emülatör ile oyun başlatma ---------- */
+/* ---------- Launching games with an emulator ---------- */
 function buildArgs(c, game, fullscreen) {
   const fs_ = fullscreen ? ['-fullscreen'] : [];
   switch (c) {
@@ -152,7 +152,7 @@ ipcMain.handle('launch', async (e, o) => {
   }
 });
 
-/* ---------- Ban koruması (uygulama verisinde kalıcı) ---------- */
+/* ---------- Ban guard (persisted in app data) ---------- */
 ipcMain.handle('ban-get', () => {
   try { return JSON.parse(fs.readFileSync(guardFile(), 'utf8')); } catch { return null; }
 });
@@ -163,7 +163,7 @@ ipcMain.handle('ban-set', (e, b) => {
   } catch {}
 });
 
-/* ---------- Pencere / görev çubuğu ikonu (logodan üretilir) ---------- */
+/* ---------- Window / taskbar icon (generated from the logo) ---------- */
 ipcMain.handle('set-icon', (e, dataUrl) => {
   try {
     if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/png')) return;
@@ -171,7 +171,7 @@ ipcMain.handle('set-icon', (e, dataUrl) => {
     if (img.isEmpty()) return;
     appIcon = img;
     if (win) win.setIcon(img);
-    if (!app.isPackaged) { // kurulum dosyası (exe) için ikon
+    if (!app.isPackaged) { // icon for the installer (exe)
       const dir = path.join(__dirname, 'build');
       const f = path.join(dir, 'icon.png');
       if (!fs.existsSync(f)) { fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(f, img.toPNG()); }

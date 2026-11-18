@@ -1,7 +1,7 @@
 'use strict';
-/* Kizuna — GitHub Releases üzerinden otomatik güncelleme | Yapımcılar: Tv Man & FKOAC
-   Kurulu uygulama açılışta ve 4 saatte bir GitHub'daki son sürümü denetler, varsa arka planda indirir.
-   İndirilen güncelleme uygulama kapanırken kendiliğinden kurulur ya da kullanıcı "Yeniden başlat" der. */
+/* Kizuna — automatic updates via GitHub Releases | Made by: Tv Man & FKOAC
+   The installed app checks GitHub for the latest version at startup and every 4 hours, and downloads it in the background.
+   A downloaded update installs itself when the app quits, or when the user clicks "Restart". */
 const { app, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -25,7 +25,7 @@ function friendly(err) {
 }
 
 function setupUpdater() {
-  // Yalnızca kurulmuş (paketlenmiş) uygulamada ve yayın ayarı varsa çalışır
+  // Only runs in the installed (packaged) app and when a publish config exists
   if (!app.isPackaged || !fs.existsSync(path.join(process.resourcesPath, 'app-update.yml'))) return;
   ({ autoUpdater: updater } = require('electron-updater'));
   updater.autoDownload = true;
@@ -55,7 +55,7 @@ function registerUpdater(winGetter, onBeforeInstall) {
   });
   ipcMain.handle('update-install', async () => {
     if (!updater || state.state !== 'downloaded') return { ok: false };
-    await beforeInstall();               // sunucuyu düzgünce kapat
+    await beforeInstall();               // shut the server down gracefully
     setImmediate(() => updater.quitAndInstall(true, true));
     return { ok: true };
   });

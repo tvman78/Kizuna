@@ -1,7 +1,7 @@
 'use strict';
 /* =====================================================================
-   KIZUNA SUNUCUSU — hesaplar, arkadaşlık, mesajlaşma, sesli arama sinyali
-   Yapımcılar: Tv Man & FKOAC
+   KIZUNA SERVER — accounts, friends, messaging, voice call signaling
+   Made by: Tv Man & FKOAC
    ===================================================================== */
 const [maj, min] = process.versions.node.split('.').map(Number);
 if (maj < 22 || (maj === 22 && min < 13)) {
@@ -18,7 +18,7 @@ const { WebSocketServer } = require('ws');
 const { hasProfanity } = require('./filter');
 const { createTurn } = require('./turn');
 
-/* Ayarlar: server/config.json (yoksa varsayılanlar) + ortam değişkenleri */
+/* Settings: server/config.json (defaults if missing) + environment variables */
 const CONFIG_PATH = process.env.KIZUNA_CONFIG || path.join(__dirname, 'config.json');
 let CONFIG = {};
 if (fs.existsSync(CONFIG_PATH)) {
@@ -40,7 +40,7 @@ const MAX_UPLOAD = 25 * 1024 * 1024;
 const MAX_JSON = 64 * 1024;
 fs.mkdirSync(FILES, { recursive: true });
 
-/* ---------------- Veritabanı (Node'un yerleşik SQLite'ı) ---------------- */
+/* ---------------- Database (Node's built-in SQLite) ---------------- */
 const db = new DatabaseSync(path.join(DATA, 'kizuna.db'));
 db.exec(`
 PRAGMA journal_mode = WAL;
@@ -66,7 +66,7 @@ const all = (sql, ...p) => st(sql).all(...p);
 const run = (sql, ...p) => st(sql).run(...p);
 const tx = fn => { db.exec('BEGIN'); try { const r = fn(); db.exec('COMMIT'); return r; } catch (e) { db.exec('ROLLBACK'); throw e; } };
 
-/* ---------------- Yardımcılar ---------------- */
+/* ---------------- Helpers ---------------- */
 const now = () => Date.now();
 const rid = (n = 12) => crypto.randomBytes(n).toString('base64url');
 const sha = s => crypto.createHash('sha256').update(String(s)).digest('hex');
@@ -91,7 +91,7 @@ function checkPass(pw, stored) {
   const a = crypto.scryptSync(pw, Buffer.from(s, 'hex'), 64), b = Buffer.from(h, 'hex');
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
-/* Basit hız sınırı (bellekte, kayan pencere) */
+/* Simple rate limit (in memory, sliding window) */
 const buckets = new Map();
 function rate(key, max, windowMs) {
   const t = now(); let b = buckets.get(key);
@@ -112,7 +112,7 @@ const cleanText = (t, max, field) => {
   return t;
 };
 
-/* ---------------- Kullanıcı ilişkileri ---------------- */
+/* ---------------- User relationships ---------------- */
 const userById = id => get('SELECT * FROM users WHERE id = ?', String(id));
 const pair = (x, y) => (x < y ? [x, y] : [y, x]);
 const isFriend = (x, y) => { const [a, b] = pair(x, y); return !!get('SELECT 1 FROM friends WHERE a = ? AND b = ?', a, b); };
@@ -144,7 +144,7 @@ function meView(u) {
   };
 }
 
-/* ---------------- WebSocket yayın yardımcıları ---------------- */
+/* ---------------- WebSocket broadcast helpers ---------------- */
 function emit(uid, obj) {
   const set = online.get(uid); if (!set) return false;
   const s = JSON.stringify(obj);
@@ -166,14 +166,14 @@ function banUser(uid, reason) {
   return banned;
 }
 
-/* ---------------- Mesajlar ---------------- */
+/* ---------------- Messages ---------------- */
 function msgView(m) {
   const f = m.file ? get('SELECT id, name, type, size FROM files WHERE id = ?', m.file) : null;
   return { id: m.id, from: m.from_id, to: m.to_id, kind: m.kind, text: m.text || '', sticker: m.sticker || '', poll: m.poll ? JSON.parse(m.poll) : null, file: f, time: m.time, read: !!m.read };
 }
 const convo = (a, b) => '((from_id = ? AND to_id = ?) OR (from_id = ? AND to_id = ?))';
 
-/* ---------------- Dosyalar ---------------- */
+/* ---------------- Files ---------------- */
 function storeFile(owner, buf, type, name) {
   const id = rid(18);
   fs.writeFileSync(path.join(FILES, id), buf);
@@ -195,7 +195,7 @@ function serveFile(id, res) {
   fs.createReadStream(p).pipe(res);
 }
 
-/* ---------------- HTTP yönlendirme ---------------- */
+/* ---------------- HTTP routing ---------------- */
 const routes = [];
 const route = (m, re, fn, opts = {}) => routes.push({ m, re, fn, auth: opts.auth !== false, raw: !!opts.raw });
 function readBody(req, limit) {
@@ -251,7 +251,7 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-/* ---------------- API: hesap ---------------- */
+/* ---------------- API: account ---------------- */
 route('GET', /^\/api\/health$/, () => ({ ok: true, name: 'Kizuna Sunucusu', version: '1.0.0' }), { auth: false });
 
 route('POST', /^\/api\/register$/, ({ req, body }) => {
@@ -323,7 +323,7 @@ route('POST', /^\/api\/me\/selfban$/, ({ user, body }) => {
   return { ok: true, banned };
 });
 
-/* ---------------- API: oyuncular ---------------- */
+/* ---------------- API: players ---------------- */
 route('GET', /^\/api\/users$/, ({ user, url }) => {
   const q = String(url.searchParams.get('q') || '').trim().slice(0, 30);
   const rows = q
@@ -337,7 +337,7 @@ route('GET', /^\/api\/users\/([\w-]+)$/, ({ user, params }) => {
   return pub(u, user.id);
 });
 
-/* ---------------- API: arkadaşlık & engelleme ---------------- */
+/* ---------------- API: friends & blocking ---------------- */
 const target = (user, id) => {
   const t = userById(id);
   if (!t || t.id === user.id || isBlocked(user.id, t.id)) fail(404, 'Oyuncu bulunamadı');
@@ -388,7 +388,7 @@ route('POST', /^\/api\/block$/, ({ user, body }) => {
     run('DELETE FROM friends WHERE a = ? AND b = ?', a, b);
     run('DELETE FROM requests WHERE (from_id = ? AND to_id = ?) OR (from_id = ? AND to_id = ?)', id, user.id, user.id, id);
   });
-  emit(id, { type: 'friend_removed', id: user.id }); // engellenen kişiye engellendiği söylenmez
+  emit(id, { type: 'friend_removed', id: user.id }); // the blocked user is not told they were blocked
   emit(id, { type: 'call_end', from: user.id });
   if (body.spam) console.log(`[spam] ${user.name} -> ${id}`);
 });
@@ -396,7 +396,7 @@ route('POST', /^\/api\/unblock$/, ({ user, body }) => {
   run('DELETE FROM blocks WHERE blocker = ? AND blocked = ?', user.id, String(body.id || ''));
 });
 
-/* ---------------- API: sohbet ---------------- */
+/* ---------------- API: chat ---------------- */
 route('GET', /^\/api\/chats$/, ({ user }) => friendIds(user.id).map(fid => {
   const last = get(`SELECT * FROM messages WHERE ${convo()} ORDER BY time DESC LIMIT 1`, user.id, fid, fid, user.id);
   const unread = get('SELECT COUNT(*) AS n FROM messages WHERE from_id = ? AND to_id = ? AND read = 0', fid, user.id).n;
@@ -469,15 +469,15 @@ route('POST', /^\/api\/upload$/, ({ req, user, raw }) => {
   return storeFile(user.id, raw, type, name);
 }, { raw: true });
 
-/* ---------------- API: sesli sohbet ICE sunucuları (STUN + geçici TURN kimliği) ---------------- */
-let turn = null; // sunucu dinlemeye başlayınca kurulur
+/* ---------------- API: voice chat ICE servers (STUN + temporary TURN credentials) ---------------- */
+let turn = null; // created once the server starts listening
 route('GET', /^\/api\/ice$/, ({ req, user }) => {
   rate('ice:' + user.id, 120, 3600e3);
   if (!turn) return { iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }], ttl: 600, mode: 'off', turn: false };
   return turn.iceFor(user.id, req.headers.host);
 });
 
-/* ---------------- WebSocket: anlık olaylar + sesli arama sinyali ---------------- */
+/* ---------------- WebSocket: real-time events + voice call signaling ---------------- */
 const wss = new WebSocketServer({ noServer: true, maxPayload: 128 * 1024 });
 const CALL_TYPES = ['call_offer', 'call_answer', 'call_ice', 'call_end', 'call_reject'];
 server.on('upgrade', (req, socket, head) => {
@@ -515,7 +515,7 @@ setInterval(() => {
   }
 }, 30e3).unref();
 function onWs(ws, data) {
-  const t = now(); ws.tokens = Math.min(60, ws.tokens + (t - ws.refill) / 100); ws.refill = t; // ~10 olay/sn
+  const t = now(); ws.tokens = Math.min(60, ws.tokens + (t - ws.refill) / 100); ws.refill = t; // ~10 events/sec
   if (ws.tokens < 1) return; ws.tokens--;
   let m; try { m = JSON.parse(data); } catch { return; }
   if (!m || typeof m !== 'object') return;
@@ -534,7 +534,7 @@ function onWs(ws, data) {
   }
 }
 
-/* ---------------- Başlat ---------------- */
+/* ---------------- Start ---------------- */
 server.listen(PORT, '0.0.0.0', () => {
   const lan = Object.values(os.networkInterfaces()).flat().filter(i => i && i.family === 'IPv4' && !i.internal).map(i => i.address);
   console.log('\n  ⚔️  KIZUNA SUNUCUSU çalışıyor — Tv Man & FKOAC');
@@ -551,7 +551,7 @@ server.on('error', e => {
 const shutdown = () => { console.log('\nSunucu kapatılıyor...'); if (turn) turn.close(); wss.clients.forEach(ws => ws.close(1001)); server.close(); db.close(); process.exit(0); };
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
-// Kizuna uygulaması içinden çalıştırıldığında: "shutdown" komutu ya da uygulama kapanınca (stdin biter) düzgünce kapan
+// When run from inside the Kizuna app: shut down gracefully on the "shutdown" command or when the app exits (stdin ends)
 if (process.env.KIZUNA_MANAGED === '1') {
   process.stdin.setEncoding('utf8');
   process.stdin.on('data', d => { if (String(d).includes('shutdown')) shutdown(); });

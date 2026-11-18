@@ -1,7 +1,7 @@
 'use strict';
-/* Kizuna — uygulama içinden Kizuna Sunucusunu yönetme (başlat / durdur / ayarlar / kayıtlar)
-   Sunucu, kurulumla gelen resmi Node.js (resources/node/node.exe) ile ayrı bir işlem olarak çalışır.
-   Veriler: %APPDATA%\Kizuna\server-data · Ayarlar: %APPDATA%\Kizuna\server-config.json */
+/* Kizuna — managing the Kizuna Server from inside the app (start / stop / settings / logs)
+   The server runs as a separate process using the official Node.js bundled with the installer (resources/node/node.exe).
+   Data: %APPDATA%\Kizuna\server-data · Settings: %APPDATA%\Kizuna\server-config.json */
 const { app, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');

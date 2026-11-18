@@ -1,7 +1,7 @@
 'use strict';
 /* =====================================================================
-   KIZUNA — ana uygulama mantığı
-   Yapımcılar: Tv Man & FKOAC
+   KIZUNA — main application logic
+   Made by: Tv Man & FKOAC
    ===================================================================== */
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -16,7 +16,7 @@ const fmtSize = b => b > 1e6 ? (b / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.r
 const getPath = (o, p) => p.split('.').reduce((a, k) => (a == null ? a : a[k]), o);
 const setPath = (o, p, v) => { const ks = p.split('.'); const last = ks.pop(); ks.reduce((a, k) => (a[k] ??= {}), o)[last] = v; };
 
-/* ======================= DURUM (STATE) ======================= */
+/* ======================= STATE ======================= */
 const DEFAULTS = {
   setupDone: false, tourDone: false, lang: 'tr', theme: 'kizuna', accent: '', year: 2026, font: 'auto', fontSize: 15,
   clickSound: 'soft', keySound: 'soft', sfxVol: 0.6, musicVol: 0.45, musicStyle: 'relax', autoMusic: true,
@@ -41,11 +41,11 @@ function deepMerge(a, b) {
 let S = (() => { try { return deepMerge(structuredClone(DEFAULTS), JSON.parse(localStorage.getItem('kz_state')) || {}); } catch { return structuredClone(DEFAULTS); } })();
 function save() { try { localStorage.setItem('kz_state', JSON.stringify(S)); } catch { toast('Kaydedilemedi: depolama dolu olabilir', 'err'); } }
 function log(text) { S.history.unshift({ t: Date.now(), text }); S.history = S.history.slice(0, 300); save(); }
-/* Sosyal veri: Kizuna Sunucusuna bağlıyken sunucudan (NET), değilken demo veriden (S) okunur */
+/* Social data: read from the server (NET) when connected to a Kizuna Server, otherwise from demo data (S) */
 const SO = new Proxy({}, { get: (t, k) => (NET.online ? NET : S)[k], set: (t, k, v) => { (NET.online ? NET : S)[k] = v; return true; } });
 const T = k => (I18N[S.lang] && I18N[S.lang][k]) || I18N.en[k] || I18N.tr[k] || k;
 
-/* ======================= MEDYA DEPOSU (IndexedDB) ======================= */
+/* ======================= MEDIA STORE (IndexedDB) ======================= */
 const DB = (() => {
   let dbp;
   const open = () => dbp || (dbp = new Promise((res, rej) => {
@@ -73,7 +73,7 @@ async function hydrate(root = document) {
   }
 }
 
-/* ======================= İKONLAR ======================= */
+/* ======================= ICONS ======================= */
 const ICONS = {
   library: 'M4 4h4v16H4zM10 4h4v16h-4zM16 5l4 1-3 14-4-1z', catalog: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
   friends: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6 0 0 1 12 0v1M16 3.5a4 4 0 0 1 0 7.5M22 21v-1a6 6 0 0 0-4-5.6',
@@ -103,7 +103,7 @@ function cloudify(root = document) {
   });
 }
 
-/* ======================= ARAYÜZ YARDIMCILARI ======================= */
+/* ======================= UI HELPERS ======================= */
 function toast(msg, kind = 'info', ms = 3400) {
   const d = document.createElement('div');
   d.className = 'toast ' + kind; d.innerHTML = msg;
@@ -134,7 +134,7 @@ function coverInner(t, c) {
   return `<span class="cv-ini">${esc(ini)}</span><span class="cv-c c-${c}">${CONSOLES[c].short}</span><span class="cv-slash"></span>`;
 }
 
-/* ---------- Kullanıcılar & avatarlar ---------- */
+/* ---------- Users & avatars ---------- */
 const userById = id => (NET.online ? NET.users.get(id) : USERS.find(u => u.id === id));
 const visibleUsers = () => (NET.online ? [...NET.users.values()].filter(u => u.id !== NET.me.id) : USERS).filter(u => !SO.blocked.includes(u.id));
 const myFriends = () => SO.friends.filter(id => !SO.blocked.includes(id)).map(userById).filter(Boolean);
@@ -152,7 +152,7 @@ const userAvatar = (u, size = 40) => {
 };
 const avatarOf = (id, size) => id === 'me' ? meAvatar(size) : userAvatar(userById(id), size);
 
-/* ======================= GÖRÜNÜM (TEMA / YIL / YAZI TİPİ) ======================= */
+/* ======================= APPEARANCE (THEME / YEAR / FONT) ======================= */
 function applyAppearance() {
   const b = document.body;
   b.dataset.theme = S.theme;
@@ -206,7 +206,7 @@ function bindYear(root) {
   $$('[data-year]', root).forEach(c => c.onclick = () => { setYear(c.dataset.year); $$('.yearRange', root).forEach(r => r.value = c.dataset.year); });
 }
 
-/* ======================= BAŞLANGIÇ ======================= */
+/* ======================= STARTUP ======================= */
 document.addEventListener('DOMContentLoaded', boot);
 async function boot() {
   $('#introLogo').innerHTML = logoSVG(170, 'in');
@@ -242,7 +242,7 @@ function showScreen(id) {
   $('#app').classList.toggle('hidden', id !== 'app');
 }
 
-/* ---------- Global olaylar: sesler, ipuçları, kısayollar ---------- */
+/* ---------- Global events: sounds, tooltips, shortcuts ---------- */
 let tipEl = null;
 function bindGlobal() {
   document.addEventListener('pointerdown', e => {
@@ -277,7 +277,7 @@ function showTip(el) {
   tip.style.top = Math.max(8, y) + 'px';
 }
 
-/* ======================= INTRO + ÖZELLİK KAYDIRICI ======================= */
+/* ======================= INTRO + FEATURE SLIDER ======================= */
 let slI = 0, slTimer = null;
 function showIntro() {
   showScreen('intro');
@@ -293,7 +293,7 @@ function showIntro() {
   if (S.autoMusic) setTimeout(() => Music.play('sakura'), 900);
 }
 
-/* ======================= KULLANICI ALIŞTIRMA (ÖĞRETİCİ) ======================= */
+/* ======================= USER ONBOARDING (TUTORIAL) ======================= */
 let obI = 0;
 const OB = [
   {
@@ -387,7 +387,7 @@ $('#obSkip').onclick = () => {
 };
 function finishOb() { if (!S.profile.joined) S.profile.joined = Date.now(); save(); showWizard(); }
 
-/* ======================= KURULUM SİHİRBAZI ======================= */
+/* ======================= SETUP WIZARD ======================= */
 let wzI = 0;
 const WZ = [
   { t: 'Oyun Klasörü', r: renderWzFolder },
@@ -511,7 +511,7 @@ function finishSetup() {
   showApp(true);
 }
 
-/* ======================= ANA UYGULAMA KABUĞU ======================= */
+/* ======================= MAIN APP SHELL ======================= */
 const NAV = [
   { id: 'library', tip: 'Eklediğin oyunlar' }, { id: 'catalog', tip: 'PS1 – PS5 oyun kataloğu' }, { id: 'friends', tip: 'Arkadaşlar ve oyuncu bul' },
   { id: 'messages', tip: 'Mesajlar ve sesli sohbet' }, { id: 'ai', tip: 'Kizuna AI ile sohbet et' }, { id: 'music', tip: 'Müzik ayarlama' },
@@ -557,7 +557,7 @@ function go(id, arg) {
   v.classList.remove('in'); void v.offsetWidth; v.classList.add('in');
 }
 
-/* ---------- Arama ---------- */
+/* ---------- Search ---------- */
 function bindSearch() {
   const inp = $('#search'), box = $('#searchRes');
   let items = [];
@@ -589,7 +589,7 @@ function bindSearch() {
   document.addEventListener('click', e => { if (!e.target.closest('#searchWrap')) box.classList.add('hidden'); });
 }
 
-/* ---------- Kontrolcü ---------- */
+/* ---------- Controller ---------- */
 function padCheck() {
   const pads = [...(navigator.getGamepads ? navigator.getGamepads() : [])].filter(Boolean);
   if (pads.length) { $('#padBtn').classList.add('on'); toast(`🎮 Bağlı kontrolcü: <b>${esc(pads[0].id)}</b>`, 'ok'); return; }
@@ -603,7 +603,7 @@ function padCheck() {
   }, 300);
 }
 
-/* ---------- Sesli komut ---------- */
+/* ---------- Voice commands ---------- */
 let listening = false;
 function startVoice() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -640,12 +640,12 @@ function handleCommand(raw) {
   toast('Komutu anlayamadım. Yardım › Sesli Komutlar bölümüne bakabilirsin.', 'warn');
 }
 
-/* ======================= GÖRÜNÜMLER ======================= */
+/* ======================= VIEWS ======================= */
 const VIEWS = {};
 const head = (title, sub, actions = '') => `<div class="view-head"><div><h1>${title}</h1>${sub ? `<p class="muted">${sub}</p>` : ''}</div><div class="head-actions">${actions}</div></div>`;
 const empty = (ic, t, d, act = '') => `<div class="empty"><div class="empty-ic">${ic}</div><h3>${t}</h3><p class="muted">${d}</p>${act}</div>`;
 
-/* ---------- Kütüphane ---------- */
+/* ---------- Library ---------- */
 VIEWS.library = v => {
   v.innerHTML = head(T('nav.library'), 'Bilgisayarındaki kendi oyun kopyaların. Oynamak için ilgili emülatör bağlı olmalı.',
     `<button class="btn primary" id="addGameBtn" data-tip="Kendi oyun dosyanı (ISO, CUE, CHD, PBP, EBOOT.BIN) ekle">${icon('plus', 18)} Oyun Ekle</button><button class="btn ghost" id="scanBtn" data-tip="Oyun klasörünü tara">${icon('folder', 18)} Klasörü Tara</button>`)
@@ -703,7 +703,7 @@ async function launch(g) {
   if (current === 'library') go('library');
 }
 
-/* ---------- Katalog ---------- */
+/* ---------- Catalog ---------- */
 let catFilter = 'all';
 VIEWS.catalog = v => {
   const list = GAMES.filter(g => catFilter === 'all' || g.c === catFilter);
@@ -762,7 +762,7 @@ function openGame(id) {
   $('#gmSave').onclick = e => { toggleSave(id); e.currentTarget.classList.toggle('on'); if (current === 'catalog' || current === 'saved') go(current); };
   $$('[data-user]', $('#modalCard')).forEach(x => x.onclick = () => showUser(x.dataset.user));
 }
-/* Görünüm içi tıklamalar (tek merkezden) */
+/* In-view clicks (handled in one place) */
 $('#view').addEventListener('click', e => {
   const t = e.target.closest('[data-dl],[data-add],[data-save],[data-play],[data-del],[data-game],[data-user],[data-go]');
   if (!t || !$('#view').contains(t)) return;
@@ -777,7 +777,7 @@ $('#view').addEventListener('click', e => {
   if (d.go) return go(d.go);
 });
 
-/* ---------- Kaydedilenler / Geçmiş ---------- */
+/* ---------- Saved / History ---------- */
 VIEWS.saved = v => {
   const list = S.saved.map(id => GAMES.find(g => g.id === id)).filter(Boolean);
   v.innerHTML = head(T('nav.saved'), 'Daha sonra oynamak için kaydettiğin oyunlar.')
@@ -792,7 +792,7 @@ VIEWS.history = v => {
   const c = $('#clrHist'); if (c) c.onclick = () => { S.history = []; save(); go('history'); };
 };
 
-/* ---------- Profil (benim) ---------- */
+/* ---------- Profile (mine) ---------- */
 VIEWS.profile = v => {
   const p = S.profile;
   v.innerHTML = `<div class="profile">
@@ -835,7 +835,7 @@ VIEWS.profile = v => {
   $('#pfBanner').onclick = () => up('banner');
 };
 
-/* ---------- Arkadaşlar ---------- */
+/* ---------- Friends ---------- */
 let frTab = 'friends', frQuery = '', frResults = null;
 VIEWS.friends = v => {
   const fr = myFriends(), reqs = SO.requestsIn.filter(id => !SO.blocked.includes(id)).map(userById).filter(Boolean);
@@ -945,7 +945,7 @@ async function blockUser(id) {
   if (['friends', 'messages'].includes(current)) go(current);
 }
 
-/* ---------- Mesajlar ---------- */
+/* ---------- Messages ---------- */
 VIEWS.messages = (v, arg) => {
   const fr = myFriends();
   const sel = (arg && fr.find(f => f.id === arg)?.id) || (fr.find(f => f.id === S.lastChat)?.id) || fr[0]?.id;
@@ -1107,7 +1107,7 @@ async function chatTool(id, tool) {
     };
   }
 }
-/* ---------- Sesli sohbet ---------- */
+/* ---------- Voice chat ---------- */
 let call = null, ringing = null;
 const iceBuf = {};
 const ICE_FALLBACK = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
@@ -1270,7 +1270,7 @@ function endCall(notify = true) {
   if (u) toast('Sesli sohbet bitti');
 }
 
-/* ---------- Kizuna Sunucusu: anlık olaylar ---------- */
+/* ---------- Kizuna Server: real-time events ---------- */
 let typingHide = null;
 function refreshSocial() { if (current === 'friends') go('friends'); else if (current === 'messages') { renderChatList(S.lastChat); } }
 function netEvent(m) {
@@ -1350,7 +1350,7 @@ async function pushLocalProfile() {
   } catch (e) { toast('Profilin sunucuya tam aktarılamadı: ' + esc(e.message), 'warn'); }
 }
 function netSync(patch) { if (NET.online) NET.updateMe(patch).catch(e => toast(esc(e.message), 'err')); }
-/* ---------- Bu bilgisayarda sunucu barındır (kurulumla gelen sunucu) ---------- */
+/* ---------- Host a server on this PC (server bundled with the installer) ---------- */
 const HOST_PILL = { running: ['● Çalışıyor', 'on'], starting: ['… Başlatılıyor', ''], stopping: ['… Durduruluyor', ''], stopped: ['○ Kapalı', 'off'], error: ['⚠ Hata', 'err'] };
 async function renderHostSettings(box) {
   if (!box) return;
@@ -1419,7 +1419,7 @@ async function renderHostSettings(box) {
   };
   $('#hLogBox', box).addEventListener('toggle', async e => { if (e.target.open) $('#hLog', box).textContent = (await api.server.logs()).join('\n') || 'Henüz kayıt yok.'; });
 }
-/* ---------- Otomatik güncelleme (GitHub Releases) ---------- */
+/* ---------- Automatic updates (GitHub Releases) ---------- */
 let updToastShown = false;
 function bindUpdateEvents() {
   if (!api || !api.update) return;
@@ -1546,7 +1546,7 @@ function aiSend(text) {
   S.aiChat.push({ from: 'me', text, time: Date.now() }); S.aiChat = S.aiChat.slice(-120); save(); renderAi();
   aiStatus().then(st => { if (st.hasKey) aiSendReal(text); else aiSendOffline(text); });
 }
-/* ---- Gerçek yapay zekâ (Claude) ---- */
+/* ---- Real AI (Claude) ---- */
 let aiBusy = false;
 async function aiStatus() {
   if (!api || !api.ai) return { hasKey: false, desktop: false };
@@ -1591,7 +1591,7 @@ async function aiSendReal(text) {
   if (hasProfanity(msg.text)) msg.text = 'Bu cevabı gösteremiyorum. Başka bir şey sorar mısın?';
   save(); if (current === 'ai') renderAi();
 }
-/* ---- Çevrimdışı mod (API anahtarı yokken kural tabanlı cevaplar) ---- */
+/* ---- Offline mode (rule-based replies when there is no API key) ---- */
 function aiSendOffline(text) {
   const t = $('#aiTyping'); if (t) t.classList.remove('hidden');
   setTimeout(() => {
@@ -1661,7 +1661,7 @@ function actionLabel(a) {
   return a;
 }
 
-/* ---------- Müzik ---------- */
+/* ---------- Music ---------- */
 const Music = {
   cur: null, playing: false,
   all() { return [...TRACKS.map(t => ({ id: t.id, name: t.name, mood: t.mood })), ...S.userTracks.map(t => ({ id: t.id, name: t.name, mood: 'Bilgisayarımdan', user: true }))]; },
@@ -1736,7 +1736,7 @@ function viz() {
   vizRaf = requestAnimationFrame(viz);
 }
 
-/* ---------- Ayarlar ---------- */
+/* ---------- Settings ---------- */
 VIEWS.settings = (v, arg) => {
   const sec = (id, t, body) => `<section class="card" id="set-${id}"><h3>${t}</h3>${body}</section>`;
   v.innerHTML = head(T('nav.settings'), 'Kizuna’yı tamamen kendine göre ayarla.')
@@ -1805,7 +1805,7 @@ async function renderAiSettings() {
   const d = $('#aiKeyDel'); if (d) d.onclick = async () => { await api.ai.clearKey(); toast('API anahtarı kaldırıldı'); renderAiSettings(); };
 }
 
-/* ---------- Yardım ---------- */
+/* ---------- Help ---------- */
 VIEWS.help = v => {
   const faq = [
     ['Kizuna nedir?', 'Kizuna; PS1, PS2, PS3 ve PS4 oyunlarını resmi açık kaynak emülatörlerle tek bir yerden başlatan bir oyun başlatıcısı ve oyuncu topluluğudur.'],
@@ -1827,7 +1827,7 @@ VIEWS.help = v => {
   $('#hOb').onclick = () => { Music.stop(); showOnboard(); };
 };
 
-/* ======================= ÜRÜN TURU (spotlight + oklar) ======================= */
+/* ======================= PRODUCT TOUR (spotlight + arrows) ======================= */
 const TOUR = [
   { sel: '#searchWrap', text: '🔍 <b>Arama çubuğu</b> — bir oyunun adını yaz, o oyun anında çıkar. Oyuncuları ve bölümleri de bulur. Kısayol: <kbd>Ctrl</kbd>+<kbd>K</kbd>' },
   { sel: '[data-nav="catalog"]', text: '🎮 <b>Şimdi buraya tıkla</b> ve PS1 – PS5 oyun kataloğunu aç.', click: true },
@@ -1894,7 +1894,7 @@ document.addEventListener('click', e => {
   if (st && st.click && e.target.closest(st.sel)) setTimeout(() => { if (st.after) st.after(); tourI++; showTourStep(); }, 450);
 }, true);
 
-/* ======================= BAN SİSTEMİ ======================= */
+/* ======================= BAN SYSTEM ======================= */
 async function getBan() {
   let b = null;
   try { b = JSON.parse(localStorage.getItem('kz_ban')); } catch {}
@@ -1917,7 +1917,7 @@ async function applyBan(reason) {
   localStorage.setItem('kz_ban', JSON.stringify(b));
   localStorage.removeItem('kz_preban');
   if (api) { try { await api.setBan(b); } catch {} }
-  if (NET.online) NET.selfBan(reason); // ban sunucudaki hesaba da işlenir
+  if (NET.online) NET.selfBan(reason); // the ban is also applied to the server account
   showBan(b);
 }
 function showBan(b) {

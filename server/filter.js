@@ -1,5 +1,5 @@
 'use strict';
-/* Uygunsuz kelime filtresi — uygulamadaki (app/data.js) ile aynı kurallar */
+/* Profanity filter — same rules as the app's (app/data.js) */
 const BAD_EXACT = ['amk', 'aq', 'amq', 'amına', 'amina', 'aminakoyim', 'oç', 'siktir', 'sik', 'sikik', 'sikerim', 'sikeyim', 'siktim',
   'göt', 'götveren', 'piç', 'yarak', 'yarrak', 'yarram', 'orospu', 'orosbu', 'kahpe', 'pezevenk', 'yavşak', 'yavsak', 'ibne',
   'amcık', 'amcik', 'ananı', 'anani', 'ananızı', 'şerefsiz', 'serefsiz', 'gavat', 'dalyarak', 'puşt', 'pust',

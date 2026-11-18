@@ -1,7 +1,7 @@
 'use strict';
 /* =====================================================================
-   KIZUNA — sunucu istemcisi (hesap, arkadaşlar, mesajlar, anlık olaylar)
-   Arayüz olaylarını app.js içindeki netEvent() işler.
+   KIZUNA — server client (account, friends, messages, real-time events)
+   UI events are handled by netEvent() in app.js.
    ===================================================================== */
 class NetError extends Error { constructor(status, msg) { super(msg); this.status = status; } }
 
@@ -37,7 +37,7 @@ const NET = {
     return j;
   },
 
-  /* ---- Oturum ---- */
+  /* ---- Session ---- */
   async health(url) {
     const u = this.normUrl(url);
     try { const r = await fetch(u + '/api/health'); const j = await r.json(); return !!j.ok; } catch { return false; }
@@ -81,7 +81,7 @@ const NET = {
   },
   putUser(u) { if (!u) return u; const old = this.users.get(u.id) || {}; const m = { ...old, ...u }; this.users.set(u.id, m); return m; },
 
-  /* ---- Anlık bağlantı (WebSocket) ---- */
+  /* ---- Real-time connection (WebSocket) ---- */
   connectWs() {
     clearTimeout(this.retryTimer);
     if (!this.token) return;
@@ -97,7 +97,7 @@ const NET = {
       this.retryTimer = setTimeout(() => this.connectWs(), delay);
     };
   },
-  /* ---- Sesli sohbet: STUN/TURN sunucuları (geçici kimlik, önbellekli) ---- */
+  /* ---- Voice chat: STUN/TURN servers (temporary credentials, cached) ---- */
   iceCache: null,
   async ice(force) {
     const c = this.iceCache;
@@ -109,7 +109,7 @@ const NET = {
   signal(obj) { if (this.ws && this.ws.readyState === 1) { this.ws.send(JSON.stringify(obj)); return true; } return false; },
   typing(to) { this.signal({ type: 'typing', to }); },
 
-  /* ---- Profil ---- */
+  /* ---- Profile ---- */
   async updateMe(patch) { const me = await this.req('PATCH', '/api/me', patch); this.applyMe(me); return me; },
   async setMedia(kind, file) {
     const r = await this.req('POST', '/api/me/' + kind, undefined, { data: file, type: file.type });
@@ -117,7 +117,7 @@ const NET = {
   },
   selfBan(reason) { return this.req('POST', '/api/me/selfban', { reason }).catch(() => {}); },
 
-  /* ---- Oyuncular & arkadaşlık ---- */
+  /* ---- Players & friends ---- */
   async search(q) { const list = await this.req('GET', '/api/users?q=' + encodeURIComponent(q || '')); return list.map(u => this.putUser(u)); },
   async profile(id) { return this.putUser(await this.req('GET', '/api/users/' + encodeURIComponent(id))); },
   async request(id) {
@@ -141,7 +141,7 @@ const NET = {
     if (!this.friends.includes(id)) this.friends.push(id);
   },
 
-  /* ---- Mesajlar ---- */
+  /* ---- Messages ---- */
   normMsg(m) {
     const meId = this.me && this.me.id;
     const out = { id: m.id, from: m.from === meId ? 'me' : m.from, peer: m.from === meId ? m.to : m.from, kind: m.kind, time: m.time };

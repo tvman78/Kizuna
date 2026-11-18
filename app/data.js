@@ -1,7 +1,7 @@
 'use strict';
-/* Kizuna — sabit veriler | Yapımcılar: Tv Man & FKOAC */
+/* Kizuna — static data | Made by: Tv Man & FKOAC */
 
-/* ---------- LOGO: karo içinde K harfi + katana (siyah & antep fıstığı yeşili) ---------- */
+/* ---------- LOGO: letter K + katana inside a diamond (black & pistachio green) ---------- */
 function logoSVG(size = 120, u = 'a') {
   return `<svg class="kz-logo" width="${size}" height="${size}" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Kizuna">
   <defs>
@@ -29,7 +29,7 @@ function logoSVG(size = 120, u = 'a') {
 </svg>`;
 }
 
-/* ---------- KONSOLLAR (resmi, açık kaynak emülatörler) ---------- */
+/* ---------- CONSOLES (official, open-source emulators) ---------- */
 const CONSOLES = {
   ps1: { name: 'PlayStation', short: 'PS1', emu: 'DuckStation', url: 'https://www.duckstation.org/', ext: ['cue', 'chd', 'pbp', 'm3u', 'iso', 'img', 'bin'], status: 'Mükemmel uyumluluk', note: 'BIOS dosyasını kendi konsolundan almalısın' },
   ps2: { name: 'PlayStation 2', short: 'PS2', emu: 'PCSX2', url: 'https://pcsx2.net/', ext: ['iso', 'chd', 'cso', 'bin', 'gz'], status: 'Çok iyi uyumluluk', note: 'BIOS dosyasını kendi konsolundan almalısın' },
@@ -38,7 +38,7 @@ const CONSOLES = {
   ps5: { name: 'PlayStation 5', short: 'PS5', emu: null, url: null, ext: [], status: 'PC emülatörü yok', note: 'Resmi PC sürümü olan oyunlar mağazadan indirilebilir' }
 };
 
-/* ---------- OYUN KATALOĞU (pc: resmi PC sürümü mevcut) ---------- */
+/* ---------- GAME CATALOG (pc: an official PC version exists) ---------- */
 const GAMES = [
   ['ps1', 'Final Fantasy VII', 1997, 'RPG', 1], ['ps1', 'Metal Gear Solid', 1998, 'Gizlilik', 1], ['ps1', 'Crash Bandicoot', 1996, 'Platform'],
   ['ps1', 'Spyro the Dragon', 1998, 'Platform'], ['ps1', 'Resident Evil 2', 1998, 'Korku'], ['ps1', 'Gran Turismo 2', 1999, 'Yarış'],
@@ -67,7 +67,7 @@ const GAMES = [
   ['ps5', 'Ghost of Yōtei', 2025, 'Açık Dünya']
 ].map(([c, t, y, g, pc]) => ({ id: c + '-' + t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''), c, t, y, g, pc: !!pc }));
 
-/* ---------- DEMO OYUNCULAR (sunucu bağlanınca gerçek kullanıcılar) ---------- */
+/* ---------- DEMO PLAYERS (real users once connected to a server) ---------- */
 const USERS = [
   { id: 'u1', name: 'RoninX', color: 'linear-gradient(135deg,#93C572,#2f5a1e)', status: 'online', joined: '2024-03-12', bio: 'Souls oyunları ve katanalar. ⚔️', games: ['Ghost of Tsushima', 'Sekiro: Shadows Die Twice', 'Bloodborne'], hideGames: false, hideJoin: false },
   { id: 'u2', name: 'SakuraNeko', color: 'linear-gradient(135deg,#ff8fc8,#8a2d63)', status: 'online', joined: '2025-01-05', bio: 'Kawaii ama rekabetçi 🌸', games: ['Persona 5 Royal', 'Final Fantasy X', 'Astro Bot'], hideGames: false, hideJoin: false },
@@ -97,7 +97,7 @@ const FEATURES = [
   { i: '🎧', t: 'Kendi Müziğin', d: 'Kizuna\'nın rahatlatıcı ve rock müzikleri ya da bilgisayarındaki şarkıların.' }
 ];
 
-/* ---------- TEMALAR ve YIL ÇAĞLARI ---------- */
+/* ---------- THEMES and YEAR ERAS ---------- */
 const THEMES = [
   { id: 'kizuna', name: 'Kizuna', sub: 'Siyah & Fıstık Yeşili', sw: ['#050505', '#93C572', '#cdeeaa'] },
   { id: 'hawaii', name: 'Vice Hawaii', sub: 'GTA VI esintili · pembe', sw: ['#2a0a3d', '#ff4fa3', '#ffb36b'] },
@@ -124,7 +124,7 @@ const FONTS = ['auto', 'Rajdhani', 'Orbitron', 'Inter', 'Poppins', 'Montserrat',
   'Playfair Display', 'Cinzel', 'Noto Sans JP', 'VT323', 'Press Start 2P', 'Pacifico', 'Lobster', 'Satisfy', 'Bungee'];
 const SOUND_OPTS = [['off', 'Kapalı'], ['soft', 'Rahatlatıcı'], ['thin', 'İnce'], ['thick', 'Kalın']];
 
-/* ---------- DİLLER ---------- */
+/* ---------- LANGUAGES ---------- */
 const LANGS = {
   tr: { name: 'Türkçe', flag: '🇹🇷', sp: 'tr-TR' }, en: { name: 'English', flag: '🇬🇧', sp: 'en-US' }, de: { name: 'Deutsch', flag: '🇩🇪', sp: 'de-DE' },
   fr: { name: 'Français', flag: '🇫🇷', sp: 'fr-FR' }, es: { name: 'Español', flag: '🇪🇸', sp: 'es-ES' }, it: { name: 'Italiano', flag: '🇮🇹', sp: 'it-IT' },
@@ -151,7 +151,7 @@ const I18N_RAW = {
 };
 const I18N = Object.fromEntries(Object.entries(I18N_RAW).map(([l, arr]) => [l, Object.fromEntries(I18N_KEYS.map((k, i) => [k, arr[i]]))]));
 
-/* ---------- UYGUNSUZ KELİME FİLTRESİ ---------- */
+/* ---------- PROFANITY FILTER ---------- */
 const BAD_EXACT = ['amk', 'aq', 'amq', 'amına', 'amina', 'aminakoyim', 'oç', 'siktir', 'sik', 'sikik', 'sikerim', 'sikeyim', 'siktim',
   'göt', 'götveren', 'piç', 'yarak', 'yarrak', 'yarram', 'orospu', 'orosbu', 'kahpe', 'pezevenk', 'yavşak', 'yavsak', 'ibne',
   'amcık', 'amcik', 'ananı', 'anani', 'ananızı', 'şerefsiz', 'serefsiz', 'gavat', 'dalyarak', 'puşt', 'pust',

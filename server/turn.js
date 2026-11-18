@@ -1,11 +1,11 @@
 'use strict';
 /* =====================================================================
-   KIZUNA — TURN / STUN (sesli sohbet aktarımı)
-   Modlar:
-     builtin  : Kizuna sunucusunun içinde çalışan TURN (node-turn, UDP). Windows'ta tek tıkla.
-     external : coturn gibi harici TURN sunucusu ("use-auth-secret" / TURN REST API kimlikleri)
-     off      : TURN yok; yalnızca STUN (bazı ağlarda arama bağlanamayabilir)
-   Her istekte kullanıcıya süreli (varsayılan 4 saat) geçici TURN kimliği verilir.
+   KIZUNA — TURN / STUN (voice chat relay)
+   Modes:
+     builtin  : TURN running inside the Kizuna server (node-turn, UDP). One click on Windows.
+     external : an external TURN server such as coturn ("use-auth-secret" / TURN REST API credentials)
+     off      : no TURN; STUN only (calls may fail to connect on some networks)
+   Each request gives the user temporary TURN credentials with an expiry (default 4 hours).
    ===================================================================== */
 const crypto = require('crypto');
 
@@ -15,7 +15,7 @@ function createTurn(cfg) {
   let mode = ['builtin', 'external', 'off'].includes(t.mode) ? t.mode : 'builtin';
   const extraStun = Array.isArray(t.stun) ? t.stun.filter(s => typeof s === 'string') : [];
   let turnServer = null, b = null;
-  const creds = new Map(); // geçici kullanıcı adı -> bitiş (sn)
+  const creds = new Map(); // temporary username -> expiry (sec)
 
   if (mode === 'builtin') {
     b = { port: 3478, minPort: 49160, maxPort: 49260, externalIp: '', publicHost: '', ...(t.builtin || {}) };
@@ -37,7 +37,7 @@ function createTurn(cfg) {
       }
     }
     if (!turnServer) mode = 'off';
-    // Süresi dolan geçici kimlikleri temizle (5 dk tolerans)
+    // Remove expired temporary credentials (5 min grace)
     setInterval(() => {
       const now = Math.floor(Date.now() / 1000);
       for (const [u, exp] of creds) if (exp + 300 < now) { try { turnServer && turnServer.removeUser(u); } catch {} creds.delete(u); }
@@ -54,7 +54,7 @@ function createTurn(cfg) {
   }
   if (mode === 'off') console.log('  TURN          : kapalı (yalnızca STUN)');
 
-  /** İstek yapan kullanıcıya ICE sunucu listesi */
+  /** ICE server list for the requesting user */
   function iceFor(uid, reqHost) {
     const expiry = Math.floor(Date.now() / 1000) + ttl;
     const username = `${expiry}:${uid}`;

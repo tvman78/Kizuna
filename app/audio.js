@@ -1,5 +1,5 @@
 'use strict';
-/* Kizuna — ses motoru: özgün sentez müzikler + tıklama / klavye sesleri */
+/* Kizuna — audio engine: original synthesized music + click / keyboard sounds */
 
 const TRACKS = [
   { id: 'sakura', name: 'Sakura Rüzgarı', style: 'relax', mood: 'Rahatlatıcı', bpm: 70, prog: [[57, 60, 64, 67], [53, 57, 60, 64], [55, 59, 62, 65], [52, 55, 59, 64]] },
@@ -55,7 +55,7 @@ const AudioEngine = (() => {
     s.connect(fl); fl.connect(g); g.connect(dest); s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.05);
   }
 
-  /* ---- Arayüz sesleri ---- */
+  /* ---- UI sounds ---- */
   function click(kind) {
     if (!kind || kind === 'off' || !ensure()) return;
     const t = ctx.currentTime;
@@ -73,7 +73,7 @@ const AudioEngine = (() => {
   function notify() { if (!ensure()) return; const t = ctx.currentTime; tone({ f: 880, t, dur: 0.12, vol: 0.14, dest: sfx }); tone({ f: 1320, t: t + 0.09, dur: 0.18, vol: 0.11, dest: sfx }); }
   function alarm() { if (!ensure()) return; const t = ctx.currentTime; tone({ f: 440, t, dur: 0.2, type: 'square', vol: 0.1, dest: sfx, filter: { type: 'lowpass', f: 1500 } }); }
 
-  /* ---- Müzik enstrümanları ---- */
+  /* ---- Music instruments ---- */
   const drums = {
     kick(t, v = 0.85) { tone({ f: 150, f2: 45, t, dur: 0.28, vol: v, dest: music }); },
     snare(t, v = 0.38) { noise({ t, dur: 0.16, vol: v, dest: music, f: 1200 }); tone({ f: 200, f2: 150, t, dur: 0.08, type: 'triangle', vol: v * 0.5, dest: music }); },
