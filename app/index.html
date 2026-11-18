@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kizuna</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&family=Bungee&family=Bungee+Shade&family=Audiowide&family=Monoton&family=Press+Start+2P&family=VT323&family=Righteous&family=Playfair+Display:wght@500;700&family=Cinzel:wght@500;700&family=Poppins:wght@400;600&family=Inter:wght@400;600&family=Montserrat:wght@400;700&family=Exo+2:wght@400;700&family=Oxanium:wght@400;700&family=Space+Grotesk:wght@400;700&family=Teko:wght@400;600&family=Russo+One&family=Bebas+Neue&family=Pacifico&family=Lobster&family=Noto+Sans+JP:wght@400;700&family=Roboto:wght@400;700&family=Nunito:wght@400;700&family=Quicksand:wght@400;700&family=Comfortaa:wght@400;700&family=Josefin+Sans:wght@400;700&family=Abril+Fatface&family=Satisfy&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-theme="kizuna" data-era="modern">
+<div id="bgLayer"></div>
+<div id="bgMedia"></div>
+<div id="fx"></div>
+
+<!-- ============ BAN EKRANI ============ -->
+<section id="ban" class="screen hidden">
+  <div class="ban-box">
+    <div class="ban-icon">⛔</div>
+    <h1>HESABIN 6 AY BOYUNCA BANLANDI</h1>
+    <p id="banReason" class="ban-reason"></p>
+    <div class="ban-timer" id="banTimer"></div>
+    <p class="ban-warn">Eğer bir daha ban yemek istemiyorsan kötü kelimeler kullanma.</p>
+    <p class="ban-until" id="banUntil"></p>
+  </div>
+</section>
+
+<!-- ============ 20 SN BAN GERİ SAYIMI ============ -->
+<div id="preban" class="hidden">
+  <div class="preban-box">
+    <h2>⚠ SON UYARI</h2>
+    <p>Uyarıya rağmen uygunsuz kelimeler yazmaya devam ettin.<br>6 aylık ban başlıyor:</p>
+    <div id="prebanCount">20</div>
+  </div>
+</div>
+
+<!-- ============ INTRO / HOŞ GELDİNİZ ============ -->
+<section id="intro" class="screen hidden">
+  <div class="intro-inner">
+    <div class="intro-logo" id="introLogo"></div>
+    <div class="intro-brand">KIZUNA</div>
+    <h1 class="welcome" data-i18n="welcome">Hoş Geldiniz</h1>
+    <p class="intro-sub">PlayStation oyun dünyan tek bir yerde — PS1'den PS5'e.</p>
+    <div class="slider">
+      <button class="sl-arrow" id="slPrev" aria-label="Önceki">‹</button>
+      <div class="sl-view"><div class="sl-track" id="slTrack"></div></div>
+      <button class="sl-arrow" id="slNext" aria-label="Sonraki">›</button>
+    </div>
+    <div class="sl-dots" id="slDots"></div>
+    <button class="btn primary big glow" id="introStart">Kuruluma Başla ›</button>
+  </div>
+  <div class="credit-line"><span data-i18n="makers">Yapımcılar</span><b class="makers">Tv Man &amp; FKOAC</b></div>
+</section>
+
+<!-- ============ KULLANICI ALIŞTIRMA (ÖĞRETİCİ) ============ -->
+<section id="onboard" class="screen hidden">
+  <div class="ob-card panel">
+    <div class="ob-top">
+      <div class="ob-logo" id="obLogo"></div>
+      <div class="ob-label" id="obLabel"></div>
+    </div>
+    <div class="ob-progress"><div id="obBar"></div></div>
+    <div id="obBody" class="ob-body"></div>
+    <div class="cloud-nav">
+      <button class="cloud next" id="obNext"><span>Sonraki ›</span></button>
+      <div class="ob-dots" id="obDots"></div>
+      <button class="cloud skip" id="obSkip"><span>Geç »</span></button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ KURULUM SİHİRBAZI ============ -->
+<section id="wizard" class="screen hidden">
+  <div class="wz-card panel">
+    <aside class="wz-steps">
+      <div class="wz-title"><span id="wzLogo"></span><div><b>Kurulum Sihirbazı</b><small>İleri › İleri › Bitir</small></div></div>
+      <ol id="wzSteps"></ol>
+    </aside>
+    <div class="wz-main">
+      <div id="wzBody" class="wz-body"></div>
+      <div class="wz-nav">
+        <button class="btn ghost" id="wzBack">‹ Geri</button>
+        <button class="btn link" id="wzLater">Daha sonra ayarla</button>
+        <button class="btn primary" id="wzNext">İleri ›</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ANA UYGULAMA ============ -->
+<div id="app" class="hidden">
+  <aside id="rail">
+    <div class="rail-head">
+      <div id="railLogo"></div>
+      <div class="rail-brand">KIZUNA<small>v1.0</small></div>
+    </div>
+    <nav id="nav"></nav>
+    <button id="railToggle" class="rail-toggle" data-tip="Rayı genişlet / daralt"><span>⟨</span><em>Rayı daralt</em></button>
+  </aside>
+  <div id="mainCol">
+    <header id="topbar">
+      <div id="searchWrap" class="search">
+        <span class="s-ic"></span>
+        <input id="search" data-i18n-ph="search" placeholder="Oyun, oyuncu veya ayar ara..." autocomplete="off" spellcheck="false">
+        <kbd>Ctrl K</kbd>
+        <div id="searchRes" class="search-res hidden"></div>
+      </div>
+      <div class="top-actions">
+        <button class="era-chip" id="eraChip" data-tip="Arayüz yılı — tıkla ve değiştir"></button>
+        <button class="icon-btn" id="voiceBtn" data-tip="Sesli komut (sağ tık: yazarak komut)"></button>
+        <button class="icon-btn" id="padBtn" data-tip="Kontrolcü bağla"></button>
+        <button class="icon-btn" id="musicBtn" data-tip="Müziği çal / durdur"></button>
+        <button class="me-btn" id="meBtn" data-tip="Profilin"><span id="meAv"></span><span id="meName"></span></button>
+      </div>
+    </header>
+    <main id="view"></main>
+    <footer id="footer"><span data-i18n="makers">Yapımcılar</span><b class="makers">Tv Man &amp; FKOAC</b></footer>
+  </div>
+</div>
+
+<!-- ============ ÜRÜN TURU ============ -->
+<div id="tour" class="hidden">
+  <div id="tourHole"></div>
+  <div id="tourArrow"><svg viewBox="0 0 60 40" width="60" height="40"><path d="M2 20 L26 2 L26 12 L58 12 L58 28 L26 28 L26 38 Z"/></svg></div>
+  <div id="tourBubble" class="panel">
+    <div class="tb-step" id="tourStep"></div>
+    <p id="tourText"></p>
+    <div class="cloud-nav small">
+      <button class="cloud next" id="tourNext"><span>Sonraki ›</span></button>
+      <button class="cloud skip" id="tourSkip"><span>Geç »</span></button>
+    </div>
+  </div>
+</div>
+
+<div id="tip"></div>
+<div id="toasts"></div>
+<div id="modal" class="hidden"><div class="modal-card panel" id="modalCard"></div></div>
+
+<script src="data.js"></script>
+<script src="audio.js"></script>
+<script src="net.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

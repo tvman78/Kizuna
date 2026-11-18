@@ -1,0 +1,11 @@
+# Bağımlılıklar ve derleme çıktıları
+node_modules/
+dist/
+build/node/
+
+# Sunucu verileri ve gizli ayarlar — ASLA GitHub'a gitmez
+server/data/
+server/config.json
+*.key
+.env
+*.log
