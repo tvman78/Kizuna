@@ -259,7 +259,17 @@ const EN = {
   '— fotoğraf, GIF veya video ile kişiselleştir; gizlilik ayarlarını yönet.': '— customize it with a photo, GIF or video; manage your privacy.', 'Arayüzü tanı ': 'Get to know the interface ',
   'Kizuna oyunları resmi, açık kaynak ve güvenli emülatörlerle çalıştırır. {0}': 'Kizuna runs games with official, open-source and safe emulators. {0}', 'Emülatörler (eskiden yeniye)': 'Emulators (oldest to newest)', 'Kizuna Topluluğu — arkadaşlar & sohbet': 'Kizuna Community — friends & chat',
   'Sesler': 'Sounds', 'Arka plan': 'Background', 'Gizlilik': 'Privacy', 'Grafik': 'Graphics', 'Engellenenler': 'Blocked', 'Uygulama': 'App', 'Kizuna AI — gerçek yapay zekâ': 'Kizuna AI — real AI', 'Yıla göre arayüz': 'Year-based interface',
-  'Kizuna’yı kolunla gezebilirsin': 'You can navigate Kizuna with your controller', 'Seçimi hareket ettir': 'Move the selection', 'Seç / tıkla': 'Select / click', 'Geri / kapat': 'Back / close', 'Önceki / sonraki bölüm': 'Previous / next section', 'Arama': 'Search', 'Müzik çal / durdur': 'Play / stop music', 'Sayfayı kaydır': 'Scroll the page', 'Menü rayını aç / kapat': 'Open / close the menu rail'
+  'Kizuna’yı kolunla gezebilirsin': 'You can navigate Kizuna with your controller',
+  '🕒 En son oynananlar': '🕒 Recently played', 'En son oynananlar': 'Recently played', 'Henüz oynanan oyun yok': 'No games played yet', 'Kütüphanendeki oyunlar': 'Games in your library', '{0} kez': '{0} times',
+  'Tıkla ya da sürükle': 'Click or drag', 'Yeni güncelleme hazır': 'New update ready', 'Kizuna v{0}': 'Kizuna v{0}', 'Bu sürümde neler var?': 'What’s in this version?', 'Daha sonra': 'Later', '⬆️ Şimdi güncelle': '⬆️ Update now', 'Kuruluyor…': 'Installing…',
+  'Yeni sürüm arka planda indirildi. Şimdi güncellemek istersen Kizuna birkaç saniyeliğine kapanıp yeni sürümle yeniden açılır.': 'The new version was downloaded in the background. If you update now, Kizuna closes for a few seconds and reopens with the new version.',
+  '“Daha sonra” dersen güncelleme Kizuna’yı kapattığında kendiliğinden kurulur.': 'If you choose “Later”, the update installs itself when you close Kizuna.',
+  'Tamam — Kizuna’yı kapattığında güncelleme kendiliğinden kurulacak': 'OK — the update will install itself when you close Kizuna',
+  'Arkadaşların profilinde oynadığın oyunları': 'On your profile, friends', '⬆️ Kizuna': '⬆️ Kizuna', 'hazır — Kizuna’yı kapatınca kendiliğinden kurulur.': 'is ready — it installs itself when you close Kizuna.',
+  'Uygulama içi güncelleme': 'In-app update prompt', 'Müzikte ilerleme çubuğu': 'Music seek bar', 'Sade profil': 'Cleaner profile', 'Sade profil ': 'Cleaner profile ',
+  'Yeni sürüm indirilince Kizuna sana sorar: “Şimdi güncelle” ya da “Daha sonra”. Sürüm notları da pencerede görünür.': 'When a new version is downloaded, Kizuna asks you: “Update now” or “Later”. The release notes are shown in the window too.',
+  'Müzik bölümünde çubuğa tıklayarak ya da sürükleyerek şarkının istediğin yerine atla; geçen ve toplam süre görünür.': 'In Music, click or drag the bar to jump anywhere in the song; elapsed and total time are shown.',
+  'Gizlilik ve hızlı kişiselleştirme ayarları Ayarlar’a taşındı. Profilde artık en son oynadığın oyunlar ve sağda kütüphanendeki oyun sayısı var.': 'Privacy and quick customization moved to Settings. Your profile now shows your recently played games and, on the right, how many games are in your library.', 'Seçimi hareket ettir': 'Move the selection', 'Seç / tıkla': 'Select / click', 'Geri / kapat': 'Back / close', 'Önceki / sonraki bölüm': 'Previous / next section', 'Arama': 'Search', 'Müzik çal / durdur': 'Play / stop music', 'Sayfayı kaydır': 'Scroll the page', 'Menü rayını aç / kapat': 'Open / close the menu rail'
 };
 /* AI greeting / offline replies are stored as data; translate them when they are created */
 const EN_AI = {
@@ -309,6 +319,7 @@ const I18n = (() => {
     return null;
   }
   function doText(node) {
+    if (node.parentElement && node.parentElement.hasAttribute('data-i18n')) return; // translated by T() in applyAppearance
     if (!orig.has(node)) orig.set(node, node.nodeValue);
     const o = orig.get(node), t = tr(o);
     if (t === null) return;
@@ -318,6 +329,7 @@ const I18n = (() => {
   }
   function doAttrs(el) {
     for (const a of ATTRS) {
+      if (a === 'placeholder' && el.hasAttribute('data-i18n-ph')) continue; // translated by T() in applyAppearance
       if (!el.hasAttribute(a)) continue;
       let o = origAttr.get(el); if (!o) origAttr.set(el, o = {});
       if (!(a in o)) o[a] = el.getAttribute(a);

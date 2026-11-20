@@ -24,6 +24,13 @@ function friendly(err) {
   return m.split('\n')[0].slice(0, 200);
 }
 
+/* GitHub release notes arrive as HTML (or a list of them) → plain text lines for the in-app prompt */
+function notesText(n) {
+  const s = Array.isArray(n) ? n.map(x => x && x.note || '').join('\n') : String(n || '');
+  return s.replace(/<li[^>]*>/gi, '\n• ').replace(/<br\s*\/?>|<\/p>|<\/h\d>/gi, '\n').replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/\*\*/g, '').replace(/^#+\s*/gm, '').split('\n').map(l => l.trim()).filter(Boolean).slice(0, 30).join('\n');
+}
 function setupUpdater() {
   // Only runs in the installed (packaged) app and when a publish config exists
   if (!app.isPackaged || !fs.existsSync(path.join(process.resourcesPath, 'app-update.yml'))) return;
@@ -36,7 +43,7 @@ function setupUpdater() {
   updater.on('update-available', i => set({ state: 'downloading', version: i.version, percent: 0 }));
   updater.on('update-not-available', () => set({ state: 'none' }));
   updater.on('download-progress', p => set({ state: 'downloading', percent: Math.round(p.percent || 0) }));
-  updater.on('update-downloaded', i => set({ state: 'downloaded', version: i.version, percent: 100 }));
+  updater.on('update-downloaded', i => set({ state: 'downloaded', version: i.version, percent: 100, notes: notesText(i.releaseNotes) }));
   updater.on('error', e => set({ state: 'error', error: friendly(e) }));
   const check = () => updater.checkForUpdates().catch(() => {});
   setTimeout(check, 8000);

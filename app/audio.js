@@ -265,11 +265,28 @@ const AudioEngine = (() => {
     if (userEl && userEl.duration && !userEl.paused) return userEl.currentTime / userEl.duration;
     return 0;
   };
+  /* Position in seconds { cur, dur } and seeking (0..1) — synth tracks jump to a step, user files to a time */
+  function time() {
+    if (track) { const sd = 60 / track.bpm / 4, total = (track.bars || 32) * 16; return { cur: Math.min(step, total) * sd, dur: total * sd }; }
+    if (userEl && userEl.src && isFinite(userEl.duration)) return { cur: userEl.currentTime, dur: userEl.duration };
+    return { cur: 0, dur: 0 };
+  }
+  function seek(frac) {
+    frac = Math.min(0.999, Math.max(0, +frac || 0));
+    if (track && ctx) {
+      const total = (track.bars || 32) * 16;
+      step = Math.floor(frac * total); // jump straight to that step of the piece
+      nextTime = ctx.currentTime + 0.04;
+      return true;
+    }
+    if (userEl && isFinite(userEl.duration)) { userEl.currentTime = frac * userEl.duration; return true; }
+    return false;
+  }
   function setMusicVol(v) { if (ensure()) music.gain.setTargetAtTime(v, ctx.currentTime, 0.05); }
   function setSfxVol(v) { if (ensure()) sfx.gain.setTargetAtTime(v, ctx.currentTime, 0.05); }
 
   return {
-    ensure, click, key, notify, alarm, playSynth, playUser, stopAll, setMusicVol, setSfxVol, setSink, progress,
+    ensure, click, key, notify, alarm, playSynth, playUser, stopAll, setMusicVol, setSfxVol, setSink, progress, time, seek,
     get analyser() { return analyser; }, get context() { return ensure(); }
   };
 })();

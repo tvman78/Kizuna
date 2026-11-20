@@ -211,6 +211,14 @@ const banDays = (level, count) => Math.min(365, (BAN_BASE_DAYS[level] || 1) * 2 
 /* ---------- WHAT'S NEW (shown once after each update, and from the news button) ---------- */
 const CHANGELOG = [
   {
+    v: '1.0.3', date: '2026-11-20', title: 'Güncelleme istemi, müzik çubuğu ve sade profil',
+    items: [
+      ['⬆️', 'Uygulama içi güncelleme', 'Yeni sürüm indirilince Kizuna sana sorar: “Şimdi güncelle” ya da “Daha sonra”. Sürüm notları da pencerede görünür.'],
+      ['🎵', 'Müzikte ilerleme çubuğu', 'Müzik bölümünde çubuğa tıklayarak ya da sürükleyerek şarkının istediğin yerine atla; geçen ve toplam süre görünür.'],
+      ['👤', 'Sade profil', 'Gizlilik ve hızlı kişiselleştirme ayarları Ayarlar’a taşındı. Profilde artık en son oynadığın oyunlar ve sağda kütüphanendeki oyun sayısı var.']
+    ]
+  },
+  {
     v: '1.0.2', date: '2026-11-18', title: 'Büyük topluluk güncellemesi',
     items: [
       ['🤝', 'Gerçek arkadaşlar', 'Sahte demo oyuncular kaldırıldı. Kizuna Topluluk Sunucusu üzerinden dünyanın her yerinden gerçek oyunculara kullanıcı adı veya 8 haneli arkadaş koduyla istek gönder, onlar da sana göndersin; mesajlaş ve sesli sohbet et.'],

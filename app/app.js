@@ -685,6 +685,7 @@ function bindKeys(root) {
 function onKeyChange(k, v) {
   if (['font', 'fontSize', 'accent', 'lang', 'bgDim'].includes(k)) applyAppearance();
   if (k === 'privacy.hideJoin' && current === 'profile') go('profile');
+  if (k === 'privacy.hideGames') { const n = $('#privNote'); if (n) n.innerHTML = privNote(); }
   if (k === 'musicVol') AudioEngine.setMusicVol(v);
   if (k === 'sfxVol') { AudioEngine.setSfxVol(v); AudioEngine.click(S.clickSound); }
   if (k === 'clickSound') AudioEngine.click(v);
@@ -1200,13 +1201,26 @@ VIEWS.history = v => {
 
 /* ---------- Profile (mine) ---------- */
 let pfEdit = false;
+/* Profile body: only the most recently played games (newest first) */
+function recentPlayedHTML() {
+  const list = S.played.slice(0, 12).map(t => {
+    const lib = S.library.filter(l => l.title === t && l.lastPlayed).sort((a, b) => b.lastPlayed - a.lastPlayed)[0] || S.library.find(l => l.title === t);
+    const g = GAMES.find(x => x.t === t || (lib && x.id === lib.catalogId));
+    return { t, c: (lib && lib.console) || (g && g.c) || 'ps1', id: g && g.id, when: lib && lib.lastPlayed, plays: lib && lib.plays };
+  });
+  if (!list.length) return '<p class="muted pf-empty">Henüz oynanan oyun yok</p>';
+  return `<div class="recent-grid">${list.map(r => `<article class="recent-it" ${r.id ? `data-game="${r.id}"` : ''}>
+    <div class="cover ${r.id && COVERS[r.id] ? 'has-img' : ''}" ${r.id ? `data-cover="${r.id}"` : ''} style="${coverStyle(r.t)}">${r.id ? coverImg(r.id) : ''}${coverInner(r.t, r.c)}</div>
+    <div><b title="${esc(r.t)}">${esc(r.t)}</b><small class="muted">${CONSOLES[r.c].short}${r.when ? ' · ' + fmtDate(r.when) : ''}${r.plays ? ' · ' + r.plays + ' kez' : ''}</small></div></article>`).join('')}</div>`;
+}
 VIEWS.profile = v => {
   const p = S.profile;
   v.innerHTML = `<div class="profile">
   <div class="pf-banner" ${p.banner ? `data-mid="${p.banner}" data-mtype="${esc(p.bannerType)}" data-crop="${esc(JSON.stringify(p.bannerCrop || null))}"` : ''}></div>
   <div class="pf-head"><div class="pf-av">${meAvatar(132)}</div>
    <button class="pf-pen ${pfEdit ? 'on' : ''}" id="pfPen" data-tip="${pfEdit ? 'Düzenleme panelini kapat' : 'Profili özelleştir'}">${icon('pencil', 20)}</button>
-   <div class="pf-id"><h1>${esc(p.name)}</h1><p class="muted"><i class="dot" style="background:${STATUS[p.status][1]}"></i>${STATUS[p.status][0]}${S.privacy.hideJoin ? '' : ' · Katıldı: ' + fmtDate(p.joined || Date.now())}${NET.online && NET.me.code ? ` · <span class="fcode clickable" data-copy="${esc(NET.me.code)}" data-tip="Arkadaş kodunu kopyala">#${esc(NET.me.code)}</span>` : ''}</p><p>${esc(p.bio) || '<span class="muted">Hakkımda yazısı yok</span>'}</p></div></div>
+   <div class="pf-id"><h1>${esc(p.name)}</h1><p class="muted"><i class="dot" style="background:${STATUS[p.status][1]}"></i>${STATUS[p.status][0]}${S.privacy.hideJoin ? '' : ' · Katıldı: ' + fmtDate(p.joined || Date.now())}${NET.online && NET.me.code ? ` · <span class="fcode clickable" data-copy="${esc(NET.me.code)}" data-tip="Arkadaş kodunu kopyala">#${esc(NET.me.code)}</span>` : ''}</p><p>${esc(p.bio) || '<span class="muted">Hakkımda yazısı yok</span>'}</p></div>
+   ${S.library.length ? `<button class="pf-stat" data-go="library" data-tip="Kütüphanendeki oyunlar"><span>Oyunlar</span><b>${S.library.length}</b></button>` : ''}</div>
   <section class="card pf-editor ${pfEdit ? '' : 'hidden'}" id="pfEditor"><h3>${icon('pencil', 18)} Profili özelleştir</h3>
    <div class="pf-ed-grid">
     <div class="pf-ed-media">
@@ -1222,15 +1236,8 @@ VIEWS.profile = v => {
      <div class="row-btns"><button class="btn primary" id="pfSave">${icon('check', 16)} Kaydet</button><button class="btn ghost" id="pfCancel">Vazgeç</button></div>
     </div>
    </div></section>
-  <div class="pf-grid">
-   <section class="card"><h3>Gizlilik</h3>
-    <div class="field row"><label>Profil oluşturma tarihimi gizle</label><label class="switch"><input type="checkbox" data-k="privacy.hideJoin"><i></i></label></div>
-    <div class="field row"><label>Oynadığım oyunları gizle</label><label class="switch"><input type="checkbox" data-k="privacy.hideGames"><i></i></label></div>
-    <p class="muted small">Arkadaşların profilinde ${S.privacy.hideGames ? '<b>oyunlarını göremez</b> 🔒' : 'oynadığın oyunları <b>görebilir</b>'}.</p></section>
-   <section class="card"><h3>Oynadığım oyunlar <small class="muted">${S.privacy.hideGames ? '· sadece sen görüyorsun' : '· arkadaşların da görüyor'}</small></h3>
-    ${S.played.length ? `<div class="chips">${S.played.map(t => `<span class="chip static">${esc(t)}</span>`).join('')}</div>` : '<p class="muted">Henüz oyun oynamadın.</p>'}</section>
-   <section class="card"><h3>Hızlı kişiselleştirme</h3>${themeTilesHTML()}<div class="field row"><label>Özel vurgu rengi</label><input type="color" data-k="accent" value="${S.accent || '#93C572'}"></div></section>
-  </div></div>`;
+  <section class="card pf-recent"><h3>🕒 En son oynananlar</h3>${recentPlayedHTML()}</section>
+  </div>`;
   bindKeys(v); bindThemeTiles(v);
   $$('[data-copy]', v).forEach(el => el.onclick = () => navigator.clipboard.writeText(el.dataset.copy).then(() => toast('📋 Arkadaş kodun kopyalandı'), () => {}));
   $('#pfPen').onclick = () => { pfEdit = !pfEdit; go('profile'); if (pfEdit) setTimeout(() => { const e = $('#pfEditor'); if (e) e.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 60); };
@@ -1894,10 +1901,26 @@ function bindUpdateEvents() {
     renderUpdateSettings();
     if (st.state === 'downloaded' && !updToastShown) {
       updToastShown = true;
-      toast(`⬆️ Kizuna <b>v${esc(st.version)}</b> hazır! Ayarlar › Uygulama’dan “Yeniden başlat” de ya da Kizuna’yı kapatınca kendiliğinden kurulur.`, 'ok', 9000);
       log('Güncelleme indirildi: v' + st.version);
+      showUpdatePrompt(st);
     }
   });
+}
+/* In-app update prompt: appears as soon as a new version has been downloaded */
+function showUpdatePrompt(st) {
+  const busy = !$('#app').classList.contains('hidden') && (call || document.body.classList.contains('banned'));
+  if (busy || $('#app').classList.contains('hidden')) { // during a call or setup: don't interrupt, ask later
+    toast(`⬆️ Kizuna <b>v${esc(st.version)}</b> hazır — Kizuna’yı kapatınca kendiliğinden kurulur.`, 'ok', 9000);
+    return;
+  }
+  const notes = String(st.notes || '').split('\n').filter(l => l.trim() && !/^Kizuna v/i.test(l) && !/teşekkür/i.test(l)).slice(0, 10);
+  const m = openModal(`<div class="upd-prompt"><div class="wn-head">${logoSVG(56, 'up')}<div><small>Yeni güncelleme hazır</small><h2>Kizuna v${esc(st.version)}</h2></div></div>
+    <p class="muted">Yeni sürüm arka planda indirildi. Şimdi güncellemek istersen Kizuna birkaç saniyeliğine kapanıp yeni sürümle yeniden açılır.</p>
+    ${notes.length ? `<div class="upd-notes"><b>Bu sürümde neler var?</b><ul>${notes.map(l => `<li>${esc(l.replace(/^[•\-*]\s*/, ''))}</li>`).join('')}</ul></div>` : ''}
+    <div class="row-btns upd-btns"><button class="btn ghost" id="updLater">Daha sonra</button><button class="btn primary big" id="updNow">⬆️ Şimdi güncelle</button></div>
+    <p class="muted small">“Daha sonra” dersen güncelleme Kizuna’yı kapattığında kendiliğinden kurulur.</p></div>`, 'upd-card');
+  $('#updLater', m).onclick = () => { closeModal(); toast('Tamam — Kizuna’yı kapattığında güncelleme kendiliğinden kurulacak'); };
+  $('#updNow', m).onclick = e => { e.currentTarget.disabled = true; e.currentTarget.textContent = 'Kuruluyor…'; api.update.install(); };
 }
 async function renderUpdateSettings() {
   const box = $('#updSet'); if (!box) return;
@@ -2205,11 +2228,41 @@ function renderMusicNow() {
   box.innerHTML = `<canvas id="viz" width="900" height="120"></canvas><div class="now-info"><small>${Music.playing ? '▶ Şimdi çalıyor' : '⏸ Duraklatıldı'}</small><h2>${t ? esc(t.name) : 'Bir şarkı seç'}</h2><p class="muted">${t ? esc(t.mood) : 'Kizuna müzikleri bu bilgisayarda gerçek zamanlı üretilir — telifsiz ve özgün.'}</p></div>
   <div class="now-ctl"><button class="icon-btn" id="mPrev" data-tip="Önceki">${icon('prev')}</button><button class="icon-btn big" id="mPlay">${icon(Music.playing ? 'pause' : 'play', 28)}</button><button class="icon-btn" id="mNext" data-tip="Sonraki">${icon('next')}</button>
    <button class="icon-btn rep rep-${S.musicRepeat || 'all'}" id="mRep" data-tip="${esc(REPEAT[S.musicRepeat || 'all'][0])}">${icon('repeat')}<em>${REPEAT[S.musicRepeat || 'all'][1]}</em></button></div>
-  <div class="now-prog"><i id="mProg"></i></div>`;
+  <div class="seek" id="mSeek" data-tip="Tıkla ya da sürükle"><span id="mCur">0:00</span><div class="seek-bar" id="mBar"><i id="mProg"></i><b id="mKnob"></b></div><span id="mDur">0:00</span></div>`;
   $('#mPrev').onclick = () => Music.prev(); $('#mNext').onclick = () => Music.next(); $('#mPlay').onclick = () => Music.toggle();
   $('#mRep').onclick = () => Music.cycleRepeat();
+  bindSeek();
   $$('.trk').forEach(r => { const on = r.dataset.trk === Music.cur; r.classList.toggle('on', on); const b = $('[data-tplay]', r); if (b) b.innerHTML = icon(on && Music.playing ? 'pause' : 'play', 16); });
   if (!vizRaf) viz();
+}
+/* Seek bar: click anywhere or drag the knob; time labels follow the song */
+const fmtSec = s => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+let seeking = null;
+function updateSeek() {
+  const bar = $('#mBar'); if (!bar) return;
+  const t = AudioEngine.time(), frac = seeking !== null ? seeking : (Music.playing && t.dur ? t.cur / t.dur : 0);
+  $('#mProg').style.width = (frac * 100) + '%'; $('#mKnob').style.left = (frac * 100) + '%';
+  $('#mCur').textContent = fmtSec(seeking !== null ? seeking * t.dur : (Music.playing ? t.cur : 0));
+  $('#mDur').textContent = fmtSec(t.dur);
+}
+function bindSeek() {
+  const bar = $('#mBar'); if (!bar) return;
+  const at = e => { const r = bar.getBoundingClientRect(); return Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)); };
+  bar.onpointerdown = e => {
+    if (!Music.playing) { // start the song, then jump to the clicked spot (the bar is re-rendered by play)
+      const f = at(e);
+      Promise.resolve(Music.play(Music.cur || Music.defaultId())).then(() => setTimeout(() => { AudioEngine.seek(f); updateSeek(); }, 120));
+      return;
+    }
+    bar.setPointerCapture(e.pointerId); seeking = at(e); bar.classList.add('drag'); updateSeek();
+  };
+  bar.onpointermove = e => { if (seeking !== null) { seeking = at(e); updateSeek(); } };
+  bar.onpointerup = bar.onpointercancel = e => {
+    if (seeking === null) return;
+    const f = e.type === 'pointerup' ? at(e) : seeking;
+    seeking = null; bar.classList.remove('drag');
+    AudioEngine.seek(f); updateSeek();
+  };
 }
 function viz() {
   const cv = $('#viz');
@@ -2218,7 +2271,7 @@ function viz() {
   const w = cv.width = cv.clientWidth * devicePixelRatio, h = cv.height = cv.clientHeight * devicePixelRatio;
   g.clearRect(0, 0, w, h);
   const accent = getComputedStyle(document.body).getPropertyValue('--accent').trim() || '#93C572';
-  const pg = $('#mProg'); if (pg) pg.style.width = (Music.playing ? AudioEngine.progress() * 100 : 0) + '%';
+  updateSeek();
   if (an) {
     const d = new Uint8Array(an.frequencyBinCount); an.getByteFrequencyData(d);
     const n = 64, bw = w / n;
@@ -2228,6 +2281,7 @@ function viz() {
 }
 
 /* ---------- Settings ---------- */
+const privNote = () => S.privacy.hideGames ? 'Arkadaşların profilinde <b>oyunlarını göremez</b> 🔒' : 'Arkadaşların profilinde oynadığın oyunları <b>görebilir</b>.';
 VIEWS.settings = (v, arg) => {
   const sec = (id, t, body) => `<section class="card" id="set-${id}"><h3>${t}</h3>${body}</section>`;
   v.innerHTML = head(T('nav.settings'), 'Kizuna’yı tamamen kendine göre ayarla.')
@@ -2244,7 +2298,8 @@ VIEWS.settings = (v, arg) => {
       <div class="field"><label>Efekt ses seviyesi</label><input type="range" min="0" max="1" step="0.01" data-k="sfxVol"></div><div class="field"><label>Dene</label><input placeholder="Klavye sesini denemek için yaz..."></div></div><button class="btn ghost" data-go="music">${icon('music', 16)} Müzik ayarları ›</button>`)
     + sec('devices', '🎧 Ses cihazları — mikrofon & hoparlör', `<div id="devSet"><p class="muted">Cihazlar algılanıyor…</p></div>`)
     + sec('lang', '🌍 Dil', `<div class="lang-grid">${Object.entries(LANGS).map(([k, l]) => `<button class="lang-btn ${S.lang === k ? 'on' : ''}" data-lang="${k}"><span>${l.flag}</span>${l.name}</button>`).join('')}</div><p class="muted small" id="langNote">${I18n.note()}</p>`)
-    + sec('privacy', '🔒 Gizlilik', `<div class="field row"><label>Profil oluşturma tarihimi gizle</label><label class="switch"><input type="checkbox" data-k="privacy.hideJoin"><i></i></label></div><div class="field row"><label>Oynadığım oyunları başkalarından gizle</label><label class="switch"><input type="checkbox" data-k="privacy.hideGames"><i></i></label></div>`)
+    + sec('privacy', '🔒 Gizlilik', `<div class="field row"><label>Profil oluşturma tarihimi gizle</label><label class="switch"><input type="checkbox" data-k="privacy.hideJoin"><i></i></label></div><div class="field row"><label>Oynadığım oyunları başkalarından gizle</label><label class="switch"><input type="checkbox" data-k="privacy.hideGames"><i></i></label></div>
+      <p class="muted small" id="privNote">${privNote()}</p>`)
     + sec('emu', '🎮 Emülatörler (eskiden yeniye)', `<p class="muted small">Emülatörler resmi kaynaklarından indirilip Kizuna’nın içine kurulur ve otomatik bağlanır.</p><div class="emu-list">${emuRowsHTML()}</div><div class="path-row"><code>${esc(S.gameFolder || 'Oyun klasörü seçilmedi')}</code><button class="btn ghost" id="setFolder">${icon('folder', 16)} Oyun klasörü seç</button></div>`)
     + sec('gfx', '⚡ Grafik', graphicsHTML() + `<div class="field row"><label>Kizuna’yı tam ekran kullan <small class="muted">(F11 — tercih bir sonraki açılışta hatırlanır)</small></label><button class="btn sm ghost" id="fsToggle">${icon('fullscreen', 14)} Tam ekranı aç / kapat</button></div>`)
     + sec('pad', '🕹️ Kontrolcü ile kullanım', `<div class="field row"><label>Kizuna’yı kontrolcüyle gez</label><label class="switch"><input type="checkbox" data-k="padNav"><i></i></label></div>
