@@ -54,7 +54,9 @@ jobs:
           IN=app/build/outputs/apk/release/app-release-unsigned.apk
           $BT/zipalign -f -p 4 $IN aligned.apk
           if [ -n "$KS_B64" ]; then
-            echo "$KS_B64" | base64 -d > kizuna.p12
+            # secrets set from Windows may carry CR/LF; strip them
+            printf %s "$KS_B64" | tr -d '\r\n ' | base64 -d > kizuna.p12
+            export KS_PASS="$(printf %s "$KS_PASS" | tr -d '\r\n')"
             $BT/apksigner sign --ks kizuna.p12 --ks-type PKCS12 --ks-pass env:KS_PASS --ks-key-alias kizuna --out ../Kizuna-Android-${TAG#v}.apk aligned.apk
             rm kizuna.p12
           else
