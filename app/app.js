@@ -30,8 +30,7 @@ const DEFAULTS = {
   friends: [], requestsIn: [], requestsOut: [], blocked: [], reports: [],
   chats: {}, unread: {}, lastChat: '', aiChat: [], aiWarned: false,
   bg: '', bgType: '', bgDim: 0.55, userTracks: [], rail: true, musicRepeat: 'all',
-  micId: '', spkId: '', seenVersion: '', padNav: true,
-  net: { url: '', token: '' }, callRelay: false
+  micId: '', spkId: '', seenVersion: '', padNav: true
 };
 function deepMerge(a, b) {
   for (const k in b) {
@@ -48,12 +47,9 @@ let S = (() => { try { return deepMerge(structuredClone(DEFAULTS), JSON.parse(lo
   for (const k of Object.keys(S.chats || {})) if (demo(k)) delete S.chats[k];
   for (const k of Object.keys(S.unread || {})) if (demo(k)) delete S.unread[k];
   if (demo(S.lastChat || '')) S.lastChat = '';
-  if (S.net && S.net.url === 'http://localhost:3777' && !S.net.token) S.net.url = '';
 })();
 function save() { try { localStorage.setItem('kz_state', JSON.stringify(S)); } catch { toast('Kaydedilemedi: depolama dolu olabilir', 'err'); } }
 function log(text) { S.history.unshift({ t: Date.now(), text }); S.history = S.history.slice(0, 300); save(); }
-/* Social data: read from the server (NET) when connected to a Kizuna Server, otherwise from demo data (S) */
-const SO = new Proxy({}, { get: (t, k) => (NET.online ? NET : S)[k], set: (t, k, v) => { (NET.online ? NET : S)[k] = v; return true; } });
 const T = k => (I18N[S.lang] && I18N[S.lang][k]) || I18N.en[k] || I18N.tr[k] || k;
 
 /* ======================= MEDIA STORE (IndexedDB) ======================= */
@@ -150,23 +146,12 @@ function coverInner(t, c) {
   return `<span class="cv-ini">${esc(ini)}</span><span class="cv-c c-${c}">${CONSOLES[c].short}</span><span class="cv-slash"></span>`;
 }
 
-/* ---------- Users & avatars ---------- */
-const userById = id => (NET.online ? NET.users.get(id) : USERS.find(u => u.id === id));
-const visibleUsers = () => (NET.online ? [...NET.users.values()].filter(u => u.id !== NET.me.id) : USERS).filter(u => !SO.blocked.includes(u.id));
-const myFriends = () => SO.friends.filter(id => !SO.blocked.includes(id)).map(userById).filter(Boolean);
-const COLOR0 = 'linear-gradient(135deg,#93C572,#2f5a1e)';
+/* ---------- My avatar ---------- */
 function meAvatar(size = 40) {
   if (S.profile.avatar) return `<span class="av" style="--sz:${size}px" data-mid="${S.profile.avatar}" data-mtype="${esc(S.profile.avatarType)}" data-crop="${esc(JSON.stringify(S.profile.avatarCrop || null))}"></span>`;
   const ch = (S.profile.name || '?')[0].toUpperCase();
   return `<span class="av me" style="--sz:${size}px">${esc(ch)}</span>`;
 }
-const userAvatar = (u, size = 40) => {
-  if (!u) return `<span class="av" style="--sz:${size}px">?</span>`;
-  const st = (STATUS[u.status] || STATUS.offline)[1];
-  const inner = u.avatar && NET.online ? mediaHTML(NET.fileUrl(u.avatar), u.avatarType, u.avatarCrop) : esc((u.name || '?')[0]);
-  return `<span class="av" style="--sz:${size}px;background:${esc(u.color || COLOR0)}">${inner}<i class="st" style="background:${st}"></i></span>`;
-};
-const avatarOf = (id, size) => id === 'me' ? meAvatar(size) : userAvatar(userById(id), size);
 
 /* ======================= APPEARANCE (THEME / YEAR / FONT) ======================= */
 function applyAppearance() {
@@ -366,8 +351,7 @@ async function boot() {
   if (pre) { let lv = 'mild'; try { lv = JSON.parse(pre).level || 'mild'; } catch {} await readBanRecord(); return applyBan('Kizuna AI uyarısına rağmen uygunsuz kelimeler yazmaya devam ettin ve ban sayacından kaçmaya çalıştın.', lv); }
   const b = await getBan();
   if (b) return showBan(b);
-  if (api && api.onGameExit) api.onGameExit(() => netSync({ playing: '' }));
-  bindHostEvents(); bindUpdateEvents(); bindEmuEvents(); bindCovers(); Pad.init(); bindDevices();
+  bindUpdateEvents(); bindEmuEvents(); bindCovers(); Pad.init(); bindDevices();
   if (!S.setupDone) showIntro(); else { showApp(false); setTimeout(checkWhatsNew, 1200); }
   // v1.0.5: friends & messages were removed — no server connection at startup
 }
@@ -550,15 +534,6 @@ const WZ = [
   { t: 'Emülatörler', r(b) { b.innerHTML = `<h2>Emülatörler</h2><p class="muted">Kizuna oyunları resmi, açık kaynak ve güvenli emülatörlerle çalıştırır. <b>Kizuna’ya kur</b>’a bas — emülatör resmi kaynağından indirilip uygulamanın içine kurulur, hiçbir siteye gitmene gerek yok.</p><div class="emu-list" id="wzEmu">${emuRowsHTML()}</div>${tipBox('PS1 ve PS2 için BIOS dosyasını kendi konsolundan almalısın; “BIOS klasörü” ile açılan klasöre kopyalaman yeterli. PS3 sistem yazılımı RPCS3’ün içinden yüklenir.')}`; bindEmuRows(b, () => renderWz()); } },
   { t: 'Grafik', r(b) { b.innerHTML = `<h2>Grafik ayarları</h2><p class="muted">Oyunları nasıl başlatmak istediğini seç.</p>${graphicsHTML()}${tipBox('Yüksek FPS Modu ve tam ekran tercihin oyun başlatılırken emülatöre iletilir. Çözünürlük ölçeği her emülatörün kendi grafik menüsünden de ince ayarlanabilir.')}`; bindKeys(b); } },
   {
-    t: 'Hesap', hidden: true, r(b) {
-      b.innerHTML = `<h2>Kizuna Topluluğu</h2><p class="muted">Dünyanın her yerindeki gerçek oyuncularla arkadaş olmak, mesajlaşmak ve sesli sohbet etmek için bir Kizuna hesabı oluştur.</p>
-      <div class="acc-cards"><div class="acc on"><span>${meAvatar(48)}</span><div><b>${esc(S.profile.name)}</b><small>Bu bilgisayardaki profilin · Aktif ✓</small></div></div></div>
-      <div id="netSet" style="margin-top:14px"></div>
-      <details class="host-adv" style="margin-top:14px"><summary>Kendi sunucunu barındır (isteğe bağlı)</summary><div id="hostSet"></div></details>`;
-      hydrate(b); renderHostSettings($('#hostSet', b)); renderNetSettings($('#netSet', b));
-    }
-  },
-  {
     t: 'Bitir', r(b) {
       const ok = v => v ? `<b class="ok">✓</b>` : `<b class="muted">—</b>`;
       const emus = Object.values(S.emulators).filter(Boolean).length;
@@ -570,7 +545,6 @@ const WZ = [
     }
   }
 ];
-for (let i = WZ.length - 1; i >= 0; i--) if (WZ[i].hidden) WZ.splice(i, 1); // friends & chat were removed (v1.0.5)
 if (window.KZ_MOBILE) WZ.splice(0, 1); // phones have no game folder to scan
 function showWizard() { showScreen('wizard'); wzI = 0; renderWz(); }
 function renderWz() {
@@ -726,9 +700,7 @@ function onKeyChange(k, v) {
   if (k === 'sfxVol') { AudioEngine.setSfxVol(v); AudioEngine.click(S.clickSound); }
   if (k === 'clickSound') AudioEngine.click(v);
   if (k === 'keySound') AudioEngine.key(v);
-  if (k === 'profile.status') { updateMe(); netSync({ status: v }); }
-  if (k === 'privacy.hideJoin') netSync({ hideJoin: v });
-  if (k === 'privacy.hideGames') netSync({ hideGames: v });
+  if (k === 'profile.status') updateMe();
 }
 function finishSetup() {
   S.setupDone = true;
@@ -767,7 +739,7 @@ function showApp(first) {
   $('#voiceBtn').onclick = startVoice;
   $('#voiceBtn').oncontextmenu = e => { e.preventDefault(); typedCommand(); };
   bindSearch();
-  updateMe(); updateBadges(); applyAppearance();
+  updateMe(); applyAppearance();
   go(first ? 'catalog' : 'library');
   if (S.autoMusic && !Music.playing) Music.play(Music.defaultId());
   if (first || !S.tourDone) setTimeout(startTour, 900);
@@ -775,12 +747,6 @@ function showApp(first) {
 function updateMe() {
   $('#meAv').innerHTML = meAvatar(30); hydrate($('#meAv'));
   $('#meName').textContent = S.profile.name || 'Profil';
-}
-function updateBadges() {
-  const unread = Object.entries(SO.unread).filter(([id]) => !SO.blocked.includes(id)).reduce((a, [, n]) => a + n, 0);
-  const b1 = $('#badge-messages'); if (b1) { b1.textContent = unread || ''; b1.classList.toggle('on', unread > 0); }
-  const req = SO.requestsIn.filter(id => !SO.blocked.includes(id)).length;
-  const b2 = $('#badge-friends'); if (b2) { b2.textContent = req || ''; b2.classList.toggle('on', req > 0); }
 }
 function go(id, arg) {
   current = id;
@@ -801,21 +767,19 @@ function bindSearch() {
     if (!q) { box.classList.add('hidden'); items = []; return; }
     const games = GAMES.filter(g => fold(g.t).includes(q) || fold(CONSOLES[g.c].short) === q).slice(0, 8);
     const lib = S.library.filter(g => fold(g.title).includes(q)).slice(0, 4);
-    const users = visibleUsers().filter(u => fold(u.name).includes(q)).slice(0, 4);
     const pages = NAV.filter(n => fold(T('nav.' + n.id)).includes(q) || fold(n.tip).includes(q)).slice(0, 4);
-    items = [...lib.map(g => ({ k: 'lib', g })), ...games.map(g => ({ k: 'game', g })), ...users.map(u => ({ k: 'user', u })), ...pages.map(n => ({ k: 'page', n }))];
+    items = [...lib.map(g => ({ k: 'lib', g })), ...games.map(g => ({ k: 'game', g })), ...pages.map(n => ({ k: 'page', n }))];
     if (!items.length) { box.innerHTML = `<div class="sr-empty">“${esc(inp.value)}” için sonuç yok</div>`; box.classList.remove('hidden'); return; }
     box.innerHTML = items.map((it, i) => {
       if (it.k === 'lib') return `<button class="sr" data-i="${i}"><span class="sr-cv" style="${coverStyle(it.g.title)}">${CONSOLES[it.g.console].short}</span><b>${esc(it.g.title)}</b><small>Kütüphanende · Oyna</small></button>`;
       if (it.k === 'game') return `<button class="sr" data-i="${i}"><span class="sr-cv" style="${coverStyle(it.g.t)}">${CONSOLES[it.g.c].short}</span><b>${esc(it.g.t)}</b><small>${it.g.y} · ${it.g.g}</small></button>`;
-      if (it.k === 'user') return `<button class="sr" data-i="${i}">${userAvatar(it.u, 30)}<b>${esc(it.u.name)}</b><small>Oyuncu</small></button>`;
       return `<button class="sr" data-i="${i}"><span class="sr-cv pg">${icon(it.n.id, 16)}</span><b>${T('nav.' + it.n.id)}</b><small>Bölüm</small></button>`;
     }).join('');
     box.classList.remove('hidden');
   };
   const choose = it => {
     box.classList.add('hidden'); inp.value = ''; inp.blur();
-    if (it.k === 'lib') launch(it.g); else if (it.k === 'game') openGame(it.g.id); else if (it.k === 'user') showUser(it.u.id); else go(it.n.id);
+    if (it.k === 'lib') launch(it.g); else if (it.k === 'game') openGame(it.g.id); else go(it.n.id);
   };
   inp.addEventListener('input', render);
   inp.addEventListener('focus', render);
@@ -1128,7 +1092,6 @@ const PSX = {
     fr.remove(); document.body.classList.remove('psx-on');
     try { screen.orientation && screen.orientation.unlock && screen.orientation.unlock(); } catch {}
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-    netSync({ playing: '' });
   }
 };
 addEventListener('message', e => { if (e.origin === location.origin && e.data && e.data.kizunaPsx === 'exit') PSX.close(); });
@@ -1157,7 +1120,6 @@ async function launch(g) {
     PSX.open(g);
     g.plays = (g.plays || 0) + 1; g.lastPlayed = Date.now();
     S.played = [g.title, ...S.played.filter(x => x !== g.title)].slice(0, 50);
-    netSync({ playing: g.title, played: S.played });
     log(`Oynandı: ${g.title} (${c.short})`); save();
     return;
   }
@@ -1168,7 +1130,6 @@ async function launch(g) {
   const r = await api.launch({ consoleId: g.console, emulator: emu, game: g.path, fullscreen: S.graphics.fullscreen });
   if (!r.ok) return toast(esc(r.error), 'err', 5000);
   g.plays = (g.plays || 0) + 1; g.lastPlayed = Date.now();
-  netSync({ playing: g.title, played: [g.title, ...S.played.filter(x => x !== g.title)].slice(0, 50) });
   S.played = [g.title, ...S.played.filter(x => x !== g.title)].slice(0, 50);
   log(`Oynandı: ${g.title} (${c.short})`); save();
   if (current === 'library') go('library');
@@ -1234,11 +1195,9 @@ function toggleSave(id) {
 function openGame(id) {
   const g = GAMES.find(x => x.id === id), c = CONSOLES[g.c];
   const lib = S.library.find(l => l.catalogId === id);
-  const fans = visibleUsers().filter(u => !u.hideGames && (u.games || []).includes(g.t));
   openModal(`<div class="gm"><div class="gm-cover cover ${COVERS[id] ? 'has-img' : ''}" data-cover="${id}" style="${coverStyle(g.t)}">${coverImg(id)}${coverInner(g.t, g.c)}</div>
   <div class="gm-info"><span class="cbadge c-${g.c}">${c.name}</span><h2>${esc(g.t)}</h2><p class="muted">${g.y} · ${esc(g.g)}</p>
   <p>Emülatör: <b>${c.emu || 'yok'}</b> · ${c.status}${g.pc ? ' · <b class="ok">Resmi PC sürümü var</b>' : ''}</p>
-  ${fans.length ? `<p class="muted small">Bu oyunu oynayan oyuncular: ${fans.map(u => `<a class="lnk" data-user="${u.id}">${esc(u.name)}</a>`).join(', ')}</p>` : ''}
   <div class="gm-actions">${lib ? `<button class="btn primary" id="gmPlay">${icon('play', 16)} ${T('play')}</button>` : ''}
   <button class="btn ${lib ? 'ghost' : 'primary'}" id="gmDl">${icon('download', 16)} ${T('download')}</button>
   ${g.c !== 'ps5' ? `<button class="btn ghost" id="gmAdd">${icon('plus', 16)} Dosyamı ekle</button>` : ''}
@@ -1248,11 +1207,10 @@ function openGame(id) {
   $('#gmDl').onclick = () => downloadGame(id);
   const a = $('#gmAdd'); if (a) a.onclick = () => addGameModal(id);
   $('#gmSave').onclick = e => { toggleSave(id); e.currentTarget.classList.toggle('on'); if (current === 'catalog' || current === 'saved') go(current); };
-  $$('[data-user]', $('#modalCard')).forEach(x => x.onclick = () => showUser(x.dataset.user));
 }
 /* In-view clicks (handled in one place) */
 $('#view').addEventListener('click', e => {
-  const t = e.target.closest('[data-dl],[data-add],[data-save],[data-play],[data-del],[data-game],[data-user],[data-go]');
+  const t = e.target.closest('[data-dl],[data-add],[data-save],[data-play],[data-del],[data-game],[data-go]');
   if (!t || !$('#view').contains(t)) return;
   const d = t.dataset;
   if (d.dl) return downloadGame(d.dl);
@@ -1261,7 +1219,6 @@ $('#view').addEventListener('click', e => {
   if (d.play) { const g = S.library.find(x => x.id === d.play); if (g) launch(g); return; }
   if (d.del) { const g = S.library.find(x => x.id === d.del); S.library = S.library.filter(x => x.id !== d.del); save(); if (g) toast(`${esc(g.title)} kütüphaneden kaldırıldı (dosyan silinmedi)`); return go('library'); }
   if (d.game) return openGame(d.game);
-  if (d.user) return showUser(d.user);
   if (d.go) return go(d.go);
 });
 
@@ -1300,7 +1257,7 @@ VIEWS.profile = v => {
   <div class="pf-banner" ${p.banner ? `data-mid="${p.banner}" data-mtype="${esc(p.bannerType)}" data-crop="${esc(JSON.stringify(p.bannerCrop || null))}"` : ''}></div>
   <div class="pf-head"><div class="pf-av">${meAvatar(132)}</div>
    <button class="pf-pen ${pfEdit ? 'on' : ''}" id="pfPen" data-tip="${pfEdit ? 'Düzenleme panelini kapat' : 'Profili özelleştir'}">${icon('pencil', 20)}</button>
-   <div class="pf-id"><h1>${esc(p.name)}</h1><p class="muted"><i class="dot" style="background:${STATUS[p.status][1]}"></i>${STATUS[p.status][0]}${S.privacy.hideJoin ? '' : ' · Katıldı: ' + fmtDate(p.joined || Date.now())}${NET.online && NET.me.code ? ` · <span class="fcode clickable" data-copy="${esc(NET.me.code)}" data-tip="Arkadaş kodunu kopyala">#${esc(NET.me.code)}</span>` : ''}</p><p>${esc(p.bio) || '<span class="muted">Hakkımda yazısı yok</span>'}</p></div>
+   <div class="pf-id"><h1>${esc(p.name)}</h1><p class="muted"><i class="dot" style="background:${STATUS[p.status][1]}"></i>${STATUS[p.status][0]}${S.privacy.hideJoin ? '' : ' · Katıldı: ' + fmtDate(p.joined || Date.now())}</p><p>${esc(p.bio) || '<span class="muted">Hakkımda yazısı yok</span>'}</p></div>
    ${S.library.length ? `<button class="pf-stat" data-go="library" data-tip="Kütüphanendeki oyunlar"><span>Oyunlar</span><b>${S.library.length}</b></button>` : ''}</div>
   <section class="card pf-editor ${pfEdit ? '' : 'hidden'}" id="pfEditor"><h3>${icon('pencil', 18)} Profili özelleştir</h3>
    <div class="pf-ed-grid">
@@ -1327,17 +1284,14 @@ VIEWS.profile = v => {
     const n = $('#pfName').value.trim(), bio = $('#pfBio').value;
     if (n.length < 3) return toast('Kullanıcı adı en az 3 karakter olmalı', 'warn');
     if (hasProfanity(n) || hasProfanity(bio)) return toast('Profilinde uygunsuz kelime olamaz', 'err');
-    if (NET.online) { try { await NET.updateMe({ name: n, bio }); } catch (e) { return toast(esc(e.message), 'err'); } }
     S.profile.name = n; S.profile.bio = bio; save(); updateMe(); toast('Profil kaydedildi ✓', 'ok');
     pfEdit = false; go('profile'); // the editor closes after saving; the pencil opens it again
   };
   const up = async (key) => {
     const f = await pickLocal('image/*,video/*'); if (!f) return;
     if (f.size > 80e6) return toast('Dosya çok büyük (en fazla 80 MB)', 'err');
-    if (NET.online && f.size > 25e6) return toast('Sunucuya en fazla 25 MB yüklenebilir', 'err');
     const url = URL.createObjectURL(f);
     cropModal(key, url, f.type || '', null, async crop => {
-      if (NET.online) { try { await NET.setMedia(key, f); await NET.updateMe({ [key + 'Crop']: crop }); } catch (e) { return toast(esc(e.message), 'err'); } }
       const m = await storeMedia(f); S.profile[key] = m.id; S.profile[key + 'Type'] = m.type; S.profile[key + 'Crop'] = crop; save(); updateMe(); go('profile');
       toast(key === 'avatar' ? 'Profil resmi güncellendi ✓' : 'Kapak güncellendi ✓', 'ok');
     }, () => URL.revokeObjectURL(url));
@@ -1345,7 +1299,6 @@ VIEWS.profile = v => {
   const recrop = async key => {
     const url = await mediaURL(S.profile[key]); if (!url) return;
     cropModal(key, url, S.profile[key + 'Type'], S.profile[key + 'Crop'], async crop => {
-      if (NET.online) { try { await NET.updateMe({ [key + 'Crop']: crop }); } catch (e) { return toast(esc(e.message), 'err'); } }
       S.profile[key + 'Crop'] = crop; save(); updateMe(); go('profile'); toast('Kırpma kaydedildi ✓', 'ok');
     });
   };
@@ -1385,595 +1338,6 @@ function cropModal(kind, url, type, start, onSave, onClose) {
   mo.observe($('#modal'), { attributes: true, attributeFilter: ['class'] });
 }
 
-/* ---------- Friends ---------- */
-let frTab = 'friends', frQuery = '', frResults = null;
-VIEWS.friends = v => {
-  if (!NET.online) {
-    v.innerHTML = head(T('nav.friends'), 'Dünyanın her yerinden gerçek oyuncularla arkadaş ol, mesajlaş ve sesli sohbet et.')
-      + `<div class="join-card panel"><div class="join-art">🤝</div><div class="join-body"><h2>Kizuna Topluluğuna katıl</h2>
-        <p class="muted">Steam gibi: bir hesap oluştur, arkadaşlarını <b>kullanıcı adıyla</b> ya da <b>8 haneli arkadaş koduyla</b> bul, istek gönder — onlar da sana istek gönderebilsin. Mesajlar, GIF’ler, dosyalar, anketler ve sesli sohbet gerçek zamanlı.</p>
-        <div id="netSet"></div></div></div>`;
-    renderNetSettings($('#netSet', v));
-    return;
-  }
-  const fr = myFriends(), reqs = SO.requestsIn.filter(id => !SO.blocked.includes(id)).map(userById).filter(Boolean);
-  const outs = SO.requestsOut.filter(id => !SO.blocked.includes(id)).map(userById).filter(Boolean);
-  const others = (frResults || []).filter(u => !SO.friends.includes(u.id) && !SO.blocked.includes(u.id));
-  const online = fr.filter(u => u.status !== 'offline');
-  v.innerHTML = head(T('nav.friends'), 'Gerçek oyuncular — arkadaş ekle, oynadıkları oyunları gör ve mesajlaş.',
-    `<span class="net-chip ${NET.wsUp ? 'on' : ''}" data-go="settings">${NET.wsUp ? '● Bağlı' : '○ Yeniden bağlanıyor…'} · ${esc(NET.me.name)}</span>`)
-    + `<div class="my-code panel"><div><small class="muted">Senin arkadaş kodun</small><b class="fcode big">#${esc(NET.me.code || '—')}</b></div><p class="muted small">Bu kodu arkadaşına gönder — “Oyuncu ekle” sekmesine yazarak seni anında bulur.</p><button class="btn sm ghost" id="copyCode">${icon('copy', 14)} Kopyala</button></div>`
-    + `<div class="tabs"><button class="tab ${frTab === 'friends' ? 'on' : ''}" data-ft="friends">Arkadaşlarım<small>${online.length}/${fr.length}</small></button>
-    <button class="tab ${frTab === 'req' ? 'on' : ''}" data-ft="req">Gelen istekler<small>${reqs.length}</small></button>
-    <button class="tab ${frTab === 'out' ? 'on' : ''}" data-ft="out">Gönderilen<small>${outs.length}</small></button>
-    <button class="tab ${frTab === 'find' ? 'on' : ''}" data-ft="find">${icon('userplus', 14)} Oyuncu ekle</button></div>`
-    + (frTab === 'find' ? `<div class="row-inp fr-search"><input id="frQ" placeholder="Kullanıcı adı ya da arkadaş kodu (ör. 12345678)…" value="${esc(frQuery)}"><button class="btn primary" id="frGo">${icon('search', 16)} Ara</button></div>` : '')
-    + `<div class="user-grid">${(frTab === 'friends' ? [...online, ...fr.filter(u => u.status === 'offline')] : frTab === 'req' ? reqs : frTab === 'out' ? outs : others).map(u => userCard(u, frTab)).join('')
-      || `<div class="empty"><h3>${frTab === 'req' ? 'Bekleyen istek yok' : frTab === 'out' ? 'Gönderilmiş istek yok' : frTab === 'find' && frResults === null ? 'Aranıyor…' : frTab === 'find' ? 'Oyuncu bulunamadı' : 'Henüz arkadaşın yok'}</h3><p class="muted">${frTab === 'friends' ? '“Oyuncu ekle” sekmesinden kullanıcı adı ya da arkadaş koduyla arkadaş ekleyebilirsin.' : ''}</p></div>`}</div>`;
-  $('#copyCode', v).onclick = () => navigator.clipboard.writeText(NET.me.code || '').then(() => toast('📋 Arkadaş kodun kopyalandı — arkadaşına gönder'), () => {});
-  $$('[data-ft]', v).forEach(b => b.onclick = () => { frTab = b.dataset.ft; if (frTab === 'find') frResults = null; go('friends'); });
-  $$('[data-cancel]', v).forEach(b => b.onclick = async e => { e.stopPropagation(); try { await NET.reject(b.dataset.cancel); } catch (err) { return toast(esc(err.message), 'err'); } go('friends'); });
-  $$('[data-acc]', v).forEach(b => b.onclick = e => { e.stopPropagation(); acceptReq(b.dataset.acc); });
-  $$('[data-rej]', v).forEach(b => b.onclick = async e => {
-    e.stopPropagation(); const id = b.dataset.rej;
-    if (NET.online) { try { await NET.reject(id); } catch (err) { return toast(esc(err.message), 'err'); } }
-    else { SO.requestsIn = SO.requestsIn.filter(x => x !== id); save(); }
-    updateBadges(); go('friends');
-  });
-  $$('[data-msg]', v).forEach(b => b.onclick = e => { e.stopPropagation(); go('messages', b.dataset.msg); });
-  $$('[data-addf]', v).forEach(b => b.onclick = async e => { e.stopPropagation(); await sendReq(b.dataset.addf); go('friends'); });
-  if (frTab === 'find') {
-    const doSearch = () => { frQuery = $('#frQ').value.trim(); frResults = null; go('friends'); };
-    $('#frGo').onclick = doSearch; $('#frQ').onkeydown = e => { if (e.key === 'Enter') doSearch(); };
-    if (frResults === null) NET.search(frQuery).then(r => { frResults = r; if (current === 'friends' && frTab === 'find') go('friends'); }).catch(err => toast(esc(err.message), 'err'));
-  }
-};
-function userCard(u, tab) {
-  const st = STATUS[u.status] || STATUS.offline;
-  const act = tab === 'friends' ? `<button class="btn sm primary" data-msg="${u.id}">${icon('messages', 14)} Mesaj</button>`
-    : tab === 'req' ? `<button class="btn sm primary" data-acc="${u.id}">Kabul et</button><button class="btn sm ghost" data-rej="${u.id}">Reddet</button>`
-      : tab === 'out' ? `<button class="btn sm ghost" data-cancel="${u.id}">İsteği geri çek</button>`
-        : SO.requestsOut.includes(u.id) ? `<button class="btn sm ghost" disabled>İstek gönderildi</button>`
-          : SO.requestsIn.includes(u.id) ? `<button class="btn sm primary" data-acc="${u.id}">İsteği kabul et</button>` : `<button class="btn sm primary" data-addf="${u.id}">${icon('userplus', 14)} Arkadaş ekle</button>`;
-  return `<article class="ucard panel" data-user="${u.id}">${userAvatar(u, 64)}<div class="uc-info"><b>${esc(u.name)}</b>${u.code && tab === 'find' ? `<small class="muted">#${esc(u.code)}</small>` : ''}<small style="color:${st[1]}">● ${u.playing ? '🎮 ' + esc(u.playing) : st[0]}</small><p class="muted small">${esc(u.bio)}</p></div><div class="uc-act">${act}</div></article>`;
-}
-async function sendReq(id) {
-  if (!NET.online || SO.requestsOut.includes(id) || SO.friends.includes(id)) return;
-  try {
-    const state = await NET.request(id), u = userById(id);
-    toast(state === 'friends' ? `🤝 Artık <b>${esc(u.name)}</b> ile arkadaşsınız` : `Arkadaşlık isteği gönderildi: <b>${esc(u.name)}</b> — kabul edince bildirim alacaksın`, 'ok');
-    log((state === 'friends' ? 'Yeni arkadaş: ' : 'Arkadaşlık isteği gönderildi: ') + u.name);
-  } catch (e) { toast(esc(e.message), 'err'); }
-  updateBadges();
-}
-async function acceptReq(id) {
-  if (!NET.online) return;
-  try { await NET.accept(id); } catch (e) { return toast(esc(e.message), 'err'); }
-  updateBadges(); toast(`🤝 Artık <b>${esc(userById(id).name)}</b> ile arkadaşsınız`, 'ok'); log('Yeni arkadaş: ' + userById(id).name);
-  if (current === 'friends') go('friends');
-}
-async function showUser(id) {
-  if (NET.online) { try { await NET.profile(id); } catch (e) { return toast(esc(e.message), 'err'); } }
-  const u = userById(id); if (!u || SO.blocked.includes(id)) return;
-  const isF = SO.friends.includes(id), st = STATUS[u.status] || STATUS.offline;
-  const games = !isF ? `<p class="muted">🔒 Oynadığı oyunları görmek için arkadaş olmalısınız.</p>`
-    : u.hideGames ? `<p class="muted">🔒 ${esc(u.name)} oynadığı oyunları gizlemiş.</p>`
-      : (u.games || []).length ? `<div class="chips">${u.games.map(t => { const g = GAMES.find(x => x.t === t); return `<button class="chip" ${g ? `data-og="${g.id}"` : ''}>${esc(t)}</button>`; }).join('')}</div>` : `<p class="muted">Henüz oyun oynamamış.</p>`;
-  const banner = u.banner && NET.online ? mediaHTML(NET.fileUrl(u.banner), u.bannerType, u.bannerCrop) : '';
-  const c = openModal(`<div class="up"><div class="up-banner" style="background:${esc(u.color || COLOR0)}">${banner}</div><div class="up-head">${userAvatar(u, 96)}<div><h2>${esc(u.name)}</h2><p style="color:${st[1]}">● ${u.playing ? '🎮 Oynuyor: ' + esc(u.playing) : st[0]}</p></div></div>
-  <p>${esc(u.bio)}</p>${u.hideJoin || !u.joined ? '' : `<p class="muted small">Katıldı: ${fmtDate(u.joined)}</p>`}
-  <h3>Oynadığı oyunlar</h3>${games}
-  <div class="up-actions">${isF ? `<button class="btn primary" id="upMsg">${icon('messages', 16)} Mesaj</button><button class="btn ghost" id="upRem">Arkadaşlıktan çıkar</button>`
-      : SO.requestsIn.includes(id) ? `<button class="btn primary" id="upAcc">Arkadaşlık isteğini kabul et</button>`
-        : SO.requestsOut.includes(id) ? `<button class="btn ghost" disabled>İstek gönderildi</button>` : `<button class="btn primary" id="upAdd">${icon('userplus', 16)} Arkadaş ekle</button>`}
-  <button class="btn danger" id="upBlock">${icon('block', 16)} Engelle</button><button class="btn ghost danger-t" id="upSpam">${icon('flag', 16)} Spam bildir</button></div>
-  <div class="confirm hidden" id="upConfirm"><p id="upConfText"></p>
-  <div class="row-btns"><button class="btn danger" id="upYes">Evet</button><button class="btn ghost" id="upNo">Vazgeç</button></div></div></div>`);
-  const on = (sel, fn) => { const el = $(sel, c); if (el) el.onclick = fn; };
-  on('#upMsg', () => { closeModal(); go('messages', id); });
-  on('#upRem', async () => {
-    if (NET.online) { try { await NET.remove(id); } catch (e) { return toast(esc(e.message), 'err'); } }
-    else { SO.friends = SO.friends.filter(x => x !== id); save(); }
-    closeModal(); toast(`${esc(u.name)} arkadaşlıktan çıkarıldı`); if (['friends', 'messages'].includes(current)) go(current);
-  });
-  on('#upAcc', async () => { await acceptReq(id); showUser(id); });
-  on('#upAdd', async () => { await sendReq(id); showUser(id); });
-  let spamMode = false;
-  const ask = spam => {
-    spamMode = spam;
-    $('#upConfText', c).innerHTML = spam
-      ? `<b>${esc(u.name)}</b> <b>spam olarak bildirilecek</b> ve engellenecek. Bildirim sunucu yöneticisine iletilir.`
-      : `<b>${esc(u.name)}</b> <b>engellenecek</b>. Bu kişi sana bir daha mesaj gönderemez, arama yapamaz, istek atamaz ve profilini göremez. (Spam bildirimi yapılmaz.)`;
-    $('#upYes', c).textContent = spam ? 'Evet, spam bildir' : 'Evet, engelle';
-    $('#upConfirm', c).classList.remove('hidden');
-  };
-  on('#upBlock', () => ask(false));
-  on('#upSpam', () => ask(true));
-  on('#upNo', () => $('#upConfirm', c).classList.add('hidden'));
-  on('#upYes', () => blockUser(id, spamMode));
-  $$('[data-og]', c).forEach(b => b.onclick = () => openGame(b.dataset.og));
-}
-/* Block = only block. Spam report = report + block. The blocked list shows which one it was. */
-async function blockUser(id, spam = false) {
-  const u = userById(id);
-  if (NET.online) { try { await NET.block(id, spam); } catch (e) { return toast(esc(e.message), 'err'); } }
-  else { if (!SO.blocked.includes(id)) SO.blocked.push(id); }
-  if (spam) S.reports.push({ id, time: Date.now(), type: 'spam' });
-  SO.friends = SO.friends.filter(x => x !== id); SO.requestsIn = SO.requestsIn.filter(x => x !== id); SO.requestsOut = SO.requestsOut.filter(x => x !== id);
-  delete SO.chats[id]; delete SO.unread[id];
-  if (call && call.id === id) endCall();
-  save(); closeModal(); updateBadges();
-  toast(spam ? `🚩 <b>${esc(u.name)}</b> spam olarak bildirildi ve engellendi.` : `🛡️ <b>${esc(u.name)}</b> engellendi. Seni artık rahatsız edemez.`, 'ok', 5000);
-  log((spam ? 'Spam bildirildi: ' : 'Engellendi: ') + u.name);
-  if (['friends', 'messages'].includes(current)) go(current);
-}
-const isSpam = id => (NET.online ? NET.spamReported : S.reports.filter(r => r.type === 'spam').map(r => r.id)).includes(id);
-
-/* ---------- Messages ---------- */
-VIEWS.messages = (v, arg) => {
-  if (!NET.online) {
-    v.innerHTML = head(T('nav.messages'), 'Arkadaşlarınla yazılı ve sesli sohbet.') + empty('💬', 'Mesajlaşmak için Kizuna Topluluğuna katıl', 'Arkadaşlar bölümünden hesap oluştur ya da giriş yap; sonra gerçek arkadaşlarınla burada sohbet edersin.', `<button class="btn primary" data-go="friends">Topluluğa katıl ›</button>`);
-    return;
-  }
-  const fr = myFriends();
-  const sel = (arg && fr.find(f => f.id === arg)?.id) || (fr.find(f => f.id === S.lastChat)?.id) || fr[0]?.id;
-  v.innerHTML = `<div class="chat-wrap panel"><aside class="chat-list" id="chatList"></aside><section class="chat-main" id="chatMain"></section></div>`;
-  renderChatList(sel);
-  if (sel) openThread(sel); else $('#chatMain').innerHTML = empty('💬', 'Sohbet yok', 'Arkadaşlar bölümünden arkadaş ekle, sonra buradan mesajlaş.', `<button class="btn primary" data-go="friends">Arkadaş bul ›</button>`);
-};
-function renderChatList(sel) {
-  const box = $('#chatList'); if (!box) return;
-  const fr = myFriends();
-  const lastT = u => ((SO.chats[u.id] || []).slice(-1)[0] || {}).time || 0;
-  box.innerHTML = `<h3>${T('nav.messages')}</h3>` + (fr.sort((a, b) => lastT(b) - lastT(a)).map(u => {
-    const last = (SO.chats[u.id] || []).slice(-1)[0];
-    return `<button class="cl-it ${u.id === sel ? 'on' : ''}" data-chat="${u.id}">${userAvatar(u, 42)}<div><b>${esc(u.name)}</b><small>${last ? (last.from === 'me' ? 'Sen: ' : '') + esc(msgPreview(last)) : 'Sohbete başla'}</small></div>${SO.unread[u.id] ? `<em class="badge on">${SO.unread[u.id]}</em>` : ''}</button>`;
-  }).join('') || '<p class="muted small" style="padding:12px">Mesajlaşmak için önce arkadaş ekle.</p>');
-  $$('[data-chat]', box).forEach(b => b.onclick = () => { $$('[data-chat]', box).forEach(x => x.classList.toggle('on', x === b)); openThread(b.dataset.chat); });
-}
-const msgPreview = m => m.kind === 'text' ? m.text : m.kind === 'sticker' ? '🏷️ Çıkartma' : m.kind === 'media' ? '🖼️ GIF / medya' : m.kind === 'file' ? '📎 ' + m.name : m.kind === 'poll' ? '📊 Anket: ' + m.poll.q : '';
-let typingSent = 0, typingTimer = null;
-function openThread(id) {
-  S.lastChat = id; SO.unread[id] = 0; save(); updateBadges();
-  if (NET.online) {
-    NET.markRead(id);
-    if (!NET.loaded[id]) NET.loadMessages(id).then(() => { if (S.lastChat === id && current === 'messages') renderMsgs(id); }).catch(e => toast(esc(e.message), 'err'));
-  }
-  const b = $(`[data-chat="${id}"] .badge`); if (b) b.remove();
-  const u = userById(id), m = $('#chatMain');
-  const ust = STATUS[u.status] || STATUS.offline;
-  m.innerHTML = `<header class="chat-head"><button class="ch-user" id="chUser">${userAvatar(u, 40)}<div><b>${esc(u.name)}</b><small style="color:${ust[1]}">● ${u.playing ? '🎮 ' + esc(u.playing) : ust[0]}</small></div></button>
-  <div class="ch-actions"><button class="btn sm primary" id="callBtn">${icon('phone', 15)} Sesli sohbet</button></div></header>
-  <div id="callBar" class="call-bar hidden"></div>
-  <div class="msgs" id="msgs"></div>
-  <div class="typing hidden" id="typing">${esc(u.name)} yazıyor<span>.</span><span>.</span><span>.</span></div>
-  <div class="picker hidden" id="picker"></div>
-  <div class="composer"><div class="tools">
-    <button class="icon-btn" data-tool="emoji" data-tip="Emoji">${icon('smile')}</button><button class="icon-btn" data-tool="sticker" data-tip="Çıkartma">${icon('sticker')}</button>
-    <button class="icon-btn" data-tool="gif" data-tip="GIF / fotoğraf / video gönder">${icon('image')}</button><button class="icon-btn" data-tool="file" data-tip="Dosya gönder">${icon('clip')}</button>
-    <button class="icon-btn" data-tool="poll" data-tip="Anket oluştur">${icon('poll')}</button></div>
-    <textarea id="msgIn" rows="1" placeholder="${esc(u.name)} kişisine mesaj yaz..."></textarea><button class="btn primary send" id="sendBtn">${icon('send', 18)}</button></div>`;
-  renderMsgs(id);
-  if (call && call.id === id) renderCallBar();
-  $('#chUser').onclick = () => showUser(id);
-  $('#callBtn').onclick = () => (call && call.id === id ? endCall() : startCall(id));
-  if (NET.online && (u.status === 'offline')) $('#callBtn').dataset.tip = 'Arkadaşın çevrimdışı — çevrimiçi olunca arayabilirsin';
-  const inp = $('#msgIn');
-  const send = () => { const t = inp.value.trim(); if (!t) return; inp.value = ''; sendMsg(id, { kind: 'text', text: t }); };
-  $('#sendBtn').onclick = send;
-  inp.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } };
-  inp.oninput = () => { if (NET.online && Date.now() - typingSent > 2500) { typingSent = Date.now(); NET.typing(id); } };
-  $$('[data-tool]', m).forEach(b => b.onclick = () => chatTool(id, b.dataset.tool));
-  inp.focus();
-}
-function renderMsgs(id) {
-  const box = $('#msgs'); if (!box) return;
-  const list = SO.chats[id] || [];
-  box.innerHTML = list.map(m => {
-    const mine = m.from === 'me';
-    let body = '';
-    if (m.kind === 'text') body = `<div class="bubble">${esc(m.text)}</div>`;
-    else if (m.kind === 'sticker') { const s = STICKERS.find(x => x.id === m.sticker) || STICKERS[0]; body = `<div class="sticker"><span>${s.e}</span><b>${s.t}</b></div>`; }
-    else if (m.kind === 'media') body = m.url ? `<div class="bubble media">${mediaHTML(esc(m.url), m.mtype)}</div>` : `<div class="bubble media" data-mid="${m.mid}" data-mtype="${esc(m.mtype)}"><span class="muted">yükleniyor...</span></div>`;
-    else if (m.kind === 'file') body = `<div class="bubble file">${icon('clip', 22)}<div><b>${esc(m.name)}</b><small>${fmtSize(m.size || 0)}</small></div><button class="btn sm ghost" ${m.url ? `data-url="${esc(m.url)}"` : `data-open="${m.mid}"`} data-name="${esc(m.name)}">${icon('download', 14)} İndir</button></div>`;
-    else if (m.kind === 'poll') {
-      const total = m.poll.opts.reduce((a, o) => a + o.votes.length, 0) || 0;
-      body = `<div class="bubble poll"><b>📊 ${esc(m.poll.q)}</b>${m.poll.opts.map((o, i) => { const pc = total ? Math.round(o.votes.length / total * 100) : 0; return `<button class="poll-opt ${o.votes.includes('me') ? 'on' : ''}" data-poll="${m.id}" data-oi="${i}"><i style="width:${pc}%"></i><span>${esc(o.t)}</span><em>${pc}% · ${o.votes.length}</em></button>`; }).join('')}<small class="muted">${total} oy</small></div>`;
-    }
-    return `<div class="msg ${mine ? 'mine' : ''}" data-mid-row="${esc(m.id)}">${mine ? '' : avatarOf(m.from, 30)}<div class="m-col">${body}<time>${fmtTime(m.time)}${mine ? `<button class="m-del" data-delmsg="${esc(m.id)}" data-tip="Mesajı herkesten sil">${icon('trash', 12)}</button>` : ''}</time></div></div>`;
-  }).join('') || `<div class="empty small"><p class="muted">Henüz mesaj yok. İlk mesajı sen gönder! 👋</p></div>`;
-  hydrate(box);
-  $$('[data-delmsg]', box).forEach(b => b.onclick = async () => {
-    const mid = b.dataset.delmsg;
-    if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.classList.add('sure'); b.innerHTML = 'Sil?'; setTimeout(() => { if (b.isConnected) { b.dataset.sure = ''; b.classList.remove('sure'); b.innerHTML = icon('trash', 12); } }, 2500); return; }
-    try { await NET.deleteMsg(id, mid); } catch (e) { return toast(esc(e.message), 'err'); }
-    renderMsgs(id); renderChatList(id);
-  });
-  $$('[data-poll]', box).forEach(b => b.onclick = () => votePoll(id, b.dataset.poll, +b.dataset.oi));
-  $$('[data-open]', box).forEach(b => b.onclick = async () => { const url = await mediaURL(b.dataset.open); if (!url) return toast('Dosya bulunamadı', 'err'); const a = document.createElement('a'); a.href = url; a.download = b.dataset.name; a.click(); });
-  $$('[data-url]', box).forEach(b => b.onclick = async () => {
-    try {
-      const r = await fetch(b.dataset.url); if (!r.ok) throw new Error(r.status);
-      const url = URL.createObjectURL(await r.blob());
-      const a = document.createElement('a'); a.href = url; a.download = b.dataset.name; a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
-    } catch { toast('Dosya indirilemedi', 'err'); }
-  });
-  box.scrollTop = box.scrollHeight;
-  box.querySelectorAll('img, video').forEach(el => el.addEventListener('load', () => { box.scrollTop = box.scrollHeight; }, { once: true }));
-}
-function sendMsg(id, msg) {
-  const texts = [msg.text, msg.poll && msg.poll.q, ...(msg.poll ? msg.poll.opts.map(o => o.t) : [])].filter(Boolean);
-  const lv = texts.map(profanityLevel).filter(Boolean);
-  if (lv.length) { const level = lv.includes('severe') ? 'severe' : 'mild'; return applyBan(level === 'severe' ? 'Sohbette başkalarına ağır hakaret / küfür ettin.' : 'Sohbette kötü / uygunsuz kelimeler kullandın.', level); }
-  if (SO.blocked.includes(id) || !NET.online) return;
-  NET.send(id, msg).then(() => { if (S.lastChat === id && current === 'messages') { renderMsgs(id); renderChatList(id); } })
-    .catch(e => { if (e.message !== 'banned') toast(esc(e.message), 'err'); });
-}
-function votePoll(cid, mid, oi) {
-  if (!NET.online) return;
-  NET.vote(mid, oi).then(() => renderMsgs(cid)).catch(e => toast(esc(e.message), 'err'));
-}
-async function chatTool(id, tool) {
-  const pk = $('#picker');
-  if (tool === 'emoji' || tool === 'sticker') {
-    if (!pk.classList.contains('hidden') && pk.dataset.t === tool) { pk.classList.add('hidden'); return; }
-    pk.dataset.t = tool; pk.classList.remove('hidden');
-    pk.innerHTML = tool === 'emoji' ? `<div class="emoji-grid">${EMOJIS.map(e => `<button data-e="${e}">${e}</button>`).join('')}</div>`
-      : `<div class="sticker-grid">${STICKERS.map(s => `<button class="sticker sm" data-s="${s.id}"><span>${s.e}</span><b>${s.t}</b></button>`).join('')}</div>`;
-    $$('[data-e]', pk).forEach(b => b.onclick = () => { const i = $('#msgIn'); i.value += b.dataset.e; i.focus(); });
-    $$('[data-s]', pk).forEach(b => b.onclick = () => { pk.classList.add('hidden'); sendMsg(id, { kind: 'sticker', sticker: b.dataset.s }); });
-    return;
-  }
-  pk.classList.add('hidden');
-  if (tool === 'gif' || tool === 'file') {
-    const f = await pickLocal(tool === 'gif' ? 'image/gif,image/*,video/*' : '*/*'); if (!f) return;
-    const kind = tool === 'gif' ? 'media' : 'file';
-    if (NET.online) {
-      if (f.size > 25e6) return toast('Dosya çok büyük (sunucuda en fazla 25 MB)', 'err');
-      toast('⏫ Yükleniyor: ' + esc(f.name));
-      try { const up = await NET.upload(f); sendMsg(id, { kind, file: up.id }); } catch (e) { toast(esc(e.message), 'err'); }
-      return;
-    }
-    if (f.size > 100e6) return toast('Dosya çok büyük (en fazla 100 MB)', 'err');
-    const md = await storeMedia(f);
-    sendMsg(id, kind === 'media' ? { kind, mid: md.id, mtype: md.type } : { kind, mid: md.id, name: f.name, size: f.size });
-  } else if (tool === 'poll') {
-    const c = openModal(`<h2>${icon('poll', 22)} Anket oluştur</h2><div class="field"><label>Soru</label><input id="pq" maxlength="120" placeholder="ör. Bu akşam ne oynayalım?"></div>
-    <div id="popts">${[1, 2].map(i => `<div class="field"><input class="po" maxlength="60" placeholder="Seçenek ${i}"></div>`).join('')}</div>
-    <div class="row-btns"><button class="btn ghost" id="paddo">${icon('plus', 14)} Seçenek ekle</button><button class="btn primary" id="psend">Anketi gönder</button></div>`);
-    $('#paddo', c).onclick = () => { const n = $$('.po', c).length; if (n >= 6) return toast('En fazla 6 seçenek'); $('#popts', c).insertAdjacentHTML('beforeend', `<div class="field"><input class="po" maxlength="60" placeholder="Seçenek ${n + 1}"></div>`); };
-    $('#psend', c).onclick = () => {
-      const q = $('#pq', c).value.trim(), opts = $$('.po', c).map(i => i.value.trim()).filter(Boolean);
-      if (!q || opts.length < 2) return toast('Bir soru ve en az 2 seçenek yaz', 'warn');
-      closeModal(); sendMsg(id, { kind: 'poll', poll: { q, opts: opts.map(t => ({ t, votes: [] })) } });
-    };
-  }
-}
-/* ---------- Voice chat ---------- */
-let call = null, ringing = null;
-const iceBuf = {};
-const ICE_FALLBACK = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
-async function getIce() {
-  try { const r = await NET.ice(); return { servers: r.iceServers, turn: !!r.turn, mode: r.mode }; }
-  catch { return { servers: ICE_FALLBACK, turn: false, mode: 'off' }; }
-}
-async function detectRoute(pc) {
-  try {
-    const stats = await pc.getStats(); let pair = null; const byId = {};
-    stats.forEach(s => { byId[s.id] = s; });
-    stats.forEach(s => { if (s.type === 'transport' && s.selectedCandidatePairId) pair = byId[s.selectedCandidatePairId]; });
-    if (!pair) stats.forEach(s => { if (s.type === 'candidate-pair' && s.state === 'succeeded' && (s.nominated || s.selected)) pair = s; });
-    if (!pair) return '';
-    const l = byId[pair.localCandidateId], r = byId[pair.remoteCandidateId];
-    return (l && l.candidateType === 'relay') || (r && r.candidateType === 'relay') ? 'TURN üzerinden' : 'Doğrudan bağlantı';
-  } catch { return ''; }
-}
-async function getMic() {
-  try { return await openMic(); }
-  catch (e) { toast('Mikrofona erişilemedi: ' + esc(e.message), 'err'); return null; }
-}
-function micAnalyser(stream) { const ctx = AudioEngine.context; const an = ctx.createAnalyser(); an.fftSize = 256; ctx.createMediaStreamSource(stream).connect(an); return an; }
-async function setupPc() {
-  const ice = await getIce();
-  const relayOnly = !!S.callRelay && ice.turn;
-  if (S.callRelay && !ice.turn) toast('Sunucuda TURN yok — IP gizleme bu aramada uygulanamıyor', 'warn');
-  const pc = new RTCPeerConnection({ iceServers: ice.servers, iceTransportPolicy: relayOnly ? 'relay' : 'all' });
-  if (!call) { pc.close(); return null; }
-  call.pc = pc; call.turnAvail = ice.turn; call.relayOnly = relayOnly;
-  call.stream.getTracks().forEach(t => pc.addTrack(t, call.stream));
-  pc.onicecandidate = e => { if (e.candidate && call) NET.signal({ type: 'call_ice', to: call.id, candidate: e.candidate.toJSON() }); };
-  pc.ontrack = e => {
-    let a = $('#remoteAudio');
-    if (!a) { a = document.createElement('audio'); a.id = 'remoteAudio'; a.autoplay = true; document.body.appendChild(a); if (S.spkId && a.setSinkId) a.setSinkId(S.spkId).catch(() => {}); }
-    a.srcObject = e.streams[0]; a.play().catch(() => {});
-    if (call) call.ran = micAnalyser(e.streams[0]);
-  };
-  pc.onconnectionstatechange = () => {
-    if (!call || call.pc !== pc) return;
-    if (pc.connectionState === 'connected') {
-      call.state = 'live'; call.start = Date.now(); renderCallBar(); AudioEngine.notify();
-      detectRoute(pc).then(r => { if (call && call.pc === pc && r) { call.route = r; renderCallBar(); } });
-    }
-    if (pc.connectionState === 'failed') {
-      toast(call.turnAvail ? 'Sesli bağlantı kurulamadı — TURN sunucusuna da ulaşılamadı (UDP 3478 ve aktarım portları açık mı?).' : 'Sesli bağlantı kurulamadı. Bu ağ doğrudan bağlantıya izin vermiyor; sunucuda TURN açılmalı.', 'err', 6000);
-      endCall();
-    }
-  };
-  return pc;
-}
-function flushIce(from) {
-  const list = iceBuf[from] || []; delete iceBuf[from];
-  list.forEach(c => call.pc.addIceCandidate(c).catch(() => {}));
-}
-async function startCall(id) {
-  if (!NET.online) return toast('Sesli sohbet için Kizuna Topluluğuna bağlı olmalısın', 'warn');
-  if (call) endCall();
-  if (!NET.wsUp) return toast('Sunucu bağlantısı yok — biraz sonra tekrar dene', 'err');
-  const stream = await getMic(); if (!stream) return;
-  call = { id, stream, muted: false, start: Date.now(), state: 'calling', an: micAnalyser(stream) };
-  if (!(await setupPc())) return;
-  const offer = await call.pc.createOffer();
-  await call.pc.setLocalDescription(offer);
-  NET.signal({ type: 'call_offer', to: id, sdp: offer.sdp });
-  log('Sesli arama: ' + (userById(id) || {}).name);
-  renderCallBar();
-  call.iv = setInterval(tickCall, 120);
-  call.timeout = setTimeout(() => { if (call && call.state === 'calling') { toast('Cevap verilmedi'); endCall(); } }, 45000);
-}
-async function onCallOffer(m) {
-  if (call || ringing) { NET.signal({ type: 'call_reject', to: m.from }); return; }
-  let u = userById(m.from); if (!u) { try { u = await NET.profile(m.from); } catch { return; } }
-  ringing = m;
-  const ringIv = setInterval(() => AudioEngine.notify(), 1600); AudioEngine.notify();
-  const stopRing = () => { clearInterval(ringIv); clearTimeout(ringing && ringing.to); };
-  const c = openModal(`<div class="ring">${userAvatar(u, 110)}<h2>${esc(u.name)} seni arıyor</h2><p class="muted">🔊 Sesli sohbet</p>
-    <div class="row-btns center"><button class="btn primary big" id="rAcc">${icon('phone', 18)} Cevapla</button><button class="btn danger big" id="rRej">Reddet</button></div></div>`, 'ringing');
-  ringing.stop = stopRing;
-  ringing.to = setTimeout(() => { if (ringing === m) { stopRing(); ringing = null; closeModal(); toast(`📞 Cevapsız arama: <b>${esc(u.name)}</b>`); } }, 40000);
-  $('#rAcc', c).onclick = () => { stopRing(); ringing = null; closeModal(); acceptCall(m); };
-  $('#rRej', c).onclick = () => { stopRing(); ringing = null; closeModal(); NET.signal({ type: 'call_reject', to: m.from }); delete iceBuf[m.from]; };
-}
-async function acceptCall(m) {
-  const stream = await getMic();
-  if (!stream) { NET.signal({ type: 'call_reject', to: m.from }); return; }
-  call = { id: m.from, stream, muted: false, start: Date.now(), state: 'connecting', an: micAnalyser(stream) };
-  if (!(await setupPc())) return;
-  await call.pc.setRemoteDescription({ type: 'offer', sdp: m.sdp });
-  flushIce(m.from);
-  const ans = await call.pc.createAnswer();
-  await call.pc.setLocalDescription(ans);
-  NET.signal({ type: 'call_answer', to: m.from, sdp: ans.sdp });
-  if (current !== 'messages' || S.lastChat !== m.from) go('messages', m.from);
-  renderCallBar();
-  call.iv = setInterval(tickCall, 120);
-}
-async function onCallSignal(m) {
-  if (m.type === 'call_ice') {
-    if (call && call.id === m.from && call.pc && call.pc.remoteDescription) call.pc.addIceCandidate(m.candidate).catch(() => {});
-    else (iceBuf[m.from] ||= []).push(m.candidate);
-  } else if (m.type === 'call_answer' && call && call.id === m.from && call.pc) {
-    clearTimeout(call.timeout); call.state = 'connecting';
-    await call.pc.setRemoteDescription({ type: 'answer', sdp: m.sdp }); flushIce(m.from); renderCallBar();
-  } else if (m.type === 'call_reject' && call && call.id === m.from) {
-    toast(`📞 ${esc((userById(m.from) || {}).name || 'Oyuncu')} aramayı reddetti ya da meşgul`, 'warn'); endCall(false);
-  } else if (m.type === 'call_unavailable' && call && call.id === m.from) {
-    toast(`📞 ${esc((userById(m.from) || {}).name || 'Oyuncu')} şu an çevrimdışı`, 'warn'); endCall(false);
-  } else if (m.type === 'call_end') {
-    if (ringing && ringing.from === m.from) { ringing.stop && ringing.stop(); ringing = null; closeModal(); toast('📞 Cevapsız arama'); }
-    if (call && call.id === m.from) endCall(false);
-    delete iceBuf[m.from];
-  }
-}
-function renderCallBar() {
-  const bar = $('#callBar'); if (!bar || !call || S.lastChat !== call.id) return;
-  const u = userById(call.id);
-  bar.classList.remove('hidden');
-  const label = call.state === 'calling' ? '📞 Aranıyor…' : call.state === 'connecting' ? '🔄 Bağlanıyor…' : '🔊 Sesli sohbet' + (call.demo ? ' (demo)' : '');
-  const route = call.route ? `<em class="route ${call.route.startsWith('TURN') ? 'turn' : ''}">${call.route.startsWith('TURN') ? '🛡️' : '⚡'} ${call.route}${call.relayOnly ? ' · IP gizli' : ''}</em>` : '';
-  bar.innerHTML = `<div class="cb-p">${meAvatar(34)}<i class="lvl" id="lvlMe"></i><span>Sen</span></div><div class="cb-mid"><b>${label}</b><small id="callTime">00:00</small>${route}</div>
-  <div class="cb-p">${userAvatar(u, 34)}<i class="lvl" id="lvlU"></i><span>${esc(u.name)}</span></div>
-  <button class="icon-btn ${call.muted ? 'on' : ''}" id="muteBtn" data-tip="Mikrofonu kapat / aç">${icon(call.muted ? 'micoff' : 'mic')}</button><button class="btn sm danger" id="endBtn">Bitir</button>`;
-  hydrate(bar);
-  $('#muteBtn').onclick = () => { call.muted = !call.muted; call.stream && call.stream.getAudioTracks().forEach(t => { t.enabled = !call.muted; }); renderCallBar(); };
-  $('#endBtn').onclick = endCall;
-  const cb = $('#callBtn'); if (cb) cb.innerHTML = `${icon('phone', 15)} Aramayı bitir`;
-}
-function tickCall() {
-  if (!call) return;
-  const s = Math.floor((Date.now() - call.start) / 1000), el = $('#callTime');
-  if (el) el.textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
-  let lv = 0;
-  if (call.an && !call.muted) { const d = new Uint8Array(call.an.frequencyBinCount); call.an.getByteFrequencyData(d); lv = d.reduce((a, b) => a + b, 0) / d.length / 80; }
-  const me = $('#lvlMe'); if (me) me.style.transform = `scale(${1 + Math.min(lv, 1) * 0.8})`;
-  let lu = 0;
-  if (call.ran) { const d = new Uint8Array(call.ran.frequencyBinCount); call.ran.getByteFrequencyData(d); lu = Math.min(1, d.reduce((a, b) => a + b, 0) / d.length / 80); }
-  else if (call.demo) lu = Math.sin(Date.now() / 300) > 0.3 ? Math.random() * 0.9 : 0;
-  const ou = $('#lvlU'); if (ou) ou.style.transform = `scale(${1 + lu * 0.8})`;
-}
-function endCall(notify = true) {
-  if (!call) return;
-  clearInterval(call.iv); clearTimeout(call.timeout); call.stream && call.stream.getTracks().forEach(t => t.stop());
-  if (call.pc) { if (notify) NET.signal({ type: 'call_end', to: call.id }); try { call.pc.close(); } catch {} }
-  const ra = $('#remoteAudio'); if (ra) { ra.srcObject = null; ra.remove(); }
-  const u = userById(call.id); call = null;
-  const bar = $('#callBar'); if (bar) { bar.classList.add('hidden'); bar.innerHTML = ''; }
-  const cb = $('#callBtn'); if (cb) cb.innerHTML = `${icon('phone', 15)} Sesli sohbet`;
-  if (u) toast('Sesli sohbet bitti');
-}
-
-/* ---------- Kizuna Server: real-time events ---------- */
-let typingHide = null;
-function refreshSocial() { if (current === 'friends') go('friends'); else if (current === 'messages') { renderChatList(S.lastChat); } }
-function netEvent(m) {
-  const nm = u => esc((u && u.name) || 'Bir oyuncu');
-  switch (m.type) {
-    case 'ws_up': case 'ws_down':
-      if (current === 'friends') go('friends');
-      renderNetSettings($('#netSet')); break;
-    case 'logged_out':
-      if (call && call.pc) endCall(false);
-      updateBadges(); if (['friends', 'messages'].includes(current)) go(current); renderNetSettings($('#netSet')); break;
-    case 'user': {
-      NET.putUser(m.user);
-      if (current === 'friends') go('friends');
-      else if (current === 'messages') renderChatList(S.lastChat);
-      break;
-    }
-    case 'friend_request':
-      NET.putUser(m.user);
-      if (!NET.requestsIn.includes(m.user.id)) NET.requestsIn.push(m.user.id);
-      toast(`🤝 <b>${nm(m.user)}</b> sana arkadaşlık isteği gönderdi`, 'ok'); AudioEngine.notify();
-      updateBadges(); refreshSocial(); break;
-    case 'friend_accepted':
-      NET.putUser(m.user); NET.addFriend(m.user.id);
-      toast(`🤝 <b>${nm(m.user)}</b> arkadaşlık isteğini kabul etti!`, 'ok'); AudioEngine.notify(); log('Yeni arkadaş: ' + m.user.name);
-      updateBadges(); refreshSocial(); break;
-    case 'friend_removed':
-      NET.friends = NET.friends.filter(x => x !== m.id); NET.requestsIn = NET.requestsIn.filter(x => x !== m.id); NET.requestsOut = NET.requestsOut.filter(x => x !== m.id);
-      if (call && call.id === m.id) endCall(false);
-      updateBadges();
-      if (current === 'messages') go('messages'); else refreshSocial();
-      break;
-    case 'message_deleted': {
-      // a deleted message disappears for both sides — and no longer counts as unread
-      const mine = m.from === NET.me.id, peer = mine ? m.to : m.from;
-      NET.removeMsg(peer, m.id);
-      if (!mine && m.wasUnread && NET.unread[peer]) NET.unread[peer] = Math.max(0, NET.unread[peer] - 1);
-      updateBadges();
-      if (current === 'messages') { if (S.lastChat === peer) renderMsgs(peer); renderChatList(S.lastChat); }
-      break;
-    }
-    case 'message': case 'message_update': {
-      const msg = NET.upsertMsg(m.msg), peer = msg.peer;
-      const viewing = current === 'messages' && S.lastChat === peer;
-      if (m.type === 'message' && msg.from !== 'me') {
-        if (viewing) NET.markRead(peer);
-        else { NET.unread[peer] = (NET.unread[peer] || 0) + 1; toast(`💬 <b>${nm(userById(peer))}</b>: ${esc(msgPreview(msg)).slice(0, 120)}`); }
-        AudioEngine.notify(); updateBadges();
-        const t = $('#typing'); if (viewing && t) t.classList.add('hidden');
-      }
-      if (viewing) renderMsgs(peer);
-      if (current === 'messages') renderChatList(S.lastChat);
-      break;
-    }
-    case 'typing':
-      if (current === 'messages' && S.lastChat === m.from) {
-        const t = $('#typing'); if (t) t.classList.remove('hidden');
-        clearTimeout(typingHide); typingHide = setTimeout(() => { const x = $('#typing'); if (x) x.classList.add('hidden'); }, 3500);
-      }
-      break;
-    case 'banned': serverBan(m.banned); break;
-    case 'call_offer': onCallOffer(m); break;
-    case 'call_answer': case 'call_ice': case 'call_reject': case 'call_end': case 'call_unavailable': onCallSignal(m); break;
-  }
-}
-function serverBan(b) {
-  if (!b || !b.until) return;
-  b = { ...b, offenses: mergeOff(banRecord && banRecord.offenses, b.offenses) };
-  banRecord = b;
-  localStorage.setItem('kz_ban', JSON.stringify(b));
-  if (api) api.setBan(b);
-  if (!document.body.classList.contains('banned')) showBan(b);
-}
-/* Kizuna Community server address lives in the GitHub repo (community.json), so it can change without an app update */
-let COMMUNITY = null;
-async function loadCommunity() {
-  if (COMMUNITY) return COMMUNITY;
-  try {
-    const r = await fetch(COMMUNITY_URL + '?t=' + Math.floor(Date.now() / 3e5), { cache: 'no-store' });
-    const j = await r.json();
-    COMMUNITY = { url: typeof j.url === 'string' ? j.url.trim() : '', name: j.name || 'Kizuna Topluluğu' };
-  } catch { COMMUNITY = { url: '', name: '' }; }
-  return COMMUNITY;
-}
-async function connectSaved() {
-  loadCommunity();
-  if (!S.net || !S.net.token) return;
-  try {
-    await NET.resume(S.net.url, S.net.token);
-    updateMe(); updateBadges(); refreshSocial();
-  } catch (e) {
-    if (e.status === 401) { S.net.token = ''; save(); toast('Sunucu oturumun sona erdi — Ayarlar › Sunucu’dan tekrar giriş yap', 'warn', 5000); }
-    else if (e.status !== 403) { toast('Kizuna Topluluğuna bağlanılamadı — 30 sn sonra tekrar denenecek.', 'warn', 5000); setTimeout(connectSaved, 30000); }
-  }
-}
-async function pushLocalProfile() {
-  try {
-    await NET.updateMe({ bio: S.profile.bio, status: S.profile.status, hideJoin: S.privacy.hideJoin, hideGames: S.privacy.hideGames, played: S.played });
-    for (const k of ['avatar', 'banner']) if (S.profile[k]) { const b = await DB.get(S.profile[k]); if (b && b.size <= 25e6) { await NET.setMedia(k, b); if (S.profile[k + 'Crop']) await NET.updateMe({ [k + 'Crop']: S.profile[k + 'Crop'] }); } }
-  } catch (e) { toast('Profilin sunucuya tam aktarılamadı: ' + esc(e.message), 'warn'); }
-}
-function netSync(patch) { if (NET.online) NET.updateMe(patch).catch(e => toast(esc(e.message), 'err')); }
-/* ---------- Host a server on this PC (server bundled with the installer) ---------- */
-const HOST_PILL = { running: ['● Çalışıyor', 'on'], starting: ['… Başlatılıyor', ''], stopping: ['… Durduruluyor', ''], stopped: ['○ Kapalı', 'off'], error: ['⚠ Hata', 'err'] };
-async function renderHostSettings(box) {
-  if (!box) return;
-  if (!api || !api.server) { box.innerHTML = ''; return; }
-  let s; try { s = await api.server.status(); } catch { box.innerHTML = ''; return; }
-  if (!s.available) { box.innerHTML = ''; return; }
-  const c = s.config, b = c.turn.builtin, x = c.turn.external, pill = HOST_PILL[s.state] || HOST_PILL.stopped;
-  const busy = ['starting', 'stopping'].includes(s.state), running = s.state === 'running';
-  box.innerHTML = `<div class="host-card">
-  <div class="host-top"><div class="host-title"><b>🖥️ Bu bilgisayarda sunucu barındır</b><small>Arkadaşların senin bilgisayarına bağlanır. Ek kurulum gerekmez — sunucu Kizuna ile birlikte geldi.</small></div>
-   <span class="host-pill ${pill[1]}">${pill[0]}</span>
-   <button class="btn ${running ? 'danger' : 'primary'}" id="hostToggle" ${busy ? 'disabled' : ''}>${running ? 'Sunucuyu durdur' : 'Sunucuyu başlat'}</button></div>
-  ${s.error && s.state === 'error' ? `<p class="host-err">⚠ ${esc(s.error)}</p>` : ''}
-  ${running ? `<div class="host-addrs"><span class="muted small">Arkadaşlarına ver:</span>${s.lan.map(a => `<code class="clickable" data-copy="http://${a}:${s.port}" data-tip="Kopyala">http://${a}:${s.port}</code>`).join('') || '<span class="muted small">ağ bağlantısı bulunamadı</span>'}
-    <span class="muted small">· bu bilgisayar:</span><code>http://localhost:${s.port}</code>${NET.online ? '' : `<button class="btn sm primary" id="hostUse">Kendi sunucuma bağlan ›</button>`}</div>` : ''}
-  <div class="field row"><label>Kizuna açılınca sunucuyu otomatik başlat</label><label class="switch"><input type="checkbox" id="hAuto" ${s.ctl.autoStart ? 'checked' : ''}><i></i></label></div>
-  <div class="field row"><label>Pencereyi kapatınca sunucu sistem tepsisinde çalışmaya devam etsin</label><label class="switch"><input type="checkbox" id="hTray" ${s.ctl.keepInTray ? 'checked' : ''}><i></i></label></div>
-  <details class="host-adv"><summary>Gelişmiş ayarlar — port, sesli sohbet (TURN), internetten erişim</summary>
-   <div class="form-grid">
-    <div class="field"><label>Sunucu portu (TCP)</label><input type="number" id="hPort" value="${c.port}"></div>
-    <div class="field"><label>Sesli sohbet aktarımı</label><select id="hMode"><option value="builtin">Gömülü TURN (önerilen)</option><option value="external">Harici TURN (coturn)</option><option value="off">Kapalı (sadece STUN)</option></select></div>
-   </div>
-   <div id="hBuiltin" class="form-grid">
-    <div class="field"><label>TURN portu (UDP)</label><input type="number" id="hTPort" value="${b.port}"></div>
-    <div class="field"><label>Ses aktarım portları (UDP)</label><div class="row-inp"><input type="number" id="hMin" value="${b.minPort}"><input type="number" id="hMax" value="${b.maxPort}"></div></div>
-    <div class="field"><label>Dış (public) IP <small class="muted">— internetten erişim için</small></label><input id="hExt" value="${esc(b.externalIp)}" placeholder="yerel ağda boş bırak" spellcheck="false"></div>
-    <div class="field"><label>Genel adres <small class="muted">— alan adı veya dış IP</small></label><input id="hHost" value="${esc(b.publicHost)}" placeholder="ör. kizuna.duckdns.org" spellcheck="false"></div>
-   </div>
-   <div id="hExternal" class="form-grid">
-    <div class="field"><label>TURN adresleri (virgülle)</label><input id="hUrls" value="${esc((x.urls || []).join(', '))}" placeholder="turn:turn.ornek.com:3478?transport=udp" spellcheck="false"></div>
-    <div class="field"><label>Gizli anahtar (static-auth-secret)</label><input type="password" id="hSecret" value="${esc(x.secret || '')}"></div>
-   </div>
-   <div class="row-btns"><button class="btn primary" id="hSave">${icon('check', 16)} Ayarları kaydet</button><span class="muted small" id="hMsg"></span></div>
-   ${tipBox(`İnternetten bağlanacak arkadaşlar için modeminde şu portları bu bilgisayara yönlendir: <b>TCP ${c.port}</b>${c.turn.mode === 'builtin' ? `, <b>UDP ${b.port}</b> ve <b>UDP ${b.minPort}–${b.maxPort}</b>` : ''}. Windows güvenlik duvarı ilk başlatmada izin isterse “İzin ver” de. Aynı evdeki/ağdaki arkadaşlar için bir şey yapmana gerek yok.`)}
-  </details>
-  <details class="host-adv" id="hLogBox"><summary>Sunucu kayıtları</summary><pre class="host-log" id="hLog"></pre></details>
- </div>`;
-  const modeSel = $('#hMode', box); modeSel.value = c.turn.mode;
-  const vis = () => { $('#hBuiltin', box).classList.toggle('hidden', modeSel.value !== 'builtin'); $('#hExternal', box).classList.toggle('hidden', modeSel.value !== 'external'); };
-  modeSel.onchange = vis; vis();
-  $('#hostToggle', box).onclick = async () => {
-    $('#hostToggle', box).disabled = true;
-    const r = running ? await api.server.stop() : await api.server.start();
-    if (!running && r.state === 'running') {
-      log('Bu bilgisayarda Kizuna Sunucusu başlatıldı');
-      if (!NET.online) { S.net.url = `http://localhost:${r.port}`; save(); renderNetSettings($('#netSet')); toast('🖥️ Sunucun çalışıyor! Şimdi aşağıdan kendi sunucuna hesap oluştur.', 'ok', 5000); }
-      else toast('🖥️ Sunucun çalışıyor', 'ok');
-    }
-    renderHostSettings(box);
-  };
-  const use = $('#hostUse', box);
-  if (use) use.onclick = () => { S.net.url = `http://localhost:${s.port}`; save(); renderNetSettings($('#netSet')); const n = $('#netPass'); if (n) n.focus(); };
-  $$('[data-copy]', box).forEach(el => el.onclick = () => { navigator.clipboard.writeText(el.dataset.copy).then(() => toast('📋 Adres kopyalandı — arkadaşına gönder'), () => {}); });
-  $('#hAuto', box).onchange = e => api.server.setCtl({ autoStart: e.target.checked });
-  $('#hTray', box).onchange = e => api.server.setCtl({ keepInTray: e.target.checked });
-  $('#hSave', box).onclick = async () => {
-    const num = id => +$(id, box).value;
-    const patch = { port: num('#hPort'), turn: { mode: modeSel.value,
-      builtin: { port: num('#hTPort'), minPort: num('#hMin'), maxPort: num('#hMax'), externalIp: $('#hExt', box).value.trim(), publicHost: $('#hHost', box).value.trim() },
-      external: { urls: $('#hUrls', box).value.split(',').map(v => v.trim()).filter(Boolean), secret: $('#hSecret', box).value } } };
-    $('#hMsg', box).textContent = 'Kaydediliyor…';
-    const r = await api.server.setConfig(patch);
-    if (!r.ok) { $('#hMsg', box).textContent = '⚠ ' + r.error; return; }
-    toast(r.restarted ? 'Ayarlar kaydedildi — sunucu yeniden başlatıldı' : 'Sunucu ayarları kaydedildi', 'ok');
-    renderHostSettings(box);
-  };
-  $('#hLogBox', box).addEventListener('toggle', async e => { if (e.target.open) $('#hLog', box).textContent = (await api.server.logs()).join('\n') || 'Henüz kayıt yok.'; });
-}
 /* ---------- Automatic updates (GitHub Releases) ---------- */
 let updToastShown = false;
 function bindUpdateEvents() {
@@ -1989,8 +1353,8 @@ function bindUpdateEvents() {
 }
 /* In-app update prompt: appears as soon as a new version has been downloaded */
 function showUpdatePrompt(st) {
-  const busy = !$('#app').classList.contains('hidden') && (call || document.body.classList.contains('banned'));
-  if (busy || $('#app').classList.contains('hidden')) { // during a call or setup: don't interrupt, ask later
+  const busy = !$('#app').classList.contains('hidden') && document.body.classList.contains('banned');
+  if (busy || $('#app').classList.contains('hidden')) { // during setup or a ban: don't interrupt
     toast(`⬆️ Kizuna <b>v${esc(st.version)}</b> hazır — Kizuna’yı kapatınca kendiliğinden kurulur.`, 'ok', 9000);
     return;
   }
@@ -2018,61 +1382,6 @@ async function renderUpdateSettings() {
   const c = $('#updCheck'); if (c) c.onclick = async () => { const r = await api.update.check(); if (!r.ok && r.error) toast(esc(r.error), 'warn'); };
   const i = $('#updInstall'); if (i) i.onclick = () => { i.disabled = true; i.textContent = 'Kuruluyor…'; api.update.install(); };
 }
-function bindHostEvents() {
-  if (!api || !api.server) return;
-  api.server.onState(() => renderHostSettings($('#hostSet')));
-  api.server.onLog(line => { const el = $('#hLog'); if (el) { el.textContent += (el.textContent ? '\n' : '') + line; el.scrollTop = el.scrollHeight; } });
-}
-function renderNetSettings(box) {
-  if (!box) return;
-  if (NET.online) {
-    box.innerHTML = `<div class="ai-state on"><b>● Bağlı: ${esc(NET.me.name)} <span class="fcode">#${esc(NET.me.code || '')}</span></b><small>${esc(COMMUNITY && COMMUNITY.url === NET.url ? (COMMUNITY.name || 'Kizuna Topluluğu') : NET.url)} · ${NET.wsUp ? 'anlık bağlantı açık' : 'anlık bağlantı yeniden kuruluyor…'} · ${NET.friends.length} arkadaş</small></div>
-    <div class="field row"><label>Sesli sohbette IP adresimi gizle <small class="muted">(ses yalnızca TURN sunucusu üzerinden gider; biraz daha yüksek gecikme)</small></label><label class="switch"><input type="checkbox" data-k="callRelay"><i></i></label></div>
-    <p class="muted small" id="iceInfo">Sesli sohbet aktarımı kontrol ediliyor…</p>
-    <div class="row-btns"><button class="btn ghost" id="netOut">Çıkış yap</button></div>
-    ${tipBox('Arkadaşların da aynı sunucu adresine bağlanıp hesap oluşturmalı. Sonra Arkadaşlar › Oyuncu bul’dan birbirinizi kullanıcı adıyla bulursunuz.')}`;
-    bindKeys(box);
-    getIce().then(ice => {
-      const el = $('#iceInfo', box); if (!el) return;
-      el.innerHTML = ice.turn ? `🛡️ Sesli sohbet: <b>TURN aktif</b> (${ice.mode === 'builtin' ? 'Kizuna sunucusunun içinde' : 'harici TURN sunucusu'}) — kısıtlı ağlarda da bağlanır.`
-        : '⚠️ Sesli sohbet: TURN kapalı — bazı ağlarda (okul/iş, mobil hotspot) arama bağlanmayabilir.';
-    });
-    $('#netOut', box).onclick = async () => { await NET.logout(); S.net.token = ''; save(); toast('Kizuna Topluluğundan çıkış yapıldı'); renderNetSettings(box); if (['friends', 'messages'].includes(current)) go(current); };
-    return;
-  }
-  const com = COMMUNITY || { url: '' };
-  const custom = S.net && S.net.url && S.net.url !== com.url;
-  box.innerHTML = `<div class="com-state ${com.url ? 'on' : 'off'}" id="comState">${COMMUNITY === null ? '… Kizuna Topluluk Sunucusu aranıyor' : com.url ? `🌍 <b>${esc(com.name || 'Kizuna Topluluğu')}</b> — dünyanın her yerinden oyuncular burada` : '⚠️ Topluluk sunucusu şu an tanımlı değil — aşağıdan bir sunucu adresi girebilirsin'}</div>
-  <div class="form-grid"><div class="field"><label>Kullanıcı adı</label><input id="netName" maxlength="20" value="${esc(S.profile.name)}" autocomplete="username"></div>
-  <div class="field"><label>Şifre</label><input id="netPass" type="password" maxlength="200" autocomplete="current-password" placeholder="en az 6 karakter"></div></div>
-  <div class="row-btns"><button class="btn primary" id="netReg">🎉 Hesap oluştur</button><button class="btn ghost" id="netLogin">Giriş yap</button><span class="muted small" id="netMsg"></span></div>
-  <details class="host-adv" ${custom || !com.url ? 'open' : ''}><summary>Farklı bir sunucu kullan (arkadaşının ya da kendi sunucun)</summary>
-   <div class="field"><label>Sunucu adresi <small class="muted">— boş bırakırsan Kizuna Topluluğu kullanılır</small></label><input id="netUrl" value="${esc(custom ? S.net.url : '')}" placeholder="${esc(com.url || 'http://192.168.1.20:3777')}" spellcheck="false"></div></details>`;
-  if (COMMUNITY === null) loadCommunity().then(() => renderNetSettings(box));
-  const doAuth = async kind => {
-    const url = $('#netUrl', box).value.trim() || com.url, name = $('#netName', box).value.trim(), pw = $('#netPass', box).value, msg = $('#netMsg', box);
-    if (!url) { msg.textContent = '⚠ Sunucu adresi yok — “Farklı bir sunucu kullan”dan adres gir.'; return; }
-    if (!name || !pw) { msg.textContent = '⚠ Kullanıcı adı ve şifre gerekli.'; return; }
-    if (hasProfanity(name)) { msg.textContent = '⚠ Kullanıcı adında uygunsuz kelime olamaz.'; return; }
-    msg.textContent = 'Bağlanılıyor…';
-    try {
-      const me = await NET.auth(kind, url, name, pw, S.profile.bio);
-      S.net = { url: NET.url, token: NET.token };
-      S.profile.name = me.name;
-      if (!S.profile.joined) S.profile.joined = me.joined || Date.now();
-      save();
-      if (kind === 'register') await pushLocalProfile();
-      updateMe(); updateBadges();
-      toast(kind === 'register' ? `🎉 Hesabın oluşturuldu: <b>${esc(me.name)}</b> — arkadaş kodun: <b>#${esc(me.code || '')}</b>` : `👋 Tekrar hoş geldin <b>${esc(me.name)}</b>`, 'ok', 5000);
-      log('Kizuna Topluluğuna bağlanıldı: ' + NET.url);
-      renderNetSettings(box); refreshSocial(); if (current === 'friends' || current === 'messages') go(current);
-    } catch (e) { msg.textContent = '⚠ ' + (e.message === 'banned' ? 'Bu hesap banlı.' : e.message); }
-  };
-  $('#netLogin', box).onclick = () => doAuth('login');
-  $('#netReg', box).onclick = () => doAuth('register');
-  $('#netPass', box).onkeydown = e => { if (e.key === 'Enter') doAuth('login'); };
-}
-
 /* ---------- Kizuna AI ---------- */
 VIEWS.ai = v => {
   if (!S.aiChat.length) S.aiChat.push({ from: 'ai', text: I18n.fmt('Hoş geldin {0}! 👋 Ben **Kizuna AI**. Nasılsın? Sana oyun önerebilir, temayı veya arayüz yılını değiştirebilir, müzik açabilir ya da Kizuna’yı anlatabilirim.', S.profile.name), time: Date.now() });
@@ -2131,9 +1440,9 @@ async function aiStatus() {
   try { return { ...(await api.ai.status()), desktop: true }; } catch { return { hasKey: false, desktop: true }; }
 }
 function aiContext() {
-  return `kullanıcı adı: ${S.profile.name}; arayüz dili: ${S.lang} (${(LANGS[S.lang] || {}).name || ''}); tema: ${S.theme}; arayüz yılı: ${S.year}; çalan müzik: ${Music.playing ? Music.cur : 'yok'}; topluluğa bağlı: ${NET.online ? 'evet, ' + myFriends().filter(f => f.status !== 'offline').length + ' arkadaş çevrimiçi' : 'hayır'}; `
+  return `kullanıcı adı: ${S.profile.name}; arayüz dili: ${S.lang} (${(LANGS[S.lang] || {}).name || ''}); tema: ${S.theme}; arayüz yılı: ${S.year}; çalan müzik: ${Music.playing ? Music.cur : 'yok'}; `
     + `kütüphanedeki oyunlar: ${S.library.map(g => g.title).slice(0, 30).join(', ') || 'boş'}; son oynananlar: ${S.played.slice(0, 10).join(', ') || 'yok'}; `
-    + `bağlı emülatörler: ${Object.entries(S.emulators).filter(([, v]) => v).map(([k]) => k.toUpperCase()).join(', ') || 'yok'}; arkadaş sayısı: ${myFriends().length}; şu an: ${new Date().toLocaleString('tr-TR')}`;
+    + `bağlı emülatörler: ${Object.entries(S.emulators).filter(([, v]) => v).map(([k]) => k.toUpperCase()).join(', ') || 'yok'}; şu an: ${new Date().toLocaleString('tr-TR')}`;
 }
 const AI_GAMES = () => GAMES.map(g => `${g.id} | ${g.t} | ${CONSOLES[g.c].short} | ${g.y} | ${g.g}${g.pc ? ' | resmi PC sürümü var' : ''}`).join('\n');
 function setAiBusy(b) {
@@ -2396,12 +1705,6 @@ VIEWS.settings = (v, arg) => {
   };
   const bd = $('#bgDel'); if (bd) bd.onclick = () => { S.bg = ''; save(); applyBg(); go('settings', 'bg'); };
   $('#setFolder').onclick = async () => { if (!api) return toast('Masaüstü uygulamasında çalışır', 'warn'); const p = await api.pickFolder(); if (p) { S.gameFolder = p; save(); go('settings', 'emu'); } };
-  $$('[data-unblock]', v).forEach(b => b.onclick = async () => {
-    const id = b.dataset.unblock;
-    if (NET.online) { try { await NET.unblock(id); } catch (e) { return toast(esc(e.message), 'err'); } }
-    else { SO.blocked = SO.blocked.filter(x => x !== id); save(); }
-    toast('Engel kaldırıldı'); go('settings', 'blocked');
-  });
   $('#reTour').onclick = () => startTour();
   $('#reOb').onclick = () => { Music.stop(); showOnboard(); };
   $('#resetAll').onclick = () => $('#resetConfirm').classList.remove('hidden');
@@ -2556,11 +1859,7 @@ function startPreBan(level = 'mild') {
 async function applyBan(reason, level = 'mild') {
   if (!banRecord) await readBanRecord();
   const off = { ...banRecord.offenses }; off[level] = (off[level] || 0) + 1;
-  let days = banDays(level, off[level]), until = Date.now() + days * 864e5;
-  if (NET.online) { // the server is the authority for its account — it keeps its own count of offenses
-    const sb = await NET.selfBan(reason, level);
-    if (sb && sb.until) { until = Math.max(until, sb.until); days = Math.max(days, sb.days || 0); if (sb.offenses) Object.assign(off, mergeOff(off, sb.offenses)); }
-  }
+  const days = banDays(level, off[level]), until = Date.now() + days * 864e5;
   const b = { until, reason, at: Date.now(), days, level, offenses: off };
   banRecord = b;
   localStorage.setItem('kz_ban', JSON.stringify(b));
@@ -2569,7 +1868,7 @@ async function applyBan(reason, level = 'mild') {
   showBan(b);
 }
 function showBan(b) {
-  Music.stop(); endCall(); closeModal();
+  Music.stop(); closeModal();
   $('#tour').classList.add('hidden'); $('#preban').classList.add('hidden');
   document.body.classList.add('banned');
   showScreen('ban');

@@ -28,16 +28,6 @@ contextBridge.exposeInMainWorld('kizuna', {
     onProgress: (cb) => { ipcRenderer.removeAllListeners('voice-progress'); ipcRenderer.on('voice-progress', (e, p) => cb(p)); }
   },
   onGameExit: (cb) => { ipcRenderer.removeAllListeners('game-exit'); ipcRenderer.on('game-exit', (e, c) => cb(c)); },
-  server: {
-    status: () => ipcRenderer.invoke('server-status'),
-    start: () => ipcRenderer.invoke('server-start'),
-    stop: () => ipcRenderer.invoke('server-stop'),
-    logs: () => ipcRenderer.invoke('server-logs'),
-    setConfig: (p) => ipcRenderer.invoke('server-config-set', p),
-    setCtl: (p) => ipcRenderer.invoke('server-ctl-set', p),
-    onState: (cb) => { ipcRenderer.removeAllListeners('server-state'); ipcRenderer.on('server-state', (e, s) => cb(s)); },
-    onLog: (cb) => { ipcRenderer.removeAllListeners('server-log'); ipcRenderer.on('server-log', (e, l) => cb(l)); }
-  },
   update: {
     status: () => ipcRenderer.invoke('update-status'),
     check: () => ipcRenderer.invoke('update-check'),

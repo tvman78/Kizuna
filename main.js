@@ -1,39 +1,20 @@
 'use strict';
 /* Kizuna — Electron main process | Made by: Tv Man & FKOAC */
-const { app, BrowserWindow, ipcMain, dialog, shell, Menu, Tray, nativeImage, session } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu, nativeImage, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 const { registerAi } = require('./ai');
-const { registerServerCtl, startServer, stopServer, serverRunning, serverCtl } = require('./serverctl');
 const { registerUpdater } = require('./updater');
 const { registerSchemes, registerServices, windowOptions, trackWindow } = require('./services');
 registerSchemes();
 
-let win = null, tray = null, appIcon = null, quitting = false;
+let win = null, appIcon = null;
 const guardFile = () => path.join(app.getPath('userData'), 'kizuna-guard.json');
 
 if (!app.requestSingleInstanceLock()) app.quit();
 app.on('second-instance', showWindow);
 function showWindow() { if (!win) return createWindow(); if (win.isMinimized()) win.restore(); win.show(); win.focus(); }
-
-/* ---------- System tray: the server keeps running even when the window is closed ---------- */
-function ensureTray() {
-  if (tray || !appIcon) return;
-  tray = new Tray(appIcon.resize({ width: 16, height: 16 }));
-  tray.setToolTip('Kizuna — sunucu çalışıyor');
-  tray.on('click', showWindow);
-  tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Kizuna’yı aç', click: showWindow },
-    { label: 'Sunucuyu durdur', click: async () => { await stopServer(); destroyTrayIfHidden(); } },
-    { type: 'separator' },
-    { label: 'Çıkış', click: () => { quitting = true; app.quit(); } }
-  ]));
-}
-function destroyTrayIfHidden() {
-  if (win && !win.isVisible() && !serverRunning()) { quitting = true; app.quit(); }
-  else if (tray && !serverRunning()) { tray.destroy(); tray = null; }
-}
 
 function createWindow() {
   Menu.setApplicationMenu(null); // developer menu / shortcuts disabled
@@ -59,13 +40,6 @@ function createWindow() {
     return { action: 'deny' };
   });
   win.webContents.on('will-navigate', (e, url) => { if (!url.startsWith('file://')) e.preventDefault(); });
-  win.on('close', e => {
-    // If the server is running and "keep in tray" is on, hide the window so the server keeps running
-    if (!quitting && appIcon && serverRunning() && serverCtl().keepInTray) {
-      e.preventDefault(); win.hide(); ensureTray();
-      if (tray && !win.__trayTipShown) { win.__trayTipShown = true; tray.displayBalloon && tray.displayBalloon({ title: 'Kizuna', content: 'Sunucu arka planda çalışmaya devam ediyor. Kapatmak için tepsideki Kizuna simgesine sağ tıkla.' }); }
-    }
-  });
   win.on('closed', () => { win = null; });
 }
 
@@ -74,18 +48,12 @@ app.whenReady().then(() => {
   session.defaultSession.setPermissionRequestHandler((wc, perm, cb) => cb(PERMS.includes(perm)));
   session.defaultSession.setPermissionCheckHandler((wc, perm) => PERMS.includes(perm));
   registerAi();
-  registerServerCtl(() => win);
-  registerUpdater(() => win, async () => { quitting = true; if (serverRunning()) await stopServer(); });
+  registerUpdater(() => win);
   registerServices(() => win);
   createWindow();
-  if (serverCtl().autoStart) startServer();
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
-app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); }); // before-quit shuts the server down gracefully
-app.on('before-quit', e => {
-  quitting = true;
-  if (serverRunning()) { e.preventDefault(); stopServer().finally(() => app.quit()); }
-});
+app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 
 /* ---------- File / folder picker ---------- */
 ipcMain.handle('pick-file', async (e, opts) => {

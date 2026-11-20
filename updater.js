@@ -62,7 +62,7 @@ function registerUpdater(winGetter, onBeforeInstall) {
   });
   ipcMain.handle('update-install', async () => {
     if (!updater || state.state !== 'downloaded') return { ok: false };
-    await beforeInstall();               // shut the server down gracefully
+    await beforeInstall();
     setImmediate(() => updater.quitAndInstall(true, true));
     return { ok: true };
   });
