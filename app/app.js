@@ -369,7 +369,7 @@ async function boot() {
   if (api && api.onGameExit) api.onGameExit(() => netSync({ playing: '' }));
   bindHostEvents(); bindUpdateEvents(); bindEmuEvents(); bindCovers(); Pad.init(); bindDevices();
   if (!S.setupDone) showIntro(); else { showApp(false); setTimeout(checkWhatsNew, 1200); }
-  connectSaved();
+  // v1.0.5: friends & messages were removed — no server connection at startup
 }
 /* ---------- What's new: shown once after every update + from the news button on the right edge ---------- */
 const APP_VERSION = CHANGELOG[0].v;
@@ -457,7 +457,7 @@ const OB = [
       b.innerHTML = `<h2>Kizuna'ya alışalım ⚔️</h2>
       <p class="muted">Birkaç adımda arayüzü tanıyacak, temel özellikleri öğrenecek ve Kizuna'yı kendi zevkine göre ayarlayacaksın. Okumak istemezsen sağdaki <b>Geç</b> bulutuna bas.</p>
       <div class="ob-map">
-        <div class="m-rail"><i></i>${['Kütüphane', 'Oyunlar', 'Arkadaşlar', 'Mesajlar', 'Yapay Zeka', 'Müzik', 'Kaydedilenler', 'Geçmiş', 'Ayarlar', 'Yardım'].map(x => `<span>${x}</span>`).join('')}</div>
+        <div class="m-rail"><i></i>${['Kütüphane', 'Oyunlar', 'Yapay Zeka', 'Müzik', 'Kaydedilenler', 'Geçmiş', 'Ayarlar', 'Yardım'].map(x => `<span>${x}</span>`).join('')}</div>
         <div class="m-main"><div class="m-top"><span class="m-search">🔍 Arama çubuğu</span><span>🎙️</span><span>🎮</span><span>🎵</span><span class="m-me">👤 Profil</span></div>
         <div class="m-grid">${Array.from({ length: 8 }, () => '<i></i>').join('')}</div><div class="m-foot">Yapımcılar: Tv Man &amp; FKOAC</div></div>
       </div>
@@ -550,7 +550,7 @@ const WZ = [
   { t: 'Emülatörler', r(b) { b.innerHTML = `<h2>Emülatörler</h2><p class="muted">Kizuna oyunları resmi, açık kaynak ve güvenli emülatörlerle çalıştırır. <b>Kizuna’ya kur</b>’a bas — emülatör resmi kaynağından indirilip uygulamanın içine kurulur, hiçbir siteye gitmene gerek yok.</p><div class="emu-list" id="wzEmu">${emuRowsHTML()}</div>${tipBox('PS1 ve PS2 için BIOS dosyasını kendi konsolundan almalısın; “BIOS klasörü” ile açılan klasöre kopyalaman yeterli. PS3 sistem yazılımı RPCS3’ün içinden yüklenir.')}`; bindEmuRows(b, () => renderWz()); } },
   { t: 'Grafik', r(b) { b.innerHTML = `<h2>Grafik ayarları</h2><p class="muted">Oyunları nasıl başlatmak istediğini seç.</p>${graphicsHTML()}${tipBox('Yüksek FPS Modu ve tam ekran tercihin oyun başlatılırken emülatöre iletilir. Çözünürlük ölçeği her emülatörün kendi grafik menüsünden de ince ayarlanabilir.')}`; bindKeys(b); } },
   {
-    t: 'Hesap', r(b) {
+    t: 'Hesap', hidden: true, r(b) {
       b.innerHTML = `<h2>Kizuna Topluluğu</h2><p class="muted">Dünyanın her yerindeki gerçek oyuncularla arkadaş olmak, mesajlaşmak ve sesli sohbet etmek için bir Kizuna hesabı oluştur.</p>
       <div class="acc-cards"><div class="acc on"><span>${meAvatar(48)}</span><div><b>${esc(S.profile.name)}</b><small>Bu bilgisayardaki profilin · Aktif ✓</small></div></div></div>
       <div id="netSet" style="margin-top:14px"></div>
@@ -564,12 +564,13 @@ const WZ = [
       const emus = Object.values(S.emulators).filter(Boolean).length;
       b.innerHTML = `<h2>Her şey hazır! 🎉</h2><p class="muted">Özet:</p>
       <ul class="sum"><li>${ok(1)} Profil: <b>${esc(S.profile.name)}</b></li><li>${ok(1)} Tema: <b>${THEMES.find(t => t.id === S.theme).name}</b> · Yıl: <b>${S.year}</b></li>
-      <li>${ok(S.gameFolder)} Oyun klasörü: ${esc(S.gameFolder || 'daha sonra')}</li><li>${ok(emus)} Kurulu emülatör: ${emus}/4</li><li>${ok(NET.online)} Kizuna Topluluğu: ${NET.online ? esc(NET.me.name) + ' olarak bağlı' : 'daha sonra (Arkadaşlar bölümünden)'}</li>
+      <li>${ok(S.gameFolder)} Oyun klasörü: ${esc(S.gameFolder || 'daha sonra')}</li><li>${ok(emus)} Kurulu emülatör: ${emus}/4</li>
       <li>${ok(1)} Grafik: ${S.graphics.fps === 'high' ? 'Yüksek FPS Modu' : S.graphics.fps === 'unlimited' ? 'Sınırsız' : 'Dengeli'} · ${S.graphics.fullscreen ? 'Tam ekran' : 'Pencere'}</li></ul>
       <p>Bitir'e bastığında sana kısa bir <b>ürün turu</b> göstereceğim. 🗺️</p>`;
     }
   }
 ];
+for (let i = WZ.length - 1; i >= 0; i--) if (WZ[i].hidden) WZ.splice(i, 1); // friends & chat were removed (v1.0.5)
 if (window.KZ_MOBILE) WZ.splice(0, 1); // phones have no game folder to scan
 function showWizard() { showScreen('wizard'); wzI = 0; renderWz(); }
 function renderWz() {
@@ -739,8 +740,8 @@ function finishSetup() {
 
 /* ======================= MAIN APP SHELL ======================= */
 const NAV = [
-  { id: 'library', tip: 'Eklediğin oyunlar' }, { id: 'catalog', tip: 'PS1 – PS5 oyun kataloğu' }, { id: 'friends', tip: 'Arkadaşlar ve oyuncu bul' },
-  { id: 'messages', tip: 'Mesajlar ve sesli sohbet' }, { id: 'ai', tip: 'Kizuna AI ile sohbet et' }, { id: 'music', tip: 'Müzik ayarlama' },
+  { id: 'library', tip: 'Eklediğin oyunlar' }, { id: 'catalog', tip: 'PS1 – PS5 oyun kataloğu' },
+  { id: 'ai', tip: 'Kizuna AI ile sohbet et' }, { id: 'music', tip: 'Müzik ayarlama' },
   { id: 'saved', tip: 'Kaydettiğin oyunlar' }, { id: 'history', tip: 'Geçmiş etkinliklerin' }, { id: 'settings', tip: 'Tema, yıl, ses, gizlilik...' }, { id: 'help', tip: 'Yardım ve SSS' }
 ];
 let current = 'library';
@@ -1057,7 +1058,7 @@ function handleCommand(raw) {
   if (/tema/.test(t)) { const th = THEMES.find(x => t.includes(fold(x.name).split(' ')[0])); if (th) return setTheme(th.id); return go('settings', 'theme'); }
   if (/(muzi|sarki|music).*(dur|kapat|stop)|sessiz/.test(t)) return Music.stop();
   if (/(muzi|sarki|music).*(cal|ac|baslat|play)|sonraki sarki/.test(t)) return /sonraki/.test(t) ? Music.next() : Music.play(Music.cur || Music.defaultId());
-  const map = [['kutuphane|library', 'library'], ['oyunlar|katalog|magaza|games', 'catalog'], ['arkadas|friend', 'friends'], ['mesaj|sohbet|chat', 'messages'],
+  const map = [['kutuphane|library', 'library'], ['oyunlar|katalog|magaza|games', 'catalog'],
     ['yapay|asistan|\\bai\\b|zeka', 'ai'], ['muzik|music', 'music'], ['kaydedilen|saved', 'saved'], ['gecmis|history', 'history'], ['ayar|settings', 'settings'], ['yardim|help', 'help'], ['profil|profile', 'profile']];
   for (const [re, id] of map) if (new RegExp(re).test(t)) return go(id);
   if (/tur|rehber/.test(t)) return startTour();
@@ -2207,11 +2208,8 @@ function aiReply(raw) {
   if (has('rock', 'aksiyon muzik', 'metal')) return { text: '🎸 Rock zamanı! **Katana Fırtınası** çalıyor.', auto: 'music:katana' };
   if (has('muzik', 'sarki', 'music')) return { text: 'Hangi tarz? 🎧', actions: [{ label: '🌸 Rahatlatıcı', act: 'music:sakura' }, { label: '🌧️ Lo-fi', act: 'music:yagmur' }, { label: '🎸 Rock', act: 'music:katana' }, { label: '⚡ Aksiyon', act: 'music:neon' }, { label: '🔇 Durdur', act: 'music:stop' }] };
   if (has('oyun ekle', 'nasil oyna', 'emulator', 'iso', 'bios')) return { text: 'Oyun eklemek çok kolay:\n1. **Ayarlar › Emülatörler**’de konsolun emülatörü için **Kizuna’ya kur**’a bas — tek tıkla kurulur.\n2. Kendi diskinden/kopyandan aldığın oyun yedeğini **Kütüphane › Oyun Ekle** ile seç.\n3. **Oyna**’ya bas! 🎮', actions: [{ label: 'Emülatör ayarları', act: 'go:settings' }, { label: 'Kütüphane', act: 'go:library' }] };
-  if (has('arkadas', 'friend')) return { text: 'Arkadaş eklemek Steam’deki gibi 🤝\n1. **Arkadaşlar** bölümünden Kizuna Topluluğuna katıl (hesap oluştur).\n2. **Oyuncu ekle** sekmesine arkadaşının kullanıcı adını ya da 8 haneli **arkadaş kodunu** yaz.\n3. **Arkadaş ekle**’ye bas — kabul edince mesajlaşıp sesli sohbet edebilirsiniz. Onlar da sana istek gönderebilir.', actions: [{ label: 'Arkadaşlar', act: 'go:friends' }] };
-  if (has('engel', 'spam', 'taciz', 'rahatsiz')) return { text: 'Seni rahatsız eden biri mi var? Profiline gir:\n• **Engelle** — o kişi sana bir daha ulaşamaz.\n• **Spam bildir** — hem bildirir hem engeller. 🛡️' };
   if (has('ban', 'kufur', 'kural', 'ceza')) return { text: 'Kizuna kuralları basit: saygılı ol 💚 Ceza süresi suçun ağırlığına göre:\n• **Küfür:** ilk seferde **1 gün**\n• **Başkasına ağır hakaret:** ilk seferde **3 gün**\nAynı ihlali her tekrarlayışta süre **iki katına** çıkar (1 → 2 → 4 → 8 gün…). Bana uygunsuz yazarsan önce uyarırım; devam edersen 20 saniye sonra ban başlar.' };
   if (has('emulator kur', 'emulatoru kur', 'duckstation', 'pcsx2', 'rpcs3', 'shadps4')) return { text: 'Emülatörler artık **Kizuna’nın içine** kuruluyor 🎮 **Ayarlar › Emülatörler**’de **Kizuna’ya kur**’a bas — resmi kaynaktan indirilir, kurulur ve otomatik bağlanır. PS1/PS2 için BIOS’u kendi konsolundan alıp **BIOS klasörü**’ne kopyalaman yeterli.', actions: [{ label: 'Emülatörler', act: 'go:settings' }] };
-  if (has('arkadas kodu', 'kod', 'friend code')) return { text: NET.online ? `Senin arkadaş kodun: **#${NET.me.code}** — arkadaşın bunu **Arkadaşlar › Oyuncu ekle**’ye yazarak seni anında bulur 🤝` : 'Arkadaş kodu almak için önce **Arkadaşlar** bölümünden Kizuna Topluluğuna katıl 🤝', actions: [{ label: 'Arkadaşlar', act: 'go:friends' }] };
   if (has('dram', 'keman', 'huzunlu')) return { text: '🎻 **Kara Yağmur** çalıyor — keman, yağmur ve gece…', auto: 'music:kara' };
   if (has('noir', 'max payne', 'kara yagmur')) return { text: '🌧️ **Kara Yağmur** teması açılıyor — yağmurlu, karanlık bir şehir ve arada bir çakan şimşekler.', auto: 'theme:noir' };
   if (has('saat', 'tarih', 'bugun', 'gun ne')) return { text: `📅 Bugün ${new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}, saat ${fmtTime(Date.now())}.` };
@@ -2228,7 +2226,7 @@ function runAction(a) {
   if (k === 'theme') { if (THEMES.some(t => t.id === v)) { setTheme(v); toast('Tema değişti 🎨', 'ok'); } }
   else if (k === 'year') setYear(+v);
   else if (k === 'music') { if (v === 'stop') Music.stop(); else if (TRACKS.some(t => t.id === v)) Music.play(v); }
-  else if (k === 'go') { if (VIEWS[v] && v !== 'ai') go(v); }
+  else if (k === 'go') { if (VIEWS[v] && !['ai', 'friends', 'messages'].includes(v)) go(v); }
   else if (k === 'game') { if (GAMES.some(g => g.id === v)) openGame(v); }
   else if (k === 'aiset') go('settings', 'ai');
 }
@@ -2365,9 +2363,8 @@ const privNote = () => S.privacy.hideGames ? 'Arkadaşların profilinde <b>oyunl
 VIEWS.settings = (v, arg) => {
   const sec = (id, t, body) => `<section class="card" id="set-${id}"><h3>${t}</h3>${body}</section>`;
   v.innerHTML = head(T('nav.settings'), 'Kizuna’yı tamamen kendine göre ayarla.')
-    + `<div class="tabs sticky">${[['net', 'Topluluk'], ['ai', 'Kizuna AI'], ['theme', 'Tema'], ['year', 'Yıl'], ['bg', 'Arka plan'], ['font', 'Yazı tipi'], ['sound', 'Sesler'], ['devices', 'Ses cihazları'], ['lang', 'Dil'], ['privacy', 'Gizlilik'], ['emu', 'Emülatörler'], ['gfx', 'Grafik'], ['pad', 'Kontrolcü'], ['blocked', 'Engellenenler'], ['app', 'Uygulama']].map(([k, l]) => `<button class="tab" data-jump="${k}">${l}</button>`).join('')}</div>`
+    + `<div class="tabs sticky">${[['ai', 'Kizuna AI'], ['theme', 'Tema'], ['year', 'Yıl'], ['bg', 'Arka plan'], ['font', 'Yazı tipi'], ['sound', 'Sesler'], ['devices', 'Ses cihazları'], ['lang', 'Dil'], ['privacy', 'Gizlilik'], ['emu', 'Emülatörler'], ['gfx', 'Grafik'], ['pad', 'Kontrolcü'], ['app', 'Uygulama']].map(([k, l]) => `<button class="tab" data-jump="${k}">${l}</button>`).join('')}</div>`
     + `<div class="settings">`
-    + sec('net', '🌐 Kizuna Topluluğu — arkadaşlar & sohbet', `<div id="netSet"></div><details class="host-adv" style="margin-top:12px"><summary>🖥️ Kendi sunucunu barındır (isteğe bağlı)</summary><div id="hostSet"></div></details>`)
     + sec('ai', '🤖 Kizuna AI — gerçek yapay zekâ', `<div id="aiSet"><p class="muted">Yükleniyor…</p></div>`)
     + sec('theme', '🎨 Tema', themeTilesHTML() + `<div class="field row"><label>Özel vurgu rengi</label><div class="row-btns"><input type="color" data-k="accent" value="${S.accent || '#93C572'}"><button class="btn sm ghost" id="accReset">Sıfırla</button></div></div>`)
     + sec('year', '🕰️ Yıla göre arayüz', `<p class="muted">Bir yıl yaz — arayüz o yılın tasarım ruhuna bürünür (yazı tipi, renkler, köşeler, arka plan). 1960 → 60’lar pop · 1985 → synthwave · 1995 → piksel · 2077 → siberpunk.</p>${yearHTML()}`)
@@ -2384,7 +2381,6 @@ VIEWS.settings = (v, arg) => {
     + sec('gfx', '⚡ Grafik', graphicsHTML() + `<div class="field row"><label>Kizuna’yı tam ekran kullan <small class="muted">(F11 — tercih bir sonraki açılışta hatırlanır)</small></label><button class="btn sm ghost" id="fsToggle">${icon('fullscreen', 14)} Tam ekranı aç / kapat</button></div>`)
     + sec('pad', '🕹️ Kontrolcü ile kullanım', `<div class="field row"><label>Kizuna’yı kontrolcüyle gez</label><label class="switch"><input type="checkbox" data-k="padNav"><i></i></label></div>
       <div class="pad-help">${[['✚ / Sol çubuk', 'Seçimi hareket ettir'], ['Ⓐ', 'Seç / tıkla'], ['Ⓑ', 'Geri / kapat'], ['LB / RB', 'Önceki / sonraki bölüm'], ['Ⓨ', 'Arama'], ['Ⓧ', 'Müzik çal / durdur'], ['Sağ çubuk', 'Sayfayı kaydır'], ['START', 'Menü rayını aç / kapat']].map(([k, d]) => `<div><kbd>${k}</kbd><span>${d}</span></div>`).join('')}</div>`)
-    + sec('blocked', '🛡️ Engellenenler', SO.blocked.length ? SO.blocked.map(id => { const u = userById(id) || { name: 'Oyuncu' }; return `<div class="blk">${userAvatar(u, 36)}<b>${esc(u.name)}</b><small class="muted">${isSpam(id) ? '🚩 Spam bildirildi · engellendi' : '🛡️ Engellendi'}</small><button class="btn sm ghost" data-unblock="${id}">Engeli kaldır</button></div>`; }).join('') : '<p class="muted">Engellediğin kimse yok.</p>')
     + sec('app', '⚙️ Uygulama', `<h4>Güncellemeler</h4><div id="updSet"></div><div class="row-btns" style="margin-top:8px"><button class="btn ghost" id="showNews">📰 Yenilikleri göster</button></div><h4 style="margin-top:14px">Diğer</h4><div class="row-btns"><button class="btn ghost" id="reTour">🗺️ Ürün turunu tekrar başlat</button><button class="btn ghost" id="reOb">📘 Öğreticiyi tekrar aç</button><button class="btn danger" id="resetAll">Tüm verileri sıfırla</button></div><div class="confirm hidden" id="resetConfirm"><p>Profil, kütüphane, sohbetler ve ayarlar silinecek. Emin misin?</p><div class="row-btns"><button class="btn danger" id="resetYes">Evet, sıfırla</button><button class="btn ghost" id="resetNo">Vazgeç</button></div></div><p class="muted small">Kizuna · Yapımcılar: Tv Man & FKOAC</p>`)
     + `</div>`;
   bindKeys(v); bindThemeTiles(v); bindYear(v);
@@ -2413,7 +2409,7 @@ VIEWS.settings = (v, arg) => {
   $('#resetYes').onclick = () => { localStorage.removeItem('kz_state'); indexedDB.deleteDatabase('kizuna'); location.reload(); };
   $('#showNews').onclick = () => showWhatsNew('');
   $('#fsToggle').onclick = () => api && api.fullscreen && api.fullscreen();
-  renderAiSettings(); renderHostSettings($('#hostSet')); renderNetSettings($('#netSet')); renderUpdateSettings(); renderDeviceSettings();
+  renderAiSettings(); renderUpdateSettings(); renderDeviceSettings();
   if (arg) setTimeout(() => { const s = $('#set-' + arg); if (s) { s.scrollIntoView({ block: 'start' }); s.classList.add('flash'); } }, 50);
 };
 async function renderAiSettings() {
@@ -2443,12 +2439,10 @@ VIEWS.help = v => {
     ['Kizuna nedir?', 'Kizuna; PS1, PS2, PS3 ve PS4 oyunlarını resmi açık kaynak emülatörlerle tek bir yerden başlatan bir oyun başlatıcısı ve oyuncu topluluğudur.'],
     ['Oyunları nereden indiririm?', 'Resmi PC sürümü olan oyunlarda İndir butonu oyunu Steam uygulamasında açar, oradan doğrudan indirirsin. Diğer oyunlarda emülatörü tek tıkla Kizuna’ya kurar, kendi diskinden/kopyandan aldığın yedeği eklersin. Kizuna korsan veya değiştirilmiş oyun dosyası dağıtmaz — oyunlar telif hakkıyla korunur ve bu yüzden virüs riski de yoktur.'],
     ['Emülatörleri nasıl kurarım?', 'Ayarlar › Emülatörler’de “Kizuna’ya kur”a bas. DuckStation, PCSX2, RPCS3 ve shadPS4 resmi GitHub sürümlerinden indirilir, Kizuna’nın içine kurulur ve otomatik bağlanır. PS1/PS2 için BIOS’u kendi konsolundan alıp “BIOS klasörü”ne kopyala.'],
-    ['Arkadaşlarımı nasıl eklerim?', 'Arkadaşlar bölümünden Kizuna Topluluğuna hesap aç. “Oyuncu ekle” sekmesine arkadaşının kullanıcı adını ya da 8 haneli arkadaş kodunu yaz ve istek gönder. Senin kodun Arkadaşlar sayfasının en üstünde.'],
     ['Sesli komut çalışmıyor', 'İlk kullanımda dilin için küçük bir ses modeli (~35 MB) indirilir, sonra komutlar tamamen bilgisayarında çalışır. Mikrofonunu Ayarlar › Ses cihazları’ndan seçip “Mikrofonu test et” ile deneyebilirsin. Sağ tıkla komutu yazarak da verebilirsin.'],
     ['PS5 oyunları neden doğrudan çalışmıyor?', 'Şu an PC için çalışan bir PS5 emülatörü yok. PS5 oyunlarının birçoğunun resmi PC sürümü var; İndir butonu seni oraya götürür.'],
     ['Donma / kasma olur mu?', 'Performans bilgisayarına ve emülatöre bağlıdır. PS1/PS2 çoğu PC’de akıcıdır; PS3 güçlü işlemci ister; PS4 desteği deneyseldir. Grafik ayarlarından Yüksek FPS Modu’nu seçebilirsin.'],
     ['Kontrolcümü nasıl bağlarım?', 'Kolunu USB/Bluetooth ile bağla ve bir tuşa bas. Artık Kizuna’yı kolunla gezebilirsin: yön tuşları ile seç, A ile tıkla, B ile geri, LB/RB ile bölümler. Oyun içi tuş eşleştirmesi emülatörün kendi menüsünden yapılır.'],
-    ['Biri beni rahatsız ediyor', 'Profiline gir: “Engelle” o kişiyi yalnızca engeller; “Spam bildir” hem bildirir hem engeller. Engellenen biri sana bir daha ulaşamaz.'],
     ['Ban kuralları', 'Ceza süresi suçun ağırlığına göre değişir: küfür ilk seferde 1 gün, başkasına ağır hakaret ilk seferde 3 gün. Aynı ihlali her tekrarlayışta süre iki katına çıkar (1 → 2 → 4 → 8 gün…). Kizuna AI’ye uygunsuz yazarsan önce uyarılırsın; devam edersen 20 saniye sonra ban başlar ve uygulama yeniden açılsa bile ban ekranı görünür.']
   ];
   v.innerHTML = head(T('nav.help'), 'Sık sorulan sorular, sesli komutlar ve rehberler.',
@@ -2469,9 +2463,7 @@ const TOUR = [
   { sel: '.view-catalog .tabs', text: 'Konsola göre filtrele (eskiden yeniye). Bir konsol seçince emülatörünü tek tıkla <b>Kizuna’ya kurabilirsin</b>.' },
   { sel: '#addGameBtn', before: () => go('library'), text: '➕ <b>Buradan oyun ekleyebilirsin</b> — kendi oyun dosyanı seç, kütüphanene eklensin, tek tıkla oyna.' },
   { sel: '#padBtn', text: '🕹️ <b>Şimdi buraya tıkla ve kontrolcünü bağla.</b> Kolunu USB ya da Bluetooth ile bağlayıp bir tuşa bas.', click: true, after: closeModal },
-  { sel: '[data-nav="friends"]', text: '🤝 <b>Arkadaşlar</b> — Kizuna Topluluğuna katıl, gerçek oyuncuları kullanıcı adı ya da arkadaş koduyla ekle.' },
   { sel: '#newsBtn', text: '📰 <b>Yenilikler</b> — her güncellemede neler eklendiğini buradan görebilirsin.' },
-  { sel: '[data-nav="messages"]', text: '💬 <b>Mesajlar</b> — yazılı ve sesli sohbet, GIF, emoji, çıkartma, dosya ve anket.' },
   { sel: '[data-nav="ai"]', text: '🤖 <b>Kizuna AI</b> — kendi yapay zekan. Sohbet et, oyun önerisi al, ayarları ona söyle.' },
   { sel: '#voiceBtn', text: '🎙️ <b>Sesli komut</b> — “yıl 2077”, “tema hawaii”, “müziği çal” de, gerisini Kizuna yapar.' },
   { sel: '#eraChip', text: '🕰️ <b>Arayüz yılı</b> — 1960 yaz 60’lara dön, 2077 yaz geleceğe git. Tıkla ve dene!' },

@@ -55,11 +55,11 @@ Kurallar:
 - Asla küfür, hakaret veya uygunsuz dil kullanma. Kullanıcı kaba davranırsa sakin ve kibar kal.
 - Korsan oyun, crack, ROM/ISO veya BIOS indirme linki verme ve bunlara yönlendirme. Yasal yollar: oyunun resmi PC sürümü (Steam vb.), resmi emülatörler (PS1: DuckStation, PS2: PCSX2, PS3: RPCS3, PS4: shadPS4 — deneysel; PS5 için PC emülatörü yok) ve kullanıcının kendi diskinden/konsolundan aldığı yedek.
 - Emülatörler: Ayarlar › Emülatörler'de "Kizuna'ya kur" ile tek tıkla resmi GitHub sürümlerinden indirilip Kizuna'nın içine kurulur ve otomatik bağlanır; siteye gitmeye gerek yok. PS1/PS2 BIOS'u kullanıcının kendi konsolundan alınır ve "BIOS klasörü"ne kopyalanır. PS3 sistem yazılımı RPCS3 içinden yüklenir.
-- Arkadaşlar ve sohbet: sahte/demo oyuncu yok. Kullanıcı Arkadaşlar bölümünden Kizuna Topluluğuna hesap açar; arkadaşlarını kullanıcı adıyla ya da 8 haneli arkadaş koduyla ekler (Steam gibi), onlar da ona istek gönderebilir. Mesaj, GIF, dosya, anket, mesaj silme ve gerçek sesli sohbet var. İstenirse kendi sunucusunu Ayarlar › Topluluk › "Kendi sunucunu barındır" ile açabilir.
-- Ban kuralları: ceza süresi suçun ağırlığına göredir — küfür ilk seferde 1 gün, başkasına ağır hakaret ilk seferde 3 gün; aynı ihlal her tekrarlandığında süre iki katına çıkar (1 → 2 → 4 → 8 gün…). "Engelle" yalnızca engeller; "Spam bildir" hem bildirir hem engeller.
+- Kizuna'da arkadaşlar ve mesajlaşma bölümü yok (kaldırıldı); kullanıcı sorarsa bunu nazikçe söyle. Kizuna tamamen oyunlara odaklanır.
+- Ban kuralları (Kizuna AI'ye uygunsuz yazılırsa): ceza süresi suçun ağırlığına göredir — küfür ilk seferde 1 gün, ağır hakaret ilk seferde 3 gün; aynı ihlal her tekrarlandığında süre iki katına çıkar (1 → 2 → 4 → 8 gün…).
 
 Kizuna'nın özellikleri (kullanıcıya yol gösterirken kullan):
-- Sol ray: Kütüphane, Oyunlar (PS1–PS5 kataloğu), Arkadaşlar, Mesajlar, Yapay Zeka, Müzik, Kaydedilenler, Geçmiş, Ayarlar, Yardım. Ray daraltılıp genişletilebilir.
+- Sol ray: Kütüphane, Oyunlar (PS1–PS5 kataloğunda 236 oyun), Yapay Zeka, Müzik, Kaydedilenler, Geçmiş, Ayarlar, Yardım. Ray daraltılıp genişletilebilir. Kizuna ayrıca Android ve iPhone'da da var (telefonda PS1 oyunları uygulamanın içinde, ekrandaki PlayStation tuşlarıyla oynanır).
 - Üst çubuk: oyun arama (Ctrl+K), sesli komut, kontrolcü bağlama, müzik, profil.
 - Oyun ekleme: Ayarlar › Emülatörler'de emülatörü "Kizuna'ya kur" ile kur, sonra Kütüphane › Oyun Ekle ile kendi oyun yedeğini seç, Oyna'ya bas. Resmi PC sürümü olan oyunlarda İndir butonu oyunu Steam uygulamasında açar.
 - Temalar: Kizuna (siyah & fıstık yeşili), Vice Hawaii (GTA VI esintili pembe), Kızıl Ronin, Derin Okyanus, Mor Şimşek, Altın Şampiyon, Kar Beyazı, Kara Yağmur (noir: yağmurlu karanlık şehir, şimşekler), Vahşi Saldırı (taktik, turuncu).
@@ -77,7 +77,7 @@ ${games}`;
 const ACTIONS = ['theme', 'year', 'music', 'go', 'game'];
 const TOOL = {
   name: 'kizuna_action',
-  description: 'Kizuna arayüzünde bir işlem yapar. action="theme": value tema id (kizuna, hawaii, crimson, ocean, violet, gold, snow, noir, wild). action="year": value 1900-3000 arası yıl. action="music": value parça id (sakura, yagmur, bulut, deniz, cay, yildiz = rahatlatıcı; katana, ronin, celik, ejder = rock; neon, boss, sokak = aksiyon; kara, veda, gece, yalniz = dram/keman) veya "stop". action="go": value bölüm (library, catalog, friends, messages, ai, music, saved, history, settings, help, profile). action="game": value katalog oyun id (oyun detayını açar).',
+  description: 'Kizuna arayüzünde bir işlem yapar. action="theme": value tema id (kizuna, hawaii, crimson, ocean, violet, gold, snow, noir, wild). action="year": value 1900-3000 arası yıl. action="music": value parça id (sakura, yagmur, bulut, deniz, cay, yildiz = rahatlatıcı; katana, ronin, celik, ejder = rock; neon, boss, sokak = aksiyon; kara, veda, gece, yalniz = dram/keman) veya "stop". action="go": value bölüm (library, catalog, music, saved, history, settings, help, profile). action="game": value katalog oyun id (oyun detayını açar).',
   input_schema: {
     type: 'object',
     properties: {

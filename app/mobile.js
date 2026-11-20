@@ -44,7 +44,7 @@
   let convo = [], aiAbort = null;
   const TOOL = {
     name: 'kizuna_action',
-    description: 'Kizuna arayüzünde bir işlem yapar. action="theme": value tema id (kizuna, hawaii, crimson, ocean, violet, gold, snow, noir, wild). action="year": value 1900-3000 arası yıl. action="music": value parça id (sakura, yagmur, bulut, deniz, cay, yildiz, katana, ronin, celik, ejder, neon, boss, sokak, kara, veda, gece, yalniz) veya "stop". action="go": value bölüm (library, catalog, friends, messages, ai, music, saved, history, settings, help, profile). action="game": value katalog oyun id.',
+    description: 'Kizuna arayüzünde bir işlem yapar. action="theme": value tema id (kizuna, hawaii, crimson, ocean, violet, gold, snow, noir, wild). action="year": value 1900-3000 arası yıl. action="music": value parça id (sakura, yagmur, bulut, deniz, cay, yildiz, katana, ronin, celik, ejder, neon, boss, sokak, kara, veda, gece, yalniz) veya "stop". action="go": value bölüm (library, catalog, music, saved, history, settings, help, profile). action="game": value katalog oyun id.',
     input_schema: { type: 'object', properties: { action: { type: 'string', enum: ['theme', 'year', 'music', 'go', 'game'] }, value: { type: 'string' } }, required: ['action', 'value'], additionalProperties: false }
   };
   const SYSTEM = games => `Sen Kizuna AI'sin: "Kizuna" adlı PlayStation oyun uygulamasının kendi yapay zekâ asistanı (şu an kullanıcının telefonunda çalışıyorsun). Kizuna'yı Tv Man & FKOAC yaptı.

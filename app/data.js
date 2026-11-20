@@ -82,7 +82,64 @@ const GAMES = [
   ["ps5", "Marvel's Spider-Man 2", 2023, 'Aksiyon', 1], ['ps5', 'Final Fantasy XVI', 2023, 'RPG', 1], ['ps5', 'Astro Bot', 2024, 'Platform'],
   ['ps5', 'Stellar Blade', 2024, 'Aksiyon', 1], ['ps5', 'Helldivers 2', 2024, 'Aksiyon', 1], ['ps5', 'Final Fantasy VII Rebirth', 2024, 'RPG', 1],
   ['ps5', 'Gran Turismo 7', 2022, 'Yarış'], ['ps5', 'Elden Ring', 2022, 'RPG', 1], ['ps5', 'Death Stranding 2', 2025, 'Macera'],
-  ['ps5', 'Ghost of Yōtei', 2025, 'Açık Dünya']
+  ['ps5', 'Ghost of Yōtei', 2025, 'Açık Dünya'],
+  /* v1.0.5 — bigger catalog */
+  ['ps1', 'Final Fantasy VIII', 1999, 'RPG', 1], ['ps1', 'Final Fantasy Tactics', 1997, 'RPG', 1], ['ps1', 'Crash Bandicoot 2: Cortex Strikes Back', 1997, 'Platform'],
+  ['ps1', 'Crash Bandicoot: Warped', 1998, 'Platform'], ["ps1", "Spyro 2: Ripto's Rage!", 1999, 'Platform'], ['ps1', 'Spyro: Year of the Dragon', 2000, 'Platform'],
+  ['ps1', 'Resident Evil', 1996, 'Korku'], ['ps1', 'Resident Evil 3: Nemesis', 1999, 'Korku'], ['ps1', 'Tekken 2', 1996, 'Dövüş'],
+  ['ps1', 'Tomb Raider', 1996, 'Macera', 1], ['ps1', 'Tomb Raider II', 1997, 'Macera', 1], ['ps1', 'Twisted Metal 2', 1996, 'Aksiyon'],
+  ['ps1', 'Ape Escape', 1999, 'Platform'], ['ps1', 'Parasite Eve', 1998, 'RPG'], ['ps1', 'Xenogears', 1998, 'RPG'],
+  ['ps1', 'Suikoden II', 1998, 'RPG', 1], ['ps1', 'Vagrant Story', 2000, 'RPG'], ['ps1', 'The Legend of Dragoon', 1999, 'RPG'],
+  ['ps1', 'Wipeout 3', 1999, 'Yarış'], ['ps1', 'Syphon Filter', 1999, 'Aksiyon'], ['ps1', 'Dino Crisis', 1999, 'Korku'],
+  ["ps1", "Oddworld: Abe's Oddysee", 1997, 'Platform', 1], ['ps1', 'MediEvil', 1998, 'Aksiyon'], ['ps1', 'Gran Turismo', 1997, 'Yarış'],
+  ['ps1', 'Colin McRae Rally', 1998, 'Yarış'], ['ps1', 'Street Fighter Alpha 3', 1998, 'Dövüş'], ['ps1', 'Rayman', 1995, 'Platform', 1],
+  ['ps1', 'Breath of Fire III', 1997, 'RPG'], ['ps1', 'Pac-Man World', 1999, 'Platform'], ['ps1', 'Dragon Quest VII', 2000, 'RPG'],
+  ['ps1', 'Klonoa: Door to Phantomile', 1997, 'Platform', 1], ['ps1', 'Destruction Derby', 1995, 'Yarış'], ['ps1', 'Tenchu: Stealth Assassins', 1998, 'Gizlilik'],
+  ['ps2', 'Grand Theft Auto III', 2001, 'Açık Dünya', 1], ['ps2', 'Grand Theft Auto: Vice City', 2002, 'Açık Dünya', 1], ['ps2', 'God of War II', 2007, 'Aksiyon'],
+  ['ps2', 'Metal Gear Solid 2: Sons of Liberty', 2001, 'Gizlilik', 1], ['ps2', 'Final Fantasy XII', 2006, 'RPG', 1], ['ps2', 'Kingdom Hearts II', 2005, 'RPG', 1],
+  ['ps2', 'Ico', 2001, 'Macera'], ['ps2', 'Resident Evil 4', 2005, 'Korku', 1], ['ps2', 'Silent Hill 3', 2003, 'Korku'],
+  ['ps2', 'Ratchet & Clank: Up Your Arsenal', 2004, 'Platform'], ['ps2', 'Sly Cooper and the Thievius Raccoonus', 2002, 'Platform'], ['ps2', 'Jak II', 2003, 'Platform'],
+  ['ps2', 'Persona 3', 2006, 'RPG', 1], ['ps2', 'Dragon Quest VIII', 2004, 'RPG'], ['ps2', 'Tekken 4', 2002, 'Dövüş'],
+  ['ps2', 'Soulcalibur II', 2002, 'Dövüş'], ['ps2', 'Gran Turismo 3: A-Spec', 2001, 'Yarış'], ['ps2', 'Need for Speed: Most Wanted', 2005, 'Yarış', 1],
+  ['ps2', 'Burnout Revenge', 2005, 'Yarış'], ['ps2', 'Prince of Persia: The Sands of Time', 2003, 'Macera', 1], ['ps2', 'Spider-Man 2', 2004, 'Aksiyon'],
+  ['ps2', 'Bully', 2006, 'Açık Dünya', 1], ['ps2', 'Manhunt', 2003, 'Gizlilik', 1], ['ps2', 'Max Payne', 2002, 'Aksiyon', 1],
+  ['ps2', 'Black', 2006, 'FPS'], ['ps2', 'TimeSplitters 2', 2002, 'FPS'], ['ps2', 'Pro Evolution Soccer 5', 2005, 'Spor'],
+  ["ps2", "Tony Hawk's Underground", 2003, 'Spor'], ['ps2', 'Katamari Damacy', 2004, 'Macera', 1], ['ps2', 'Disgaea: Hour of Darkness', 2003, 'RPG', 1],
+  ['ps2', 'Star Wars: Battlefront II', 2005, 'FPS', 1], ['ps2', 'Devil May Cry', 2001, 'Aksiyon', 1], ['ps2', 'Onimusha: Warlords', 2001, 'Aksiyon', 1],
+  ['ps2', 'Shin Megami Tensei: Nocturne', 2003, 'RPG', 1], ['ps2', 'Beyond Good & Evil', 2003, 'Macera', 1],
+  ["ps3", "Uncharted: Drake's Fortune", 2007, 'Macera'], ["ps3", "Uncharted 3: Drake's Deception", 2011, 'Macera'], ['ps3', 'Grand Theft Auto IV', 2008, 'Açık Dünya', 1],
+  ['ps3', 'Grand Theft Auto V', 2013, 'Açık Dünya', 1], ['ps3', 'Batman: Arkham Asylum', 2009, 'Aksiyon', 1], ['ps3', 'Batman: Arkham City', 2011, 'Aksiyon', 1],
+  ['ps3', 'Dark Souls', 2011, 'RPG', 1], ['ps3', 'BioShock', 2007, 'FPS', 1], ['ps3', 'BioShock Infinite', 2013, 'FPS', 1],
+  ["ps3", "Assassin's Creed II", 2009, 'Açık Dünya', 1], ['ps3', 'Mass Effect 2', 2010, 'RPG', 1], ['ps3', 'The Elder Scrolls V: Skyrim', 2011, 'RPG', 1],
+  ['ps3', 'Fallout 3', 2008, 'RPG', 1], ['ps3', 'Killzone 2', 2009, 'FPS'], ['ps3', 'Resistance: Fall of Man', 2006, 'FPS'],
+  ['ps3', 'Gran Turismo 5', 2010, 'Yarış'], ['ps3', 'MotorStorm', 2007, 'Yarış'], ['ps3', 'Ratchet & Clank Future: A Crack in Time', 2009, 'Platform'],
+  ['ps3', 'Valkyria Chronicles', 2008, 'RPG', 1], ['ps3', 'Tales of Vesperia', 2008, 'RPG', 1], ['ps3', 'Catherine', 2011, 'Macera', 1],
+  ['ps3', 'Beyond: Two Souls', 2013, 'Macera', 1], ['ps3', 'Portal 2', 2011, 'Macera', 1], ['ps3', 'Borderlands 2', 2012, 'FPS', 1],
+  ['ps3', 'Dead Space', 2008, 'Korku', 1], ['ps3', 'Street Fighter IV', 2008, 'Dövüş', 1], ['ps3', 'Tekken 6', 2009, 'Dövüş'],
+  ['ps3', 'LittleBigPlanet 2', 2011, 'Platform'], ['ps3', 'Call of Duty 4: Modern Warfare', 2007, 'FPS', 1], ['ps3', 'L.A. Noire', 2011, 'Macera', 1],
+  ['ps3', 'Yakuza 3', 2009, 'Aksiyon', 1], ['ps3', 'Bayonetta', 2009, 'Aksiyon', 1], ['ps3', 'Metal Gear Rising: Revengeance', 2013, 'Aksiyon', 1],
+  ['ps4', 'The Witcher 3: Wild Hunt', 2015, 'RPG', 1], ['ps4', 'Final Fantasy VII Remake', 2020, 'RPG', 1], ['ps4', 'Monster Hunter: World', 2018, 'RPG', 1],
+  ['ps4', 'Resident Evil 2 Remake', 2019, 'Korku', 1], ['ps4', 'Resident Evil 7: Biohazard', 2017, 'Korku', 1], ['ps4', 'Dark Souls III', 2016, 'RPG', 1],
+  ['ps4', 'Nier: Automata', 2017, 'Aksiyon', 1], ['ps4', 'Yakuza 0', 2015, 'Aksiyon', 1], ['ps4', 'Infamous Second Son', 2014, 'Açık Dünya'],
+  ['ps4', 'Until Dawn', 2015, 'Korku', 1], ['ps4', 'Detroit: Become Human', 2018, 'Macera', 1], ['ps4', 'Crash Bandicoot N. Sane Trilogy', 2017, 'Platform', 1],
+  ['ps4', 'Spyro Reignited Trilogy', 2018, 'Platform', 1], ['ps4', 'Ratchet & Clank (2016)', 2016, 'Platform'], ['ps4', 'Tekken 7', 2015, 'Dövüş', 1],
+  ['ps4', 'Mortal Kombat 11', 2019, 'Dövüş', 1], ['ps4', 'Dreams', 2020, 'Macera'], ['ps4', 'Batman: Arkham Knight', 2015, 'Aksiyon', 1],
+  ['ps4', 'Doom (2016)', 2016, 'FPS', 1], ['ps4', 'Call of Duty: Modern Warfare (2019)', 2019, 'FPS', 1], ["ps4", "Assassin's Creed Odyssey", 2018, 'Açık Dünya', 1],
+  ['ps4', 'Metal Gear Solid V: The Phantom Pain', 2015, 'Gizlilik', 1], ['ps4', 'Shadow of the Colossus (2018)', 2018, 'Macera'], ['ps4', 'Dragon Quest XI', 2017, 'RPG', 1],
+  ['ps4', 'Kingdom Hearts III', 2019, 'RPG', 1], ['ps4', 'Star Wars Jedi: Fallen Order', 2019, 'Aksiyon', 1], ['ps4', 'Cuphead', 2020, 'Platform', 1],
+  ['ps4', 'Hollow Knight', 2018, 'Platform', 1], ['ps4', 'It Takes Two', 2021, 'Macera', 1], ['ps4', 'Horizon Forbidden West', 2022, 'Açık Dünya', 1],
+  ['ps4', 'Uncharted: The Lost Legacy', 2017, 'Macera', 1], ['ps4', 'Hitman 3', 2021, 'Gizlilik', 1], ['ps4', 'Street Fighter V', 2016, 'Dövüş', 1],
+  ['ps5', 'Spider-Man: Miles Morales', 2020, 'Aksiyon', 1], ['ps5', 'God of War Ragnarök', 2022, 'Aksiyon', 1], ['ps5', 'Resident Evil Village', 2021, 'Korku', 1],
+  ['ps5', 'Resident Evil 4 Remake', 2023, 'Korku', 1], ['ps5', 'Silent Hill 2 Remake', 2024, 'Korku', 1], ['ps5', 'Black Myth: Wukong', 2024, 'Aksiyon', 1],
+  ["ps5", "Baldur's Gate 3", 2023, 'RPG', 1], ['ps5', 'Cyberpunk 2077', 2022, 'RPG', 1], ['ps5', 'Hogwarts Legacy', 2023, 'Açık Dünya', 1],
+  ['ps5', 'Street Fighter 6', 2023, 'Dövüş', 1], ['ps5', 'Tekken 8', 2024, 'Dövüş', 1], ['ps5', 'Mortal Kombat 1', 2023, 'Dövüş', 1],
+  ['ps5', 'Forza Horizon 5', 2025, 'Yarış', 1], ['ps5', 'Alan Wake 2', 2023, 'Korku', 1], ['ps5', 'Dead Space Remake', 2023, 'Korku', 1],
+  ['ps5', 'Rise of the Ronin', 2024, 'Aksiyon', 1], ['ps5', 'Sackboy: A Big Adventure', 2020, 'Platform', 1], ['ps5', 'Kena: Bridge of Spirits', 2021, 'Macera', 1],
+  ['ps5', 'Stray', 2022, 'Macera', 1], ['ps5', 'Lies of P', 2023, 'RPG', 1], ['ps5', 'Armored Core VI: Fires of Rubicon', 2023, 'Aksiyon', 1],
+  ['ps5', 'Monster Hunter Wilds', 2025, 'RPG', 1], ['ps5', 'Split Fiction', 2025, 'Macera', 1], ['ps5', 'Metaphor: ReFantazio', 2024, 'RPG', 1],
+  ["ps5", "Dragon's Dogma 2", 2024, 'RPG', 1], ['ps5', 'Star Wars Jedi: Survivor', 2023, 'Aksiyon', 1], ['ps5', 'EA Sports FC 25', 2024, 'Spor', 1],
+  ["ps5", "Assassin's Creed Shadows", 2025, 'Açık Dünya', 1], ['ps5', 'Clair Obscur: Expedition 33', 2025, 'RPG', 1], ['ps5', 'Elden Ring Nightreign', 2025, 'Aksiyon', 1],
+  ['ps5', 'Kingdom Come: Deliverance II', 2025, 'RPG', 1], ['ps5', 'Final Fantasy VII Remake Intergrade', 2021, 'RPG', 1], ['ps5', 'Hades II', 2025, 'Aksiyon', 1]
 ].map(([c, t, y, g, pc]) => ({ id: c + '-' + t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''), c, t, y, g, pc: !!pc }));
 /* Cover art: English Wikipedia article for each game (the app reads its lead image via the public REST API) */
 const WIKI = {
@@ -94,7 +151,19 @@ const WIKI = {
   'ps3-littlebigplanet': 'LittleBigPlanet_(2008_video_game)', 'ps3-journey': 'Journey_(2012_video_game)', 'ps3-ni-no-kuni': 'Ni_no_Kuni:_Wrath_of_the_White_Witch',
   'ps4-god-of-war': 'God_of_War_(2018_video_game)', 'ps4-marvel-s-spider-man': 'Spider-Man_(2018_video_game)',
   'ps5-demon-s-souls-remake': "Demon's_Souls_(2020_video_game)", 'ps5-marvel-s-spider-man-2': 'Spider-Man_2_(2023_video_game)', 'ps5-astro-bot': 'Astro_Bot_(video_game)',
-  'ps5-death-stranding-2': 'Death_Stranding_2:_On_the_Beach'
+  'ps5-death-stranding-2': 'Death_Stranding_2:_On_the_Beach',
+  'ps1-resident-evil': 'Resident_Evil_(1996_video_game)', 'ps1-tomb-raider': 'Tomb_Raider_(1996_video_game)', 'ps1-gran-turismo': 'Gran_Turismo_(1997_video_game)',
+  'ps1-rayman': 'Rayman_(video_game)', 'ps1-medievil': 'MediEvil_(1998_video_game)', 'ps1-colin-mcrae-rally': 'Colin_McRae_Rally_(1998_video_game)', 'ps3-motorstorm': 'MotorStorm_(video_game)', 'ps4-it-takes-two': 'It_Takes_Two_(video_game)',
+  'ps1-ape-escape': 'Ape_Escape_(video_game)', 'ps1-syphon-filter': 'Syphon_Filter_(video_game)', 'ps1-dino-crisis': 'Dino_Crisis_(video_game)',
+  'ps1-parasite-eve': 'Parasite_Eve_(video_game)', 'ps2-spider-man-2': 'Spider-Man_2_(2004_video_game)', 'ps2-bully': 'Bully_(video_game)',
+  'ps2-manhunt': 'Manhunt_(video_game)', 'ps2-max-payne': 'Max_Payne_(video_game)', 'ps2-black': 'Black_(video_game)',
+  'ps2-need-for-speed-most-wanted': 'Need_for_Speed:_Most_Wanted_(2005_video_game)', 'ps2-star-wars-battlefront-ii': 'Star_Wars:_Battlefront_II_(2005_video_game)',
+  'ps2-devil-may-cry': 'Devil_May_Cry_(video_game)', 'ps3-dark-souls': 'Dark_Souls_(video_game)', 'ps3-bioshock': 'BioShock_(video_game)',
+  'ps3-dead-space': 'Dead_Space_(2008_video_game)', 'ps3-catherine': 'Catherine_(video_game)', 'ps3-bayonetta': 'Bayonetta_(video_game)',
+  'ps3-valkyria-chronicles': 'Valkyria_Chronicles_(video_game)', 'ps4-doom-2016': 'Doom_(2016_video_game)', 'ps4-call-of-duty-modern-warfare-2019': 'Call_of_Duty:_Modern_Warfare_(2019_video_game)',
+  'ps4-ratchet-clank-2016': 'Ratchet_&_Clank_(2016_video_game)', 'ps4-shadow-of-the-colossus-2018': 'Shadow_of_the_Colossus_(2018_video_game)', 'ps4-resident-evil-2-remake': 'Resident_Evil_2_(2019_video_game)',
+  'ps4-dreams': 'Dreams_(video_game)', 'ps5-stray': 'Stray_(video_game)', 'ps5-dead-space-remake': 'Dead_Space_(2023_video_game)',
+  'ps5-silent-hill-2-remake': 'Silent_Hill_2_(2024_video_game)', 'ps5-resident-evil-4-remake': 'Resident_Evil_4_(2023_video_game)', 'ps5-final-fantasy-vii-remake-intergrade': 'Final_Fantasy_VII_Remake'
 };
 GAMES.forEach(g => { g.wiki = WIKI[g.id] || g.t.replace(/ /g, '_'); });
 
@@ -113,7 +182,7 @@ const FEATURES = [
   { i: '⚡', t: 'Yüksek FPS Modu', d: 'Emülatörleri tam ekran ve yüksek kare hızı tercihiyle tek tıkla başlat.' },
   { i: '☁️', t: 'Bulut Kayıt', d: 'Profilin ve ayarların güvende. Kizuna sunucusu açıldığında kayıtların buluta senkronlanır.' },
   { i: '🎮', t: 'PS1 → PS5 Kataloğu', d: 'Beş neslin efsane oyunları tek kütüphanede. Arat, bul, oyna.' },
-  { i: '🤝', t: 'Arkadaşlar & Sohbet', d: 'Arkadaş ekle, mesajlaş, GIF, çıkartma, dosya, anket ve sesli sohbet.' },
+  { i: '📱', t: 'Telefonda da Kizuna', d: 'Android ve iPhone’da aynı arayüz; PS1 oyunları ekrandaki PlayStation tuşlarıyla.' },
   { i: '🤖', t: 'Kizuna AI', d: 'Sana oyun öneren, tema değiştiren, sohbet eden kendi yapay zekan.' },
   { i: '🕰️', t: 'Yıla Göre Arayüz', d: '1960 yaz, 60\'lara dön. 2077 yaz, geleceğe ışınlan. Arayüz yıla göre şekillenir.' },
   { i: '🌴', t: 'Vice Hawaii Teması', d: 'Pembe gün batımı, palmiyeler ve neon — GTA VI esintili özel tema.' },
@@ -210,6 +279,13 @@ const banDays = (level, count) => Math.min(365, (BAN_BASE_DAYS[level] || 1) * 2 
 
 /* ---------- WHAT'S NEW (shown once after each update, and from the news button) ---------- */
 const CHANGELOG = [
+  {
+    v: '1.0.5', date: '2026-11-20', title: 'Dev oyun kataloğu',
+    items: [
+      ['🎮', '167 yeni oyun', 'Katalog 69 oyundan 236 oyuna çıktı: PS1’de 48, PS2’de 51, PS3’te 45, PS4’te 46 ve PS5’te 46 oyun — hepsi kapak resimleriyle.'],
+      ['🧹', 'Sadeleştirme', 'Arkadaşlar ve Mesajlar bölümleri kaldırıldı; Kizuna artık tamamen oyunlara odaklanıyor.']
+    ]
+  },
   {
     v: '1.0.4', date: '2026-11-20', title: 'Telefon sürümü, tüm diller ve emülatör silme',
     items: [
