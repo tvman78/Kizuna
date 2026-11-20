@@ -1,1 +1,13 @@
-{"name":"kizuna-mobile","private":true,"version":"1.0.3","dependencies":{"@capacitor/android":"^8.6.2","@capacitor/cli":"^8.6.2","@capacitor/core":"^8.6.2","@capacitor/ios":"^8.6.2","@emulatorjs/core-pcsx_rearmed":"^4.2.3","@emulatorjs/emulatorjs":"^4.2.3"}}
+{
+  "name": "kizuna-mobile",
+  "private": true,
+  "version": "1.0.4",
+  "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/cli": "^8.6.2",
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/ios": "^8.6.2",
+    "@emulatorjs/core-pcsx_rearmed": "^4.2.3",
+    "@emulatorjs/emulatorjs": "^4.2.3"
+  }
+}

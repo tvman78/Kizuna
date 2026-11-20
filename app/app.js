@@ -622,7 +622,7 @@ function emuRowsHTMLMobile() {
     const body = k === 'ps1'
       ? `<b>Dahili PS1 emülatörü <small class="muted">· ${c.name} (${c.year})</small></b><small>Kizuna’nın içinde hazır — kurulum gerekmez. Ekrandaki PlayStation tuşlarıyla ya da Bluetooth kolla oynarsın. Çoğu oyun BIOS’suz çalışır; kendi konsolundan aldığın BIOS’u eklersen uyumluluk artar.</small>`
       : `<b>${c.name} <small class="muted">(${c.year})</small></b><small>${k === 'ps5' ? 'PS5 emülatörü hiçbir cihazda yok.' : 'Telefonda çalışmıyor — telefonlar bu konsolu çalıştıracak güçte değil ve mobil emülatörü yok.'} Bu oyunları bilgisayardaki Kizuna’da oynayabilirsin.</small>`;
-    const act = k === 'ps1' ? `<span class="emu-ok">✓ Hazır</span><button class="btn sm ghost" id="biosAdd">${icon('folder', 14)} ${S.biosPs1 ? 'BIOS’u değiştir' : 'BIOS ekle (isteğe bağlı)'}</button>` : '<span class="muted small">Telefonda yok</span>';
+    const act = k === 'ps1' ? `<span class="emu-ok">✓ Hazır</span><button class="btn sm ghost" id="biosAdd">${icon('folder', 14)} ${S.biosPs1 ? 'BIOS’u değiştir' : 'BIOS ekle (isteğe bağlı)'}</button>${S.biosPs1 ? `<button class="btn sm ghost danger-t" id="biosDel">${icon('trash', 14)} BIOS’u sil</button>` : ''}` : '<span class="muted small">Telefonda yok</span>';
     return `<div class="emu-row"><div class="emu-art c-${k}">${consoleArt(k, 58)}<b>${c.short}</b></div><div class="emu-info">${body}</div><div class="emu-act">${act}</div></div>`;
   }).join('');
 }
@@ -633,7 +633,8 @@ function emuRowsHTML() {
     const state = !c.emu ? '<span class="muted small">PC için çalışan bir PS5 emülatörü henüz yok</span>'
       : pr && pr.phase !== 'done' && pr.phase !== 'error'
         ? `<div class="emu-prog"><div class="upd-bar"><i style="width:${pr.percent || 0}%"></i></div><small>${pr.phase === 'extract' ? 'Kuruluyor…' : pr.phase === 'info' ? 'Hazırlanıyor…' : `İndiriliyor… %${pr.percent || 0}`}</small></div>`
-        : inst ? `<span class="emu-ok">✓ Kurulu ${esc(inst.version || '')}</span><button class="btn sm ghost" data-emurun="${k}">Aç</button>${c.bios ? `<button class="btn sm ghost" data-emubios="${k}" data-tip="Konsolundan aldığın BIOS dosyasını bu klasöre kopyala">${icon('folder', 14)} BIOS klasörü</button>` : ''}<button class="btn sm ghost" data-emuinst="${k}" data-tip="En yeni sürüme güncelle">↻</button>`
+        : inst ? `<span class="emu-ok">✓ Kurulu ${esc(inst.version || '')}</span><button class="btn sm ghost" data-emurun="${k}">Aç</button>${c.bios ? `<button class="btn sm ghost" data-emubios="${k}" data-tip="Konsolundan aldığın BIOS dosyasını bu klasöre kopyala">${icon('folder', 14)} BIOS klasörü</button>` : ''}<button class="btn sm ghost" data-emuinst="${k}" data-tip="En yeni sürüme güncelle">↻</button><button class="btn sm ghost danger-t" data-emudel="${k}" data-tip="Emülatörü bilgisayardan sil">${icon('trash', 14)} Sil</button>`
+          : linked ? `<span class="emu-ok">✓ Bağlı</span><button class="btn sm ghost danger-t" data-emuunlink="${k}" data-tip="Seçtiğin .exe bağlantısını kaldır (dosyaların silinmez)">${icon('x', 14)} Bağlantıyı kaldır</button><button class="btn sm primary" data-emuinst="${k}">${icon('download', 14)} Kizuna’ya kur</button>`
           : `<button class="btn sm primary" data-emuinst="${k}">${icon('download', 14)} Kizuna’ya kur</button>`;
     return `<div class="emu-row"><div class="emu-art c-${k}">${consoleArt(k, 58)}<b>${c.short}</b></div>
     <div class="emu-info"><b>${c.emu || 'Emülatör yok'} <small class="muted">· ${c.name} (${c.year})</small></b><small>${c.status} · ${c.note}</small>${c.emu ? `<code>${esc(linked || 'Kurulmadı')}</code>` : ''}</div>
@@ -649,12 +650,27 @@ function bindEmuRows(root, rerender) {
     await DB.put('bios_ps1', f); S.biosPs1 = f.name; save();
     toast(`✅ BIOS eklendi: <b>${esc(f.name)}</b>`, 'ok'); rerenderEmuRows();
   };
+  const bd = $('#biosDel', root);
+  if (bd) bd.onclick = async () => { await DB.del('bios_ps1').catch(() => {}); S.biosPs1 = ''; save(); toast('🗑️ BIOS silindi — oyunlar dahili BIOS ile çalışmaya devam eder'); rerenderEmuRows(); };
   $$('[data-emu]', root).forEach(b => b.onclick = async () => {
     if (!api) return toast('Emülatör bağlama masaüstü uygulamasında çalışır', 'warn');
     const p = await api.pickFile({ filters: [{ name: 'Uygulama', extensions: ['exe'] }] });
     if (p) { S.emulators[b.dataset.emu] = p; save(); toast(`${CONSOLES[b.dataset.emu].emu} bağlandı ✓`, 'ok'); (rerender || rerenderEmuRows)(); }
   });
   $$('[data-emuinst]', root).forEach(b => b.onclick = () => installEmu(b.dataset.emuinst));
+  $$('[data-emuunlink]', root).forEach(b => b.onclick = () => { S.emulators[b.dataset.emuunlink] = ''; save(); toast('Bağlantı kaldırıldı'); rerenderEmuRows(); });
+  $$('[data-emudel]', root).forEach(b => b.onclick = async () => {
+    const id = b.dataset.emudel, c = CONSOLES[id];
+    if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.innerHTML = 'Emin misin? Sil'; b.classList.add('sure'); setTimeout(() => { if (b.isConnected) { b.dataset.sure = ''; b.classList.remove('sure'); b.innerHTML = icon('trash', 14) + ' Sil'; } }, 3500); return; }
+    b.disabled = true;
+    const r = await api.emu.remove(id);
+    if (!r.ok) { toast(`${c.emu} silinemedi: ${esc(r.error || '')}`, 'err', 6000); return rerenderEmuRows(); }
+    delete emuInfo[id];
+    if (/[\\/]emulators[\\/]/i.test(S.emulators[id] || '')) S.emulators[id] = ''; // only the copy Kizuna installed
+    save();
+    log(`${c.emu} silindi`); toast(`🗑️ <b>${c.emu}</b> silindi. Kütüphanendeki oyun dosyalarına dokunulmadı.`, 'ok', 5000);
+    rerenderEmuRows();
+  });
   $$('[data-emurun]', root).forEach(b => b.onclick = () => api.emu.run(b.dataset.emurun));
   $$('[data-emubios]', root).forEach(b => b.onclick = () => { api.emu.open(b.dataset.emubios, 'bios'); toast('📁 BIOS klasörü açıldı — konsolundan aldığın BIOS dosyasını buraya kopyala'); });
 }

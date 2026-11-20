@@ -217,7 +217,7 @@ const EN = {
   '○ Çevrimdışı mod — basit hazır cevaplar': '○ Offline mode — simple ready-made answers', '● Bağlı — Kizuna AI, Claude ile çalışıyor': '● Connected — Kizuna AI runs on Claude', 'Model: {0}': 'Model: {0}', 'Kaydet': 'Save',
   'Anahtar {0} saklanır ve yalnızca Claude’a istek gönderirken kullanılır; arayüze, sohbetlere veya başka bir yere gönderilmez. Kizuna AI senin için tema, yıl, müzik değiştirebilir ve oyun açabilir.': 'The key is stored {0} and only used when sending requests to Claude; it is never sent to the interface, chats or anywhere else. Kizuna AI can change your theme, year and music and open games for you.',
   'Dil seçtiğin an arayüzün tamamı o dile geçer.': 'The whole interface switches the moment you pick a language.', 'Bu dil için tam çeviri hazır (Kizuna AI ile çevrildi).': 'A full translation for this language is ready (translated with Kizuna AI).',
-  'Bu dilin tam çevirisi Kizuna AI ile otomatik yapılır (Ayarlar › Kizuna AI’de API anahtarı gerekir); hazır olana kadar İngilizce gösterilir.': 'This language is translated automatically by Kizuna AI (needs an API key in Settings › Kizuna AI); until then English is shown.',
+  'Menüler, sekmeler, başlıklar ve butonlar bu dilde. Uzun açıklamalar şimdilik İngilizce; Kizuna AI anahtarı eklersen onlar da otomatik çevrilir.': 'Menus, tabs, headings and buttons are in this language. Longer descriptions are in English for now; add a Kizuna AI key and they are translated automatically too.',
   'Emülatör yok': 'No emulator',
   'Kizuna; PS1, PS2, PS3 ve PS4 oyunlarını resmi açık kaynak emülatörlerle tek bir yerden başlatan bir oyun başlatıcısı ve oyuncu topluluğudur.': 'Kizuna is a game launcher and gamer community that starts PS1, PS2, PS3 and PS4 games from one place with official open-source emulators.',
   'Kizuna nedir?': 'What is Kizuna?', 'Donma / kasma olur mu?': 'Will it lag or stutter?',
@@ -260,6 +260,12 @@ const EN = {
   'Kizuna oyunları resmi, açık kaynak ve güvenli emülatörlerle çalıştırır. {0}': 'Kizuna runs games with official, open-source and safe emulators. {0}', 'Emülatörler (eskiden yeniye)': 'Emulators (oldest to newest)', 'Kizuna Topluluğu — arkadaşlar & sohbet': 'Kizuna Community — friends & chat',
   'Sesler': 'Sounds', 'Arka plan': 'Background', 'Gizlilik': 'Privacy', 'Grafik': 'Graphics', 'Engellenenler': 'Blocked', 'Uygulama': 'App', 'Kizuna AI — gerçek yapay zekâ': 'Kizuna AI — real AI', 'Yıla göre arayüz': 'Year-based interface',
   'Kizuna’yı kolunla gezebilirsin': 'You can navigate Kizuna with your controller',
+  'Emin misin? Sil': 'Sure? Delete', 'Bağlantıyı kaldır': 'Unlink', '✓ Bağlı': '✓ Linked', 'Bağlantı kaldırıldı': 'Unlinked', 'Emülatörü bilgisayardan sil': 'Delete the emulator from this PC', 'Seçtiğin .exe bağlantısını kaldır (dosyaların silinmez)': 'Remove the linked .exe (your files are not deleted)',
+  'silindi. Kütüphanendeki oyun dosyalarına dokunulmadı.': 'was deleted. The game files in your library were not touched.', 'BIOS’u sil': 'Delete BIOS', 'BIOS’u değiştir': 'Change BIOS', 'BIOS ekle (isteğe bağlı)': 'Add BIOS (optional)', '✓ Hazır': '✓ Ready',
+  '🗑️ BIOS silindi — oyunlar dahili BIOS ile çalışmaya devam eder': '🗑️ BIOS deleted — games keep running with the built-in BIOS', 'Emülatör silme': 'Delete emulators', 'Bütün diller çalışıyor': 'All languages work', 'Telefon sürümü': 'Phone version',
+  'Kurulu emülatörleri Ayarlar › Emülatörler’den tek tıkla silebilirsin; oyun dosyalarına dokunulmaz.': 'Delete installed emulators with one click in Settings › Emulators; your game files stay untouched.',
+  'Almanca, Fransızca, İspanyolca, İtalyanca, Portekizce, Rusça, Arapça, Japonca, Çince, Korece ve Azerbaycanca seçince menüler, sekmeler, başlıklar ve butonlar artık o dile geçiyor.': 'Choosing German, French, Spanish, Italian, Portuguese, Russian, Arabic, Japanese, Chinese, Korean or Azerbaijani now switches menus, tabs, headings and buttons to that language.',
+  'Kizuna artık Android ve iPhone’da: aynı arayüz, uygulamanın içinde PS1 oyunları ve telefona özel PlayStation dokunmatik tuşları.': 'Kizuna is now on Android and iPhone: the same interface, PS1 games inside the app and PlayStation touch controls made for phones.',
   '🕒 En son oynananlar': '🕒 Recently played', 'En son oynananlar': 'Recently played', 'Henüz oynanan oyun yok': 'No games played yet', 'Kütüphanendeki oyunlar': 'Games in your library', '{0} kez': '{0} times',
   'Tıkla ya da sürükle': 'Click or drag', 'Yeni güncelleme hazır': 'New update ready', 'Kizuna v{0}': 'Kizuna v{0}', 'Bu sürümde neler var?': 'What’s in this version?', 'Daha sonra': 'Later', '⬆️ Şimdi güncelle': '⬆️ Update now', 'Kuruluyor…': 'Installing…',
   'Yeni sürüm arka planda indirildi. Şimdi güncellemek istersen Kizuna birkaç saniyeliğine kapanıp yeni sürümle yeniden açılır.': 'The new version was downloaded in the background. If you update now, Kizuna closes for a few seconds and reopens with the new version.',
@@ -293,9 +299,10 @@ const I18n = (() => {
   const cacheKey = l => 'kz_i18n_' + l;
   function aiDict(l) { try { return JSON.parse(localStorage.getItem(cacheKey(l))) || null; } catch { return null; } }
   function build(l) {
-    let d = l === 'en' ? EN : aiDict(l);
-    const full = !!d;
-    if (!d) d = EN; // fallback: English until a full translation exists
+    const ai = l === 'en' ? null : aiDict(l);
+    const full = l === 'en' || !!ai;
+    // built-in pack for the main interface, then the Kizuna AI translation (if any); English for everything else
+    const d = l === 'en' ? EN : { ...EN, ...((typeof I18N_PACKS !== 'undefined' && I18N_PACKS[l]) || {}), ...(ai || {}) };
     dict = new Map(Object.entries(d));
     // "{0} Oyun Ekle" (icon + label) → the DOM text node is just "Oyun Ekle"
     for (const [k, v] of [...dict]) if (/^\{0\} /.test(k) && /^\{0\} /.test(v)) { const s = k.slice(4); if (!dict.has(s) && !/\{\d\}/.test(s)) dict.set(s, v.slice(4)); }
@@ -388,7 +395,7 @@ const I18n = (() => {
     note() {
       const l = (typeof S !== 'undefined' && S.lang) || 'tr';
       if (l === 'tr' || l === 'en') return 'Dil seçtiğin an arayüzün tamamı o dile geçer.';
-      return aiDict(l) ? 'Bu dil için tam çeviri hazır (Kizuna AI ile çevrildi).' : 'Bu dilin tam çevirisi Kizuna AI ile otomatik yapılır (Ayarlar › Kizuna AI’de API anahtarı gerekir); hazır olana kadar İngilizce gösterilir.';
+      return aiDict(l) ? 'Bu dil için tam çeviri hazır (Kizuna AI ile çevrildi).' : 'Menüler, sekmeler, başlıklar ve butonlar bu dilde. Uzun açıklamalar şimdilik İngilizce; Kizuna AI anahtarı eklersen onlar da otomatik çevrilir.';
     },
     running: false,
     async autoTranslate(l) {

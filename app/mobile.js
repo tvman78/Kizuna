@@ -144,6 +144,7 @@ Katalog:\n${games}`;
     emu: {
       status: async () => ({ ps1: { path: 'dahili', version: 'EmulatorJS · PCSX ReARMed', builtin: true } }),
       install: async id => ({ ok: false, error: id === 'ps1' ? 'PS1 emülatörü zaten Kizuna’nın içinde.' : 'Bu konsolun emülatörü telefonda çalışmıyor.' }),
+      remove: async () => ({ ok: false, error: 'Dahili PS1 emülatörü uygulamanın parçası, silinemez.' }),
       open: async () => false, run: async () => false, onProgress: () => {}
     },
     covers: {

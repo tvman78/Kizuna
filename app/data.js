@@ -211,6 +211,14 @@ const banDays = (level, count) => Math.min(365, (BAN_BASE_DAYS[level] || 1) * 2 
 /* ---------- WHAT'S NEW (shown once after each update, and from the news button) ---------- */
 const CHANGELOG = [
   {
+    v: '1.0.4', date: '2026-11-20', title: 'Telefon sürümü, tüm diller ve emülatör silme',
+    items: [
+      ['📱', 'Telefon sürümü', 'Kizuna artık Android ve iPhone’da: aynı arayüz, uygulamanın içinde PS1 oyunları ve telefona özel PlayStation dokunmatik tuşları.'],
+      ['🌍', 'Bütün diller çalışıyor', 'Almanca, Fransızca, İspanyolca, İtalyanca, Portekizce, Rusça, Arapça, Japonca, Çince, Korece ve Azerbaycanca seçince menüler, sekmeler, başlıklar ve butonlar artık o dile geçiyor.'],
+      ['🗑️', 'Emülatör silme', 'Kurulu emülatörleri Ayarlar › Emülatörler’den tek tıkla silebilirsin; oyun dosyalarına dokunulmaz.']
+    ]
+  },
+  {
     v: '1.0.3', date: '2026-11-20', title: 'Güncelleme istemi, müzik çubuğu ve sade profil',
     items: [
       ['⬆️', 'Uygulama içi güncelleme', 'Yeni sürüm indirilince Kizuna sana sorar: “Şimdi güncelle” ya da “Daha sonra”. Sürüm notları da pencerede görünür.'],

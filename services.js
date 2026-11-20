@@ -185,6 +185,13 @@ function registerServices(getWin) {
     try { return { ok: true, ...(await installEmu(id, p => send('emu-progress', p))) }; }
     catch (err) { send('emu-progress', { id, phase: 'error', error: err.message }); return { ok: false, error: err.message }; }
   });
+  ipcMain.handle('emu-remove', (e, id) => {
+    if (!EMUS[id]) return { ok: false, error: 'Bilinmeyen emülatör' };
+    if (emuBusy.has(id)) return { ok: false, error: 'Kurulum sürerken silinemez' };
+    try { fs.rmSync(emuDir(id), { recursive: true, force: true, maxRetries: 3, retryDelay: 300 }); }
+    catch (err) { return { ok: false, error: /EBUSY|EPERM/.test(err.code) ? 'Emülatör şu an açık — önce kapatıp tekrar dene.' : err.message }; }
+    return { ok: !fs.existsSync(emuDir(id)) };
+  });
   ipcMain.handle('emu-open', (e, id, sub) => {
     const info = readJson(path.join(emuDir(id), 'kizuna.json'), null);
     if (!info) return false;
