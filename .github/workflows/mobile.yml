@@ -1,6 +1,6 @@
-# Builds the Kizuna phone apps on GitHub's machines and attaches them to the release:
-#   Android → Kizuna-Android-<version>.apk   (signed with the Kizuna key if the secrets exist)
-#   iOS     → Kizuna-iOS-<version>.ipa       (unsigned — install with AltStore / Sideloadly)
+﻿# Builds the Kizuna phone apps on GitHub's machines and attaches them to the release:
+#   Android â†’ Kizuna-Android-<version>.apk   (signed with the Kizuna key if the secrets exist)
+#   iOS     â†’ Kizuna-iOS-<version>.ipa       (unsigned â€” install with AltStore / Sideloadly)
 name: Mobile apps
 on:
   release:
@@ -41,7 +41,7 @@ jobs:
       - name: Build APK
         working-directory: mobile/android
         run: |
-          V="${TAG#v}"; CODE=$(echo "$V" | awk -F. '{print $1*10000+$2*100+$3}')
+          V=$(node -p "require('../package.json').version"); CODE=$(echo "$V" | awk -F. '{print $1*10000+$2*100+$3}')
           sed -i "s/versionCode [0-9]*/versionCode $CODE/; s/versionName \"[^\"]*\"/versionName \"$V\"/" app/build.gradle
           chmod +x gradlew && ./gradlew --no-daemon assembleRelease
       - name: Sign APK
@@ -58,13 +58,18 @@ jobs:
             $BT/apksigner sign --ks kizuna.p12 --ks-type PKCS12 --ks-pass env:KS_PASS --ks-key-alias kizuna --out ../../Kizuna-Android-${TAG#v}.apk aligned.apk
             rm kizuna.p12
           else
-            echo "::warning::ANDROID_KEYSTORE secrets missing — signing with a temporary key (updates will need a reinstall)"
+            echo "::warning::ANDROID_KEYSTORE secrets missing â€” signing with a temporary key (updates will need a reinstall)"
             keytool -genkeypair -keystore tmp.jks -storepass android -keypass android -alias tmp -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Kizuna"
             $BT/apksigner sign --ks tmp.jks --ks-pass pass:android --out ../../Kizuna-Android-${TAG#v}.apk aligned.apk
           fi
       - name: Upload to release
         env: { GH_TOKEN: '${{ github.token }}' }
-        run: gh release upload "$TAG" "mobile/Kizuna-Android-${TAG#v}.apk" --clobber -R "$GITHUB_REPOSITORY"
+        run: |
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then gh release upload "$TAG" "mobile/Kizuna-Android-${TAG#v}.apk" --clobber -R "$GITHUB_REPOSITORY"; else echo "No release $TAG â€” test build only"; fi
+      - name: Keep test build
+        if: ${{ !startsWith(env.TAG, 'v') }}
+        uses: actions/upload-artifact@v4
+        with: { name: android-test, path: 'mobile/Kizuna-Android-*.apk', retention-days: 3 }
 
   ios:
     runs-on: macos-latest
@@ -79,12 +84,12 @@ jobs:
           npm ci && node scripts/prepare.js
           npx cap add ios
           P=ios/App/App/Info.plist
-          /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string 'Kizuna sesli sohbet ve sesli komutlar için mikrofonu kullanır.'" $P || true
+          /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string 'Kizuna sesli sohbet ve sesli komutlar iÃ§in mikrofonu kullanÄ±r.'" $P || true
           /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity dict" $P || true
           /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSAllowsArbitraryLoads bool true" $P || true
           /usr/libexec/PlistBuddy -c "Add :UIFileSharingEnabled bool true" $P || true
           /usr/libexec/PlistBuddy -c "Add :LSSupportsOpeningDocumentsInPlace bool true" $P || true
-          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${TAG#v}" $P || true
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $(node -p "require('./package.json').version")" $P || true
           mkdir -p assets && cp ../build/icon.png assets/icon.png
           npx --yes @capacitor/assets@4.0.0 generate --ios --iconBackgroundColor '#000000' --splashBackgroundColor '#000000' || echo "icon generation skipped"
           npx cap sync ios
@@ -97,4 +102,5 @@ jobs:
           zip -qr "../../Kizuna-iOS-${TAG#v}.ipa" Payload
       - name: Upload to release
         env: { GH_TOKEN: '${{ github.token }}' }
-        run: gh release upload "$TAG" "mobile/Kizuna-iOS-${TAG#v}.ipa" --clobber -R "$GITHUB_REPOSITORY"
+        run: |
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then gh release upload "$TAG" "mobile/Kizuna-iOS-${TAG#v}.ipa" --clobber -R "$GITHUB_REPOSITORY"; else echo "No release $TAG â€” test build only"; fi
