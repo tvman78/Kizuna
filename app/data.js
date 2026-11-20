@@ -82,7 +82,7 @@ const GAMES = [
   ["ps5", "Marvel's Spider-Man 2", 2023, 'Aksiyon', 1], ['ps5', 'Final Fantasy XVI', 2023, 'RPG', 1], ['ps5', 'Astro Bot', 2024, 'Platform'],
   ['ps5', 'Stellar Blade', 2024, 'Aksiyon', 1], ['ps5', 'Helldivers 2', 2024, 'Aksiyon', 1], ['ps5', 'Final Fantasy VII Rebirth', 2024, 'RPG', 1],
   ['ps5', 'Gran Turismo 7', 2022, 'Yarış'], ['ps5', 'Elden Ring', 2022, 'RPG', 1], ['ps5', 'Death Stranding 2', 2025, 'Macera'],
-  ['ps5', 'Ghost of Yōtei', 2025, 'Açık Dünya'],
+  ['ps5', 'Ghost of Yōtei', 2025, 'Açık Dünya'], ['ps5', 'Grand Theft Auto VI', 2026, 'Açık Dünya'],
   /* v1.0.5 — bigger catalog */
   ['ps1', 'Final Fantasy VIII', 1999, 'RPG', 1], ['ps1', 'Final Fantasy Tactics', 1997, 'RPG', 1], ['ps1', 'Crash Bandicoot 2: Cortex Strikes Back', 1997, 'Platform'],
   ['ps1', 'Crash Bandicoot: Warped', 1998, 'Platform'], ["ps1", "Spyro 2: Ripto's Rage!", 1999, 'Platform'], ['ps1', 'Spyro: Year of the Dragon', 2000, 'Platform'],
@@ -279,6 +279,12 @@ const banDays = (level, count) => Math.min(365, (BAN_BASE_DAYS[level] || 1) * 2 
 
 /* ---------- WHAT'S NEW (shown once after each update, and from the news button) ---------- */
 const CHANGELOG = [
+  {
+    v: '1.0.7', date: '2026-11-21', title: 'GTA VI geldi',
+    items: [
+      ['🌴', 'Grand Theft Auto VI', 'PS5 kataloğuna Grand Theft Auto VI eklendi; katalog artık 237 oyun.']
+    ]
+  },
   {
     v: '1.0.5', date: '2026-11-20', title: 'Dev oyun kataloğu',
     items: [

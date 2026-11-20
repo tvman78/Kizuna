@@ -16,7 +16,7 @@ Latest release: **[Releases](https://github.com/tvman78/Kizuna/releases/latest)*
 
 ## Features
 
-- 236-game PS1–PS5 catalog with cover art
+- 237-game PS1–PS5 catalog with cover art
 - Windows: one-click install of the official emulators (DuckStation, PCSX2, RPCS3, shadPS4) inside the app
 - Phones: PS1 games run inside the app with PlayStation-style touch controls (EmulatorJS)
 - Kizuna AI, powered by Claude
