@@ -1,4 +1,4 @@
-﻿# Builds the Kizuna phone apps on GitHub's machines and attaches them to the release:
+# Builds the Kizuna phone apps on GitHub's machines and attaches them to the release:
 #   Android â†’ Kizuna-Android-<version>.apk   (signed with the Kizuna key if the secrets exist)
 #   iOS     â†’ Kizuna-iOS-<version>.ipa       (unsigned â€” install with AltStore / Sideloadly)
 name: Mobile apps
@@ -55,12 +55,12 @@ jobs:
           $BT/zipalign -f -p 4 $IN aligned.apk
           if [ -n "$KS_B64" ]; then
             echo "$KS_B64" | base64 -d > kizuna.p12
-            $BT/apksigner sign --ks kizuna.p12 --ks-type PKCS12 --ks-pass env:KS_PASS --ks-key-alias kizuna --out ../../Kizuna-Android-${TAG#v}.apk aligned.apk
+            $BT/apksigner sign --ks kizuna.p12 --ks-type PKCS12 --ks-pass env:KS_PASS --ks-key-alias kizuna --out ../Kizuna-Android-${TAG#v}.apk aligned.apk
             rm kizuna.p12
           else
             echo "::warning::ANDROID_KEYSTORE secrets missing â€” signing with a temporary key (updates will need a reinstall)"
             keytool -genkeypair -keystore tmp.jks -storepass android -keypass android -alias tmp -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Kizuna"
-            $BT/apksigner sign --ks tmp.jks --ks-pass pass:android --out ../../Kizuna-Android-${TAG#v}.apk aligned.apk
+            $BT/apksigner sign --ks tmp.jks --ks-pass pass:android --out ../Kizuna-Android-${TAG#v}.apk aligned.apk
           fi
       - name: Upload to release
         env: { GH_TOKEN: '${{ github.token }}' }
@@ -72,7 +72,7 @@ jobs:
         with: { name: android-test, path: 'mobile/Kizuna-Android-*.apk', retention-days: 3 }
 
   ios:
-    runs-on: macos-latest
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v4
         with: { ref: '${{ env.TAG }}' }
