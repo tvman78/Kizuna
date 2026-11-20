@@ -1,0 +1,100 @@
+# Builds the Kizuna phone apps on GitHub's machines and attaches them to the release:
+#   Android → Kizuna-Android-<version>.apk   (signed with the Kizuna key if the secrets exist)
+#   iOS     → Kizuna-iOS-<version>.ipa       (unsigned — install with AltStore / Sideloadly)
+name: Mobile apps
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v1.0.4)'
+        required: true
+permissions:
+  contents: write
+env:
+  TAG: ${{ github.event.release.tag_name || inputs.tag }}
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: '${{ env.TAG }}' }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21 }
+      - name: Prepare web assets
+        working-directory: mobile
+        run: npm ci && node scripts/prepare.js
+      - name: Create Android project
+        working-directory: mobile
+        run: |
+          npx cap add android
+          M=android/app/src/main/AndroidManifest.xml
+          sed -i 's#<application#<application android:usesCleartextTraffic="true"#' $M
+          sed -i 's#</manifest>#<uses-permission android:name="android.permission.RECORD_AUDIO"/><uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/></manifest>#' $M
+          mkdir -p assets && cp ../build/icon.png assets/icon.png
+          npx --yes @capacitor/assets@4.0.0 generate --android --iconBackgroundColor '#000000' --splashBackgroundColor '#000000' || echo "icon generation skipped"
+          npx cap sync android
+      - name: Build APK
+        working-directory: mobile/android
+        run: |
+          V="${TAG#v}"; CODE=$(echo "$V" | awk -F. '{print $1*10000+$2*100+$3}')
+          sed -i "s/versionCode [0-9]*/versionCode $CODE/; s/versionName \"[^\"]*\"/versionName \"$V\"/" app/build.gradle
+          chmod +x gradlew && ./gradlew --no-daemon assembleRelease
+      - name: Sign APK
+        working-directory: mobile/android
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+        run: |
+          BT=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -1)
+          IN=app/build/outputs/apk/release/app-release-unsigned.apk
+          $BT/zipalign -f -p 4 $IN aligned.apk
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > kizuna.p12
+            $BT/apksigner sign --ks kizuna.p12 --ks-type PKCS12 --ks-pass env:KS_PASS --ks-key-alias kizuna --out ../../Kizuna-Android-${TAG#v}.apk aligned.apk
+            rm kizuna.p12
+          else
+            echo "::warning::ANDROID_KEYSTORE secrets missing — signing with a temporary key (updates will need a reinstall)"
+            keytool -genkeypair -keystore tmp.jks -storepass android -keypass android -alias tmp -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Kizuna"
+            $BT/apksigner sign --ks tmp.jks --ks-pass pass:android --out ../../Kizuna-Android-${TAG#v}.apk aligned.apk
+          fi
+      - name: Upload to release
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: gh release upload "$TAG" "mobile/Kizuna-Android-${TAG#v}.apk" --clobber -R "$GITHUB_REPOSITORY"
+
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: '${{ env.TAG }}' }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Prepare web assets + iOS project
+        working-directory: mobile
+        run: |
+          npm ci && node scripts/prepare.js
+          npx cap add ios
+          P=ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string 'Kizuna sesli sohbet ve sesli komutlar için mikrofonu kullanır.'" $P || true
+          /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity dict" $P || true
+          /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSAllowsArbitraryLoads bool true" $P || true
+          /usr/libexec/PlistBuddy -c "Add :UIFileSharingEnabled bool true" $P || true
+          /usr/libexec/PlistBuddy -c "Add :LSSupportsOpeningDocumentsInPlace bool true" $P || true
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${TAG#v}" $P || true
+          mkdir -p assets && cp ../build/icon.png assets/icon.png
+          npx --yes @capacitor/assets@4.0.0 generate --ios --iconBackgroundColor '#000000' --splashBackgroundColor '#000000' || echo "icon generation skipped"
+          npx cap sync ios
+      - name: Build unsigned IPA
+        working-directory: mobile/ios/App
+        run: |
+          xcodebuild -project App.xcodeproj -scheme App -configuration Release -sdk iphoneos -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+          mkdir -p Payload && cp -R build/Build/Products/Release-iphoneos/App.app Payload/
+          zip -qr "../../Kizuna-iOS-${TAG#v}.ipa" Payload
+      - name: Upload to release
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: gh release upload "$TAG" "mobile/Kizuna-iOS-${TAG#v}.ipa" --clobber -R "$GITHUB_REPOSITORY"

@@ -570,6 +570,7 @@ const WZ = [
     }
   }
 ];
+if (window.KZ_MOBILE) WZ.splice(0, 1); // phones have no game folder to scan
 function showWizard() { showScreen('wizard'); wzI = 0; renderWz(); }
 function renderWz() {
   $('#wzSteps').innerHTML = WZ.map((s, i) => `<li class="${i === wzI ? 'on' : i < wzI ? 'done' : ''}"><span>${i < wzI ? '✓' : i + 1}</span>${s.t}</li>`).join('');
@@ -615,7 +616,18 @@ async function scanAndOffer(box) {
 /* ---------- Emulators: installed inside Kizuna with one click (official GitHub releases) ---------- */
 let emuInfo = {}; const emuProg = {};
 const EMU_ORDER = ['ps1', 'ps2', 'ps3', 'ps4', 'ps5']; // oldest → newest
+function emuRowsHTMLMobile() {
+  return EMU_ORDER.map(k => {
+    const c = CONSOLES[k];
+    const body = k === 'ps1'
+      ? `<b>Dahili PS1 emülatörü <small class="muted">· ${c.name} (${c.year})</small></b><small>Kizuna’nın içinde hazır — kurulum gerekmez. Ekrandaki PlayStation tuşlarıyla ya da Bluetooth kolla oynarsın. Çoğu oyun BIOS’suz çalışır; kendi konsolundan aldığın BIOS’u eklersen uyumluluk artar.</small>`
+      : `<b>${c.name} <small class="muted">(${c.year})</small></b><small>${k === 'ps5' ? 'PS5 emülatörü hiçbir cihazda yok.' : 'Telefonda çalışmıyor — telefonlar bu konsolu çalıştıracak güçte değil ve mobil emülatörü yok.'} Bu oyunları bilgisayardaki Kizuna’da oynayabilirsin.</small>`;
+    const act = k === 'ps1' ? `<span class="emu-ok">✓ Hazır</span><button class="btn sm ghost" id="biosAdd">${icon('folder', 14)} ${S.biosPs1 ? 'BIOS’u değiştir' : 'BIOS ekle (isteğe bağlı)'}</button>` : '<span class="muted small">Telefonda yok</span>';
+    return `<div class="emu-row"><div class="emu-art c-${k}">${consoleArt(k, 58)}<b>${c.short}</b></div><div class="emu-info">${body}</div><div class="emu-act">${act}</div></div>`;
+  }).join('');
+}
 function emuRowsHTML() {
+  if (MOBILE) return emuRowsHTMLMobile();
   return EMU_ORDER.map(k => {
     const c = CONSOLES[k], inst = emuInfo[k], pr = emuProg[k], linked = S.emulators[k];
     const state = !c.emu ? '<span class="muted small">PC için çalışan bir PS5 emülatörü henüz yok</span>'
@@ -630,6 +642,13 @@ function emuRowsHTML() {
 }
 function rerenderEmuRows() { $$('.emu-list').forEach(el => { el.innerHTML = emuRowsHTML(); bindEmuRows(el.parentElement, rerenderEmuRows); cloudify(el); }); }
 function bindEmuRows(root, rerender) {
+  const ba = $('#biosAdd', root);
+  if (ba) ba.onclick = async () => {
+    const f = await pickLocal('.bin,.rom'); if (!f) return;
+    if (f.size < 400e3 || f.size > 1.2e6) return toast('Bu bir PS1 BIOS dosyasına benzemiyor (genelde 512 KB, ör. scph1001.bin).', 'warn', 5000);
+    await DB.put('bios_ps1', f); S.biosPs1 = f.name; save();
+    toast(`✅ BIOS eklendi: <b>${esc(f.name)}</b>`, 'ok'); rerenderEmuRows();
+  };
   $$('[data-emu]', root).forEach(b => b.onclick = async () => {
     if (!api) return toast('Emülatör bağlama masaüstü uygulamasında çalışır', 'warn');
     const p = await api.pickFile({ filters: [{ name: 'Uygulama', extensions: ['exe'] }] });
@@ -1038,12 +1057,12 @@ const empty = (ic, t, d, act = '') => `<div class="empty"><div class="empty-ic">
 /* ---------- Library ---------- */
 VIEWS.library = v => {
   v.innerHTML = head(T('nav.library'), 'Bilgisayarındaki kendi oyun kopyaların. Oynamak için ilgili emülatör bağlı olmalı.',
-    `<button class="btn primary" id="addGameBtn" data-tip="Kendi oyun dosyanı (ISO, CUE, CHD, PBP, EBOOT.BIN) ekle">${icon('plus', 18)} Oyun Ekle</button><button class="btn ghost" id="scanBtn" data-tip="Oyun klasörünü tara">${icon('folder', 18)} Klasörü Tara</button>`)
+    `<button class="btn primary" id="addGameBtn" data-tip="Kendi oyun dosyanı (ISO, CUE, CHD, PBP, EBOOT.BIN) ekle">${icon('plus', 18)} Oyun Ekle</button>${window.KZ_MOBILE ? '' : `<button class="btn ghost" id="scanBtn" data-tip="Oyun klasörünü tara">${icon('folder', 18)} Klasörü Tara</button>`}`)
     + `<div id="scanBox"></div>`
     + (S.library.length ? `<div class="game-grid">${S.library.map(libCard).join('')}</div>`
       : empty('🎮', 'Kütüphanen boş', 'Oyunlar bölümünden bir oyun seçip kendi dosyanı ekleyebilir ya da oyun klasörünü taratabilirsin.', `<button class="btn primary" data-go="catalog">Oyunlara göz at ›</button>`));
   $('#addGameBtn').onclick = () => addGameModal();
-  $('#scanBtn').onclick = () => scanAndOffer($('#scanBox'));
+  const sb = $('#scanBtn'); if (sb) sb.onclick = () => scanAndOffer($('#scanBox'));
 };
 function libCard(g) {
   const c = CONSOLES[g.console];
@@ -1061,7 +1080,43 @@ function addGameModal(catalogId) {
   $$('[data-agc]').forEach(b => b.onclick = () => { sel = b.dataset.agc; $$('[data-agc]').forEach(x => x.classList.toggle('on', x === b)); });
   $('#agPick').onclick = async () => { const ok = await addOwnGame(sel, $('#agTitle').value.trim(), catalogId); if (ok) { closeModal(); if (current === 'library') go('library'); } };
 }
+const MOBILE = !!window.KZ_MOBILE;
+/* Phone: only PS1 runs (built-in EmulatorJS player). The game file is copied into the app's own storage. */
+async function addOwnGameMobile(c, title, catalogId) {
+  if (c !== 'ps1') { toast('Telefonda yalnızca PS1 oyunları çalışır. PS2–PS5 için bilgisayardaki Kizuna’yı kullan.', 'warn', 5000); return false; }
+  const f = await pickLocal('.chd,.pbp,.iso,.bin,.img,.cue,.zip,.7z,.m3u'); if (!f) return false;
+  if (/\.cue$/i.test(f.name)) { toast('CUE dosyası tek başına çalışmaz — CUE ve BIN dosyalarını bir ZIP içine koyup ZIP’i ekle ya da CHD/PBP kullan.', 'warn', 6000); return false; }
+  toast('⏳ Oyun dosyası Kizuna’ya kopyalanıyor…', 'info', 2500);
+  let m; try { m = await storeMedia(f); } catch (e) { toast('Dosya kaydedilemedi (telefonda yer kalmamış olabilir): ' + esc(e.message || ''), 'err', 6000); return false; }
+  const name = title || f.name.replace(/\.[^.]+$/, '');
+  S.library.unshift({ id: uid(), title: name, console: c, path: f.name, mid: m.id, size: f.size, catalogId: catalogId || null, added: Date.now(), plays: 0 });
+  log(`Kütüphaneye eklendi: ${name} (${CONSOLES[c].short})`); save();
+  toast(`✅ <b>${esc(name)}</b> kütüphaneye eklendi — Oyna’ya bas!`, 'ok');
+  return true;
+}
+/* Full-screen PS1 player (psx.html in an iframe, so every game starts with a clean emulator) */
+const PSX = {
+  open(g) {
+    if (!g.mid) return toast('Bu oyun bu telefonda eklenmemiş — Kütüphane › Oyun Ekle ile dosyanı ekle.', 'warn');
+    Music.stop(); this.close();
+    const fr = document.createElement('iframe');
+    fr.id = 'psxFrame'; fr.allow = 'autoplay; fullscreen; gamepad';
+    fr.src = `psx.html#id=${encodeURIComponent(g.mid)}&file=${encodeURIComponent(g.path || 'game.chd')}&lang=${S.lang}`;
+    document.body.appendChild(fr); document.body.classList.add('psx-on');
+    try { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(() => {}); } catch {}
+    try { screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(() => {}); } catch {}
+  },
+  close() {
+    const fr = $('#psxFrame'); if (!fr) return;
+    fr.remove(); document.body.classList.remove('psx-on');
+    try { screen.orientation && screen.orientation.unlock && screen.orientation.unlock(); } catch {}
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    netSync({ playing: '' });
+  }
+};
+addEventListener('message', e => { if (e.origin === location.origin && e.data && e.data.kizunaPsx === 'exit') PSX.close(); });
 async function addOwnGame(c, title, catalogId) {
+  if (MOBILE) return addOwnGameMobile(c, title, catalogId);
   if (c === 'ps5') { toast('PS5 için çalışan bir PC emülatörü yok. Resmi PC sürümü varsa İndir butonunu kullan.', 'warn'); return false; }
   const con = CONSOLES[c];
   let path = '';
@@ -1080,6 +1135,15 @@ async function addOwnGame(c, title, catalogId) {
 }
 async function launch(g) {
   const c = CONSOLES[g.console];
+  if (MOBILE) {
+    if (g.console !== 'ps1') return toast(`${c.short} oyunları telefonda çalışmıyor — bilgisayardaki Kizuna’da oynayabilirsin.`, 'warn', 5000);
+    PSX.open(g);
+    g.plays = (g.plays || 0) + 1; g.lastPlayed = Date.now();
+    S.played = [g.title, ...S.played.filter(x => x !== g.title)].slice(0, 50);
+    netSync({ playing: g.title, played: S.played });
+    log(`Oynandı: ${g.title} (${c.short})`); save();
+    return;
+  }
   if (!api) return toast('Oyun başlatma yalnızca Kizuna masaüstü uygulamasında çalışır', 'warn');
   const emu = S.emulators[g.console];
   if (!emu) { toast(`${c.emu} bağlı değil — önce Ayarlar › Emülatörler'den bağla`, 'warn'); return go('settings', 'emu'); }
@@ -1099,7 +1163,7 @@ VIEWS.catalog = v => {
   const list = GAMES.filter(g => catFilter === 'all' || g.c === catFilter);
   const c = CONSOLES[catFilter];
   const inst = c && (emuInfo[catFilter] || S.emulators[catFilter]);
-  v.innerHTML = head(T('nav.catalog'), 'PS1’den PS5’e efsane oyunlar. Emülatörler tek tıkla Kizuna’ya kurulur; İndir butonu her zaman resmi ve güvenli kaynağı kullanır.')
+  v.innerHTML = head(T('nav.catalog'), MOBILE ? 'PS1’den PS5’e efsane oyunlar. Telefonda PS1 oyunları Kizuna’nın içinde, ekrandaki PlayStation tuşlarıyla oynanır.' : 'PS1’den PS5’e efsane oyunlar. Emülatörler tek tıkla Kizuna’ya kurulur; İndir butonu her zaman resmi ve güvenli kaynağı kullanır.')
     + `<div class="tabs">${['all', ...EMU_ORDER].map(k => `<button class="tab ${catFilter === k ? 'on' : ''}" data-cf="${k}">${k === 'all' ? 'Tümü' : `<span class="tab-art">${consoleArt(k, 22)}</span>` + CONSOLES[k].short}<small>${k === 'all' ? GAMES.length : GAMES.filter(g => g.c === k).length}</small></button>`).join('')}</div>`
     + (c ? `<div class="con-strip panel c-${catFilter}"><span class="cs-art">${consoleArt(catFilter, 54)}</span><div><b>${c.name} <small class="muted">(${c.year})</small></b><small>${c.emu ? `Emülatör: ${c.emu} · ${c.status}` : c.status} — ${c.note}</small></div>${c.emu ? (inst ? `<span class="emu-ok">✓ ${c.emu} kurulu</span>` : `<button class="btn sm primary" id="csInstall">${icon('download', 14)} ${c.emu}’u Kizuna’ya kur</button>`) : ''}</div>` : '')
     + `<div class="game-grid">${list.map(gameCard).join('')}</div>`;

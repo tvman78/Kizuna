@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Kizuna — PS1</title>
+<!-- Kizuna phone PS1 player: EmulatorJS (GPL-3.0) + PCSX ReARMed core, with a PlayStation-style touch pad.
+     The game file is the user's own copy, read from the app's local storage (IndexedDB). -->
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; touch-action: none; -webkit-user-select: none; user-select: none; }
+  #game { position: absolute; inset: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  #msg { position: absolute; inset: 0; display: grid; place-items: center; color: #cfd8d0; font: 600 15px system-ui, sans-serif; text-align: center; padding: 24px; }
+  /* PlayStation-style face buttons (symbols + their classic colours) */
+  .ejs_virtualGamepad_button { font-size: 26px !important; font-weight: 900 !important; border-width: 2px !important; background: rgba(20, 20, 26, .55) !important; }
+  .ejs_virtualGamepad_button.b_tri { color: #3ee0a1 !important; border-color: #3ee0a1 !important; }
+  .ejs_virtualGamepad_button.b_cir { color: #ff4f5e !important; border-color: #ff4f5e !important; }
+  .ejs_virtualGamepad_button.b_crs { color: #6aa8ff !important; border-color: #6aa8ff !important; }
+  .ejs_virtualGamepad_button.b_sqr { color: #ff8fc8 !important; border-color: #ff8fc8 !important; }
+  .ejs_virtualGamepad_button.b_l1, .ejs_virtualGamepad_button.b_r1, .ejs_virtualGamepad_button.b_l2, .ejs_virtualGamepad_button.b_r2 { font-size: 15px !important; color: #e8ede9 !important; }
+  .ejs_virtualGamepad_button.b_start, .ejs_virtualGamepad_button.b_select { font-size: 12px !important; letter-spacing: .08em; }
+  .ejs_virtualGamepad_button_down { background: rgba(147, 197, 114, .45) !important; transform: scale(.94); }
+  #exit { position: fixed; z-index: 99999; top: calc(env(safe-area-inset-top) + 8px); left: calc(env(safe-area-inset-left) + 8px); border: 1px solid #93C572; background: rgba(0, 0, 0, .55); color: #93C572; font: 800 13px system-ui; border-radius: 10px; padding: 8px 12px; }
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="msg">Oyun hazırlanıyor…</div>
+<button id="exit">✕ Kizuna’ya dön</button>
+<script>
+'use strict';
+(async () => {
+  const p = new URLSearchParams(location.hash.slice(1));
+  const msg = t => { document.getElementById('msg').textContent = t; };
+  document.getElementById('exit').onclick = () => parent.postMessage({ kizunaPsx: 'exit' }, location.origin);
+  // read a Blob saved by the app (same origin → same IndexedDB "kizuna" / store "media")
+  const idbGet = key => new Promise(res => {
+    const r = indexedDB.open('kizuna', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('media');
+    r.onerror = () => res(null);
+    r.onsuccess = () => { try { const q = r.result.transaction('media').objectStore('media').get(key); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); } catch { res(null); } };
+  });
+  const game = await idbGet(p.get('id'));
+  if (!game) return msg('Oyun dosyası bulunamadı. Kütüphane › Oyun Ekle ile dosyanı yeniden ekle.');
+  const bios = await idbGet('bios_ps1');
+  document.getElementById('msg').remove();
+
+  window.EJS_player = '#game';
+  window.EJS_core = 'psx';
+  window.EJS_gameUrl = URL.createObjectURL(game);
+  window.EJS_gameName = p.get('file') || 'game.chd';          // the extension tells the core the file type
+  window.EJS_pathtodata = 'vendor/emulatorjs/';
+  window.EJS_startOnLoaded = true;
+  window.EJS_language = p.get('lang') === 'en' ? 'en-US' : 'tr-TR';
+  window.EJS_color = '#93C572';
+  window.EJS_backgroundColor = '#000';
+  window.EJS_threads = false;
+  if (bios) window.EJS_biosUrl = URL.createObjectURL(bios);     // optional — the core has a built-in HLE BIOS
+  // RetroPad ids: 0 B(✕) 1 Y(□) 2 Select 3 Start 4-7 D-pad 8 A(○) 9 X(△) 10 L1 11 R1 12 L2 13 R2 16-19 left stick
+  window.EJS_VirtualGamepadSettings = [
+    { type: 'button', text: '△', id: 'tri', location: 'right', left: 40, top: 0, bold: true, input_value: 9 },
+    { type: 'button', text: '□', id: 'sqr', location: 'right', left: 0, top: 40, bold: true, input_value: 1 },
+    { type: 'button', text: '○', id: 'cir', location: 'right', left: 81, top: 40, bold: true, input_value: 8 },
+    { type: 'button', text: '✕', id: 'crs', location: 'right', left: 40, top: 80, bold: true, input_value: 0 },
+    { type: 'dpad', id: 'dpad', location: 'left', left: '50%', top: '50%', joystickInput: false, inputValues: [4, 5, 6, 7] },
+    { type: 'button', text: 'L1', id: 'l1', location: 'left', left: 3, top: -100, bold: true, block: true, input_value: 10 },
+    { type: 'button', text: 'L2', id: 'l2', location: 'left', left: 3, top: -150, bold: true, block: true, input_value: 12 },
+    { type: 'button', text: 'R1', id: 'r1', location: 'right', right: 3, top: -100, bold: true, block: true, input_value: 11 },
+    { type: 'button', text: 'R2', id: 'r2', location: 'right', right: 3, top: -150, bold: true, block: true, input_value: 13 },
+    { type: 'button', text: 'SELECT', id: 'select', location: 'center', left: -5, fontSize: 12, block: true, input_value: 2 },
+    { type: 'button', text: 'START', id: 'start', location: 'center', left: 60, fontSize: 12, block: true, input_value: 3 }
+  ];
+  window.EJS_onGameStart = () => parent.postMessage({ kizunaPsx: 'started' }, location.origin);
+  const s = document.createElement('script');
+  s.src = 'vendor/emulatorjs/loader.js';
+  s.onerror = () => msg('Emülatör dosyaları yüklenemedi.');
+  document.body.appendChild(s);
+})();
+</script>
+</body>
+</html>

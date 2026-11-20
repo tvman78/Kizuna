@@ -1,0 +1,8 @@
+{
+  "appId": "com.tvmanfkoac.kizuna",
+  "appName": "Kizuna",
+  "webDir": "www",
+  "server": { "androidScheme": "https", "iosScheme": "capacitor" },
+  "android": { "allowMixedContent": true, "backgroundColor": "#000000" },
+  "ios": { "contentInset": "never", "backgroundColor": "#000000" }
+}
