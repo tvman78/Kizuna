@@ -139,7 +139,25 @@ const GAMES = [
   ['ps5', 'Monster Hunter Wilds', 2025, 'RPG', 1], ['ps5', 'Split Fiction', 2025, 'Macera', 1], ['ps5', 'Metaphor: ReFantazio', 2024, 'RPG', 1],
   ["ps5", "Dragon's Dogma 2", 2024, 'RPG', 1], ['ps5', 'Star Wars Jedi: Survivor', 2023, 'Aksiyon', 1], ['ps5', 'EA Sports FC 25', 2024, 'Spor', 1],
   ["ps5", "Assassin's Creed Shadows", 2025, 'Açık Dünya', 1], ['ps5', 'Clair Obscur: Expedition 33', 2025, 'RPG', 1], ['ps5', 'Elden Ring Nightreign', 2025, 'Aksiyon', 1],
-  ['ps5', 'Kingdom Come: Deliverance II', 2025, 'RPG', 1], ['ps5', 'Final Fantasy VII Remake Intergrade', 2021, 'RPG', 1], ['ps5', 'Hades II', 2025, 'Aksiyon', 1]
+  ['ps5', 'Kingdom Come: Deliverance II', 2025, 'RPG', 1], ['ps5', 'Final Fantasy VII Remake Intergrade', 2021, 'RPG', 1], ['ps5', 'Hades II', 2025, 'Aksiyon', 1],
+  // v1.0.8 — PS4 additions
+  ['ps4', 'Grand Theft Auto V', 2014, 'Açık Dünya', 1], ['ps4', 'Fallout 4', 2015, 'RPG', 1], ['ps4', 'The Elder Scrolls V: Skyrim', 2016, 'RPG', 1],
+  ['ps4', 'Nioh', 2017, 'Aksiyon', 1], ['ps4', 'Nioh 2', 2020, 'Aksiyon', 1], ['ps4', 'Overwatch', 2016, 'FPS', 1],
+  ['ps4', 'Destiny 2', 2017, 'FPS', 1], ['ps4', 'Rocket League', 2015, 'Spor', 1], ['ps4', 'Monster Hunter Rise', 2023, 'RPG', 1],
+  ['ps4', 'Far Cry 5', 2018, 'FPS', 1], ["ps4", "Assassin's Creed Origins", 2017, 'Açık Dünya', 1], ['ps4', 'Middle-earth: Shadow of Mordor', 2014, 'Aksiyon', 1],
+  ['ps4', 'Dragon Age: Inquisition', 2014, 'RPG', 1], ['ps4', 'Titanfall 2', 2016, 'FPS', 1], ['ps4', 'Wolfenstein II: The New Colossus', 2017, 'FPS', 1],
+  ['ps4', 'Crash Team Racing Nitro-Fueled', 2019, 'Yarış'], ['ps4', 'Final Fantasy XV', 2016, 'RPG', 1], ['ps4', 'Resident Evil 3 Remake', 2020, 'Korku', 1],
+  ['ps4', 'Control', 2019, 'Aksiyon', 1], ['ps4', 'The Last of Us Remastered', 2014, 'Aksiyon'], ['ps4', 'Gravity Rush 2', 2017, 'Aksiyon'],
+  ['ps4', 'Sonic Mania', 2017, 'Platform', 1], ['ps4', 'Celeste', 2018, 'Platform', 1], ['ps4', 'Hades', 2020, 'Aksiyon', 1],
+  ['ps4', 'Uncharted: The Nathan Drake Collection', 2015, 'Macera'], ['ps4', 'Apex Legends', 2019, 'FPS', 1], ['ps4', 'Battlefield 1', 2016, 'FPS', 1],
+  ['ps4', 'Star Wars Battlefront II (2017)', 2017, 'FPS', 1], ['ps4', 'Dragon Ball FighterZ', 2018, 'Dövüş', 1], ['ps4', 'Soulcalibur VI', 2018, 'Dövüş', 1],
+  ['ps4', 'Need for Speed Heat', 2019, 'Yarış', 1], ["ps4", "Tom Clancy's Ghost Recon Wildlands", 2017, 'Aksiyon', 1], ['ps4', 'Prey (2017)', 2017, 'FPS', 1],
+  ['ps4', 'Outlast', 2014, 'Korku', 1], ['ps4', 'Life Is Strange', 2016, 'Macera', 1], ['ps4', 'LittleBigPlanet 3', 2014, 'Platform'],
+  ['ps4', 'The Order: 1886', 2015, 'Aksiyon'], ['ps4', 'Driveclub', 2014, 'Yarış'], ['ps4', 'Shadow of the Tomb Raider', 2018, 'Macera', 1],
+  ['ps4', 'Rise of the Tomb Raider', 2016, 'Macera', 1], ['ps4', 'Borderlands 3', 2019, 'FPS', 1], ['ps4', 'Bloodstained: Ritual of the Night', 2019, 'Platform', 1],
+  ['ps4', 'Ace Combat 7: Skies Unknown', 2019, 'Aksiyon', 1], ['ps4', 'Call of Duty: Black Ops III', 2015, 'FPS', 1], ['ps4', 'Mafia III', 2016, 'Açık Dünya', 1],
+  ['ps4', 'Concrete Genie', 2019, 'Macera'], ['ps4', 'MediEvil (2019)', 2019, 'Platform'], ['ps4', 'Judgment', 2018, 'Aksiyon', 1],
+  ['ps4', 'Yakuza: Like a Dragon', 2020, 'RPG', 1], ['ps4', 'Ni no Kuni II: Revenant Kingdom', 2018, 'RPG', 1]
 ].map(([c, t, y, g, pc]) => ({ id: c + '-' + t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''), c, t, y, g, pc: !!pc }));
 /* Cover art: English Wikipedia article for each game (the app reads its lead image via the public REST API) */
 const WIKI = {
@@ -163,7 +181,12 @@ const WIKI = {
   'ps3-valkyria-chronicles': 'Valkyria_Chronicles_(video_game)', 'ps4-doom-2016': 'Doom_(2016_video_game)', 'ps4-call-of-duty-modern-warfare-2019': 'Call_of_Duty:_Modern_Warfare_(2019_video_game)',
   'ps4-ratchet-clank-2016': 'Ratchet_&_Clank_(2016_video_game)', 'ps4-shadow-of-the-colossus-2018': 'Shadow_of_the_Colossus_(2018_video_game)', 'ps4-resident-evil-2-remake': 'Resident_Evil_2_(2019_video_game)',
   'ps4-dreams': 'Dreams_(video_game)', 'ps5-stray': 'Stray_(video_game)', 'ps5-dead-space-remake': 'Dead_Space_(2023_video_game)',
-  'ps5-silent-hill-2-remake': 'Silent_Hill_2_(2024_video_game)', 'ps5-resident-evil-4-remake': 'Resident_Evil_4_(2023_video_game)', 'ps5-final-fantasy-vii-remake-intergrade': 'Final_Fantasy_VII_Remake'
+  'ps5-silent-hill-2-remake': 'Silent_Hill_2_(2024_video_game)', 'ps5-resident-evil-4-remake': 'Resident_Evil_4_(2023_video_game)', 'ps5-final-fantasy-vii-remake-intergrade': 'Final_Fantasy_VII_Remake',
+  'ps4-overwatch': 'Overwatch_(video_game)', 'ps4-resident-evil-3-remake': 'Resident_Evil_3_(2020_video_game)', 'ps4-control': 'Control_(video_game)',
+  'ps4-the-last-of-us-remastered': 'The_Last_of_Us_(video_game)', 'ps4-celeste': 'Celeste_(video_game)', 'ps4-hades': 'Hades_(video_game)',
+  'ps4-star-wars-battlefront-ii-2017': 'Star_Wars_Battlefront_II_(2017_video_game)', 'ps4-prey-2017': 'Prey_(2017_video_game)',
+  'ps4-outlast': 'Outlast_(video_game)', 'ps4-life-is-strange': 'Life_Is_Strange_(video_game)', 'ps4-medievil-2019': 'MediEvil_(2019_video_game)',
+  'ps4-judgment': 'Judgment_(video_game)','ps4-the-elder-scrolls-v-skyrim': 'The_Elder_Scrolls_V:_Skyrim'
 };
 GAMES.forEach(g => { g.wiki = WIKI[g.id] || g.t.replace(/ /g, '_'); });
 
@@ -279,6 +302,12 @@ const banDays = (level, count) => Math.min(365, (BAN_BASE_DAYS[level] || 1) * 2 
 
 /* ---------- WHAT'S NEW (shown once after each update, and from the news button) ---------- */
 const CHANGELOG = [
+  {
+    v: '1.0.8', date: '2026-11-21', title: 'PS4 kütüphanesi büyüdü',
+    items: [
+      ['🎮', '50 yeni PS4 oyunu', 'GTA V, Fallout 4, Skyrim, Nioh 1–2, Final Fantasy XV, Resident Evil 3, Control, Hades, Celeste, Titanfall 2 ve daha fazlası — PS4’te artık 96 oyun, katalogda toplam 287 oyun, hepsi kapak resimleriyle.']
+    ]
+  },
   {
     v: '1.0.7', date: '2026-11-21', title: 'GTA VI geldi',
     items: [
