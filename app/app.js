@@ -175,42 +175,58 @@ function applyAppearance() {
 
 /* ---------- Animated theme scenes ---------- */
 const ThemeFX = (() => {
-  let mode = null, raf = 0, cv = null, g = null, drops = [], splashes = [], boltTimer = 0, embers = [], petals = [], glints = [], last = 0, jpTimer = 0;
+  const SCENES = { japan: paintJapanScene, hawaii: paintHawaiiScene, noir: paintNoirScene, wild: paintWildScene };
+  let mode = null, raf = 0, cv = null, g = null, drops = [], splashes = [], boltTimer = 0, embers = [], petals = [], glints = [], gulls = [], last = 0, sceneTimer = 0;
   const reduce = () => S.graphics && S.graphics.fps === 'balanced' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   function size() { if (!cv) return; cv.width = innerWidth * Math.min(devicePixelRatio, 1.5); cv.height = innerHeight * Math.min(devicePixelRatio, 1.5); }
-  /* The landscape is painted at the screen's real pixel size (up to 4K) so it stays sharp */
-  function paintJapan() {
-    const base = $('#jpBase'); if (!base) return;
+  /* Scenes are painted at the screen's real pixel size (up to 4K) so they stay sharp */
+  function paintScene() {
+    const base = $('#sceneBase'); if (!base || !SCENES[mode]) return;
     const k = Math.min(Math.max(1, devicePixelRatio), 3840 / innerWidth, 2.5);
     const w = Math.round(innerWidth * k), h = Math.round(innerHeight * k);
     if (base.width === w && base.height === h) return;
-    base.width = w; base.height = h; paintJapanScene(base);
+    base.width = w; base.height = h; SCENES[mode](base);
   }
+  const newGlints = (n, x, w, y, h) => Array.from({ length: n }, () => ({ x: x + Math.random() * w, y: y + Math.random() * h, w: 6 + Math.random() * 22, p: Math.random() * 6.28, s: .5 + Math.random() * 1.2 }));
+  const newGull = init => ({ x: init ? Math.random() : -.06, y: .08 + Math.random() * .3, v: .008 + Math.random() * .012, p: Math.random() * 6.28, r: 5 + Math.random() * 6 });
   function start(m) {
     stop(); mode = m;
     const host = $('#fx'); if (!host) return;
-    host.innerHTML = m === 'noir'
-      ? `<div class="noir-scene">${noirSceneSVG()}</div><canvas id="fxCanvas"></canvas><div class="bolt" id="bolt"></div>`
-      : m === 'japan' ? '<canvas id="jpBase"></canvas><canvas id="fxCanvas"></canvas>'
-      : `<div class="wild-scene">${wildSceneSVG()}</div><canvas id="fxCanvas"></canvas>`;
+    const base = '<canvas id="sceneBase"></canvas>';
+    host.innerHTML = m === 'noir' ? `<div class="noir-scene">${base}</div><canvas id="fxCanvas"></canvas><div class="bolt" id="bolt"></div>`
+      : m === 'wild' ? `<div class="wild-scene">${base}</div><canvas id="fxCanvas"></canvas>`
+      : `${base}<canvas id="fxCanvas"></canvas>`;
     cv = $('#fxCanvas'); g = cv.getContext('2d'); size();
+    paintScene();
+    if (reduce()) return; // the painting stays, only the animation is skipped
     if (m === 'japan') {
-      paintJapan();
-      if (reduce()) return; // the painting stays, only the animation is skipped
       petals = Array.from({ length: MOBILE ? 26 : 58 }, () => newPetal(true));
-      glints = Array.from({ length: MOBILE ? 18 : 42 }, () => ({ x: 1040 + Math.random() * 680, y: 668 + Math.random() * 230, w: 6 + Math.random() * 22, p: Math.random() * 6.28, s: .5 + Math.random() * 1.2 }));
+      glints = newGlints(MOBILE ? 18 : 42, 1040, 680, 668, 230);
+    } else if (m === 'hawaii') {
+      glints = newGlints(MOBILE ? 24 : 60, 540, 360, 604, 220);
+      gulls = Array.from({ length: 7 }, () => newGull(true));
     } else if (m === 'noir') { drops = Array.from({ length: 520 }, () => newDrop(true)); scheduleBolt(); }
     else embers = Array.from({ length: 70 }, () => newEmber(true));
     last = performance.now(); raf = requestAnimationFrame(frame);
   }
   function stop() {
-    cancelAnimationFrame(raf); raf = 0; clearTimeout(boltTimer); clearTimeout(jpTimer); mode = null; drops = []; splashes = []; embers = []; petals = []; glints = [];
+    cancelAnimationFrame(raf); raf = 0; clearTimeout(boltTimer); clearTimeout(sceneTimer); mode = null; drops = []; splashes = []; embers = []; petals = []; glints = []; gulls = [];
     const host = $('#fx'); if (host) host.innerHTML = '';
     cv = g = null;
   }
   const newDrop = init => { const z = Math.random(); return { x: Math.random() * 1.2 - 0.1, y: init ? Math.random() : -0.05 - Math.random() * 0.2, z, len: 0.012 + z * 0.03, v: 0.9 + z * 1.4 }; };
   const newEmber = init => ({ x: Math.random(), y: init ? Math.random() : 1.05, r: 0.6 + Math.random() * 2.2, v: 0.02 + Math.random() * 0.06, w: Math.random() * 6.28, a: 0.3 + Math.random() * 0.6 });
   const newPetal = init => ({ x: Math.random() * 1.15 - .05, y: init ? Math.random() : -.04 - Math.random() * .12, r: 2.6 + Math.random() * 3.6, v: .022 + Math.random() * .04, d: .012 + Math.random() * .026, w: Math.random() * 6.28, sw: .7 + Math.random() * 1.1, a: Math.random() * 6.28, spin: (Math.random() < .5 ? -1 : 1) * (.6 + Math.random() * 1.6), c: ['#ffd9e3', '#fbbfd0', '#fff1f5', '#f4a9c0'][Math.floor(Math.random() * 4)] });
+  function drawGlints(t, W, H, col) { // sunlight sparkling on the water
+    const px = W / innerWidth, v = jpView(W, H), now = t / 1000;
+    g.strokeStyle = col; g.lineCap = 'round'; g.lineWidth = px;
+    for (const l of glints) {
+      const a = Math.pow(Math.max(0, Math.sin(now * l.s + l.p)), 3) * .55; if (a < .03) continue;
+      const x = v.ox + l.x * v.s, y = v.oy + l.y * v.s, w = l.w * v.s;
+      g.globalAlpha = a; g.beginPath(); g.moveTo(x - w, y); g.lineTo(x + w, y); g.stroke();
+    }
+    g.globalAlpha = 1;
+  }
   function frame(t) {
     raf = requestAnimationFrame(frame);
     if (document.hidden || !g) return;
@@ -238,15 +254,18 @@ const ThemeFX = (() => {
         g.fillStyle = `rgba(255,${120 + Math.floor(e.a * 90)},40,${e.a * (0.4 + 0.6 * Math.abs(Math.sin(e.w)))})`;
         g.beginPath(); g.arc(x * W, e.y * H, e.r * (W / innerWidth), 0, Math.PI * 2); g.fill();
       }
-    } else if (mode === 'japan') {
-      const px = W / innerWidth, v = jpView(W, H), now = t / 1000;
-      g.strokeStyle = '#fff4dc'; g.lineCap = 'round'; g.lineWidth = px;
-      for (const l of glints) { // sunlight sparkling on the lake
-        const a = Math.pow(Math.max(0, Math.sin(now * l.s + l.p)), 3) * .55; if (a < .03) continue;
-        const x = v.ox + l.x * v.s, y = v.oy + l.y * v.s, w = l.w * v.s;
-        g.globalAlpha = a; g.beginPath(); g.moveTo(x - w, y); g.lineTo(x + w, y); g.stroke();
+    } else if (mode === 'hawaii') {
+      const px = W / innerWidth;
+      drawGlints(t, W, H, '#fff0b8');
+      g.strokeStyle = '#2b1248'; g.lineCap = 'round'; g.lineWidth = 1.5 * px;
+      for (const b of gulls) { // seagulls gliding across the sunset
+        b.x += b.v * dt; b.p += dt * 3.2; if (b.x > 1.06) Object.assign(b, newGull(false));
+        const x = b.x * W, y = b.y * H, r = b.r * px, f = Math.sin(b.p) * r * .42;
+        g.beginPath(); g.moveTo(x - r, y - f); g.quadraticCurveTo(x - r * .42, y - r * .46 - f * .3, x, y); g.quadraticCurveTo(x + r * .42, y - r * .46 - f * .3, x + r, y - f); g.stroke();
       }
-      g.globalAlpha = 1;
+    } else if (mode === 'japan') {
+      const px = W / innerWidth;
+      drawGlints(t, W, H, '#fff4dc');
       for (const p of petals) {
         p.y += p.v * dt; p.w += p.sw * dt; p.a += p.spin * dt; p.x += (p.d + Math.sin(p.w) * .018) * dt;
         if (p.y > 1.04 || p.x > 1.08) Object.assign(p, newPetal(false));
@@ -273,55 +292,9 @@ const ThemeFX = (() => {
     while (y < 46) { y += 3 + Math.random() * 6; x += (Math.random() - 0.5) * 9; d += ` L${x.toFixed(1)} ${y.toFixed(1)}`; }
     return `<svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="${d}" fill="none" stroke="#eef4ff" stroke-width=".7"/><path d="${d}" fill="none" stroke="#9fc0ff" stroke-width="2.4" opacity=".35"/></svg>`;
   }
-  addEventListener('resize', () => { size(); if (mode === 'japan') { clearTimeout(jpTimer); jpTimer = setTimeout(paintJapan, 180); } });
-  return { set(theme) { const m = ['noir', 'wild', 'japan'].includes(theme) ? theme : null; if (m === mode) return; if (m && (m === 'japan' || !reduce())) start(m); else stop(); } };
+  addEventListener('resize', () => { size(); if (mode) { clearTimeout(sceneTimer); sceneTimer = setTimeout(paintScene, 180); } });
+  return { set(theme) { const m = SCENES[theme] ? theme : null; if (m === mode) return; if (m) start(m); else stop(); } };
 })();
-/* Original noir scene: rainy night skyline, a street lamp and a lone figure in a long coat (not any specific character) */
-function noirSceneSVG() {
-  const bld = [[0, 52, 9], [8, 40, 7], [14, 58, 6], [19, 33, 8], [26, 47, 6], [31, 28, 7], [37, 44, 9], [45, 36, 6], [50, 55, 8], [57, 30, 7], [63, 42, 9], [71, 26, 6], [76, 48, 8], [83, 35, 7], [89, 50, 11]];
-  const wins = bld.map(([x, h, w], i) => Array.from({ length: 10 }, (_, k) => {
-    const wx = x + 1 + (k % 3) * (w / 3.2), wy = 100 - h + 3 + Math.floor(k / 3) * 5;
-    return (i * 7 + k * 3) % 5 === 0 ? `<rect x="${wx.toFixed(1)}" y="${wy}" width="1.2" height="2" fill="#d8b46a" opacity="${0.35 + ((i + k) % 3) * 0.2}"/>` : '';
-  }).join('')).join('');
-  return `<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMax slice" class="noir-svg">
-  <defs><linearGradient id="nsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b1220"/><stop offset=".6" stop-color="#121b2b"/><stop offset="1" stop-color="#05070a"/></linearGradient>
-  <radialGradient id="nlamp" cx="50%" cy="0%" r="70%"><stop offset="0" stop-color="#ffd98a" stop-opacity=".55"/><stop offset="1" stop-color="#ffd98a" stop-opacity="0"/></radialGradient>
-  <linearGradient id="nfog" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8aa0b8" stop-opacity="0"/><stop offset="1" stop-color="#8aa0b8" stop-opacity=".18"/></linearGradient></defs>
-  <rect width="100" height="100" fill="url(#nsky)"/>
-  <g class="n-far" fill="#0c1422">${bld.map(([x, h, w]) => `<rect x="${x}" y="${100 - h - 6}" width="${w}" height="${h + 6}"/>`).join('')}</g>
-  <g fill="#070b12">${bld.map(([x, h, w]) => `<rect x="${x + 1}" y="${100 - h * 0.8}" width="${w - 1}" height="${h}"/>`).join('')}</g>${wins}
-  <rect y="70" width="100" height="30" fill="url(#nfog)"/>
-  <rect y="86" width="100" height="14" fill="#05070b"/>
-  <path d="M0 86 H100" stroke="#2a3446" stroke-width=".3"/>
-  <g class="n-lamp"><rect x="71.6" y="52" width=".8" height="34" fill="#0b0f16"/><path d="M72 52 q0 -3 4 -3" stroke="#0b0f16" stroke-width=".8" fill="none"/><rect x="75" y="48.6" width="3" height="1.4" fill="#ffd98a"/>
-  <path d="M76.5 50 L68 86 L85 86 Z" fill="url(#nlamp)"/><ellipse cx="76.5" cy="87" rx="9" ry="1.2" fill="#ffd98a" opacity=".18"/></g>
-  <g class="n-man" fill="#020306">
-    <ellipse cx="62" cy="86.4" rx="4.4" ry=".7" fill="#000" opacity=".6"/>
-    <ellipse cx="62" cy="66.9" rx="2.6" ry=".42"/>
-    <path d="M60.7 66.9 q.1 -1.7 1.3 -1.8 q1.2 .1 1.3 1.8 Z"/>
-    <ellipse cx="62" cy="67.9" rx=".95" ry="1.05"/>
-    <path d="M60.6 69.4 q1.4 -.7 2.8 0 l.3 .5 h-3.4 Z"/>
-    <path d="M59.7 69.9 q2.3 -.6 4.6 0 q.5 .3 .6 1 l.8 9.6 q-3.7 .7 -7.4 0 l.8 -9.6 q.1 -.7 .6 -1 Z"/>
-    <path d="M59.8 70.6 q-.7 2.8 -.9 6.2 l.8 .1 q.3 -3 .8 -5.4 Z"/><path d="M64.2 70.6 q.7 2.8 .9 6.2 l-.8 .1 q-.3 -3 -.8 -5.4 Z"/>
-    <path d="M62 75.4 v5.4" stroke="#0b0f16" stroke-width=".25"/>
-    <rect x="60.4" y="80.4" width="1.1" height="5.6" rx=".3"/><rect x="62.5" y="80.4" width="1.1" height="5.6" rx=".3"/>
-    <path d="M60.1 86 h1.7 v.5 h-1.9 Z M62.3 86 h1.7 l.2 .5 h-1.9 Z"/>
-  </g>
-  <g class="n-puddles" fill="#9fb2c9" opacity=".12"><ellipse cx="30" cy="92" rx="12" ry="1.2"/><ellipse cx="62" cy="95" rx="9" ry="1"/><ellipse cx="88" cy="91" rx="7" ry=".8"/></g>
-</svg>`;
-}
-/* Original tactical "wild assault" scene: dusty canyon, hazard stripes, claw slashes */
-function wildSceneSVG() {
-  return `<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMax slice" class="wild-svg">
-  <defs><linearGradient id="wsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a0f06"/><stop offset=".55" stop-color="#3b1d08"/><stop offset="1" stop-color="#120c06"/></linearGradient>
-  <radialGradient id="wsun" cx="70%" cy="38%" r="40%"><stop offset="0" stop-color="#ff9a3c" stop-opacity=".55"/><stop offset="1" stop-color="#ff7a1a" stop-opacity="0"/></radialGradient></defs>
-  <rect width="100" height="100" fill="url(#wsky)"/><rect width="100" height="100" fill="url(#wsun)"/>
-  <path d="M0 70 L10 58 L18 63 L27 50 L36 61 L45 54 L55 66 L64 52 L74 60 L83 48 L92 58 L100 54 V100 H0 Z" fill="#1d1108"/>
-  <path d="M0 80 L12 72 L24 78 L38 70 L52 79 L66 71 L80 78 L100 70 V100 H0 Z" fill="#120a05"/>
-  <g opacity=".5" stroke="#ff7a1a" stroke-width="1.2" stroke-linecap="round" fill="none"><path d="M78 14 L66 40"/><path d="M83 15 L71 43"/><path d="M88 17 L77 44"/></g>
-  <g opacity=".22"><path d="M0 96 L4 92 H10 L6 96 Z M12 96 L16 92 H22 L18 96 Z M24 96 L28 92 H34 L30 96 Z M36 96 L40 92 H46 L42 96 Z" fill="#ffd23f"/></g>
-</svg>`;
-}
 async function applyBg() {
   const el = $('#bgMedia');
   if (!S.bg) { el.innerHTML = ''; el.classList.remove('on'); return; }

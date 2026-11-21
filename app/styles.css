@@ -780,8 +780,6 @@ body[data-theme="noir"] h1, body[data-theme="noir"] h2 { letter-spacing: .04em; 
 body[data-theme="noir"] .welcome { font-family: 'Special Elite', serif; text-shadow: 0 0 30px rgba(201, 212, 224, .35); }
 body[data-theme="noir"] .gcard, body[data-theme="noir"] .card { box-shadow: 0 10px 40px rgba(0, 0, 0, .55); }
 .noir-scene, .wild-scene { position: absolute; inset: 0; }
-.noir-svg, .wild-svg { width: 100%; height: 100%; display: block; }
-.noir-scene::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 120%, transparent 30%, rgba(0, 0, 0, .55) 75%), linear-gradient(180deg, rgba(5, 7, 10, .1), rgba(5, 7, 10, .35)); }
 .noir-scene.lit { animation: noirLit .9s ease-out; }
 @keyframes noirLit { 0% { filter: brightness(1); } 6% { filter: brightness(2.6) contrast(1.2); } 12% { filter: brightness(1.1); } 18% { filter: brightness(2.1); } 40% { filter: brightness(1.2); } 100% { filter: brightness(1); } }
 #fxCanvas { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -789,7 +787,6 @@ body[data-theme="noir"] .gcard, body[data-theme="noir"] .card { box-shadow: 0 10
 .bolt svg { width: 100%; height: 100%; filter: drop-shadow(0 0 6px #cfe0ff) drop-shadow(0 0 18px #8fb0ff); }
 .bolt.flash { animation: boltFlash .5s ease-out; }
 @keyframes boltFlash { 0% { opacity: 0; } 5% { opacity: 1; } 22% { opacity: .2; } 30% { opacity: .9; } 100% { opacity: 0; } }
-body[data-theme="noir"] .noir-svg .n-man { filter: drop-shadow(0 0 1px rgba(216, 180, 106, .25)); }
 .tt-noir .tt-sw { background: linear-gradient(180deg, #0b1220, #05070a); } .tt-noir .tt-sw i { opacity: .7; }
 
 /* ---------- Theme: Vahşi Saldırı (tactical, Wild Assault-inspired mood, original art) ---------- */
@@ -800,7 +797,6 @@ body[data-theme="wild"] .btn.primary { background: linear-gradient(180deg, #ff9a
 body[data-theme="wild"] .card, body[data-theme="wild"] .panel { border-radius: 6px; background-image: repeating-linear-gradient(-45deg, rgba(255, 210, 63, .04) 0 10px, transparent 10px 20px); }
 body[data-theme="wild"] h1 { text-transform: uppercase; letter-spacing: .06em; }
 body[data-theme="wild"] .nav-item.active { box-shadow: inset 4px 0 0 #ffd23f; }
-.wild-scene::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 110%, transparent 35%, rgba(0, 0, 0, .55) 80%); }
 .tt-wild .tt-sw { background: repeating-linear-gradient(-45deg, #ffd23f 0 6px, #120c06 6px 12px); } .tt-wild .tt-sw i { opacity: .8; }
 
 /* ---------- Theme: Sakura Vadisi (original Japanese landscape, painted in scene-japan.js) ---------- */
@@ -822,7 +818,20 @@ body[data-theme="japan"] .view-head p { display: inline-block; padding: 5px 12px
 body[data-theme="japan"] .tabs { background: rgba(18, 28, 36, .86); }
 body[data-theme="japan"] .tab:not(.on) { color: #efe9e3; }
 body[data-theme="japan"] .panel, body[data-theme="japan"] .card, body[data-theme="japan"] .gbody { background-color: rgba(18, 28, 36, .82); }
-#jpBase { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#sceneBase { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* Painted scenes: keep menus and text readable on top of them */
+body:is([data-theme="japan"], [data-theme="hawaii"], [data-theme="noir"], [data-theme="wild"]) .empty { width: fit-content; max-width: min(680px, 100%); margin: 28px auto; padding: 28px 36px; border: 1px solid var(--line); border-radius: 16px; color: var(--text); background: color-mix(in srgb, var(--panel-solid) 88%, transparent); }
+body:is([data-theme="japan"], [data-theme="hawaii"], [data-theme="noir"], [data-theme="wild"]) .empty :is(p, small, .muted) { color: var(--text); }
+body:is([data-theme="hawaii"], [data-theme="noir"], [data-theme="wild"]) #rail { background: color-mix(in srgb, var(--panel-solid) 91%, transparent); }
+body:is([data-theme="hawaii"], [data-theme="noir"], [data-theme="wild"]) #topbar { background: color-mix(in srgb, var(--panel-solid) 82%, transparent); }
+body:is([data-theme="hawaii"], [data-theme="noir"], [data-theme="wild"]) .nav-item:not(.active) { color: var(--text); }
+body:is([data-theme="hawaii"], [data-theme="noir"], [data-theme="wild"]) .view-head h1 { color: #fff; text-shadow: 0 2px 12px rgba(0, 0, 0, .8); }
+body:is([data-theme="hawaii"], [data-theme="noir"], [data-theme="wild"]) .view-head p { display: inline-block; padding: 5px 12px; border-radius: 8px; color: #fff; background: color-mix(in srgb, var(--panel-solid) 78%, transparent); }
+body:is([data-theme="hawaii"], [data-theme="noir"], [data-theme="wild"]) .tabs { background: color-mix(in srgb, var(--panel-solid) 88%, transparent); }
+body:is([data-theme="hawaii"], [data-theme="noir"], [data-theme="wild"]) .tab:not(.on) { color: var(--text); }
+body:is([data-theme="hawaii"], [data-theme="noir"], [data-theme="wild"]) :is(.panel, .card, .gbody) { background-color: color-mix(in srgb, var(--panel-solid) 85%, transparent); }
+body:is([data-theme="hawaii"], [data-theme="noir"], [data-theme="wild"]) .welcome { filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .95)) drop-shadow(0 0 16px rgba(0, 0, 0, .65)); }
+body:is([data-theme="hawaii"], [data-theme="noir"], [data-theme="wild"]) #intro p { color: #fff; text-shadow: 0 1px 5px rgba(0, 0, 0, .95); }
 .tt-japan .tt-sw { background: linear-gradient(180deg, #5f93bd, #d4dcd9 55%, #fbc9a2); } .tt-japan .tt-sw i { opacity: .55; }
 
 /* v1.0.3 — seek bar, profile stats + recent games, update prompt */

@@ -304,6 +304,14 @@ const banDays = (level, count) => Math.min(365, (BAN_BASE_DAYS[level] || 1) * 2 
 /* ---------- WHAT'S NEW (shown once after each update, and from the news button) ---------- */
 const CHANGELOG = [
   {
+    v: '1.0.12', date: '2026-11-22', title: 'Temalar baştan çizildi',
+    items: [
+      ['🌴', 'Vice Hawaii', 'Gün batımında neon otelli sahil, palmiyeler, yatlar, cankurtaran kulübesi ve suda yansıyan şehir.'],
+      ['🌧️', 'Kara Yağmur', 'Yağmurlu gece caddesi: neon tabelalar, yangın merdivenleri, sokak lambaları, ıslak asfaltta yansımalar ve şimşekler.'],
+      ['🔥', 'Vahşi Saldırı', 'Çölde taktik üs: kanyonlar, gözetleme kulesi, konteynerler, askerî kamyon, helikopterler ve uçuşan közler.']
+    ]
+  },
+  {
     v: '1.0.11', date: '2026-11-22', title: 'Yeni tema: Sakura Vadisi',
     items: [
       ['🌸', 'Rahatlatıcı Japon manzarası', 'Karlı dağ, beş katlı pagoda, torii kapısı, kırmızı köprü, geleneksel ev, bambular, çamlar ve sakura ağacı. Manzara ekranının çözünürlüğünde çizilir, her ayrıntı net görünür.'],
