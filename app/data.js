@@ -102,7 +102,7 @@ const GAMES = [
   ['ps2', 'Persona 3', 2006, 'RPG', 1], ['ps2', 'Dragon Quest VIII', 2004, 'RPG'], ['ps2', 'Tekken 4', 2002, 'Dövüş'],
   ['ps2', 'Soulcalibur II', 2002, 'Dövüş'], ['ps2', 'Gran Turismo 3: A-Spec', 2001, 'Yarış'], ['ps2', 'Need for Speed: Most Wanted', 2005, 'Yarış', 1],
   ['ps2', 'Burnout Revenge', 2005, 'Yarış'], ['ps2', 'Prince of Persia: The Sands of Time', 2003, 'Macera', 1], ['ps2', 'Spider-Man 2', 2004, 'Aksiyon'],
-  ['ps2', 'Bully', 2006, 'Açık Dünya', 1], ['ps2', 'Manhunt', 2003, 'Gizlilik', 1], ['ps2', 'Max Payne', 2002, 'Aksiyon', 1],
+  ['ps2', 'Bully', 2006, 'Açık Dünya', 1], ['ps2', 'Manhunt', 2003, 'Gizlilik', 1], ['ps2', 'Max Payne', 2002, 'Aksiyon', 1], ['ps2', 'Max Payne 2: The Fall of Max Payne', 2003, 'Aksiyon', 1],
   ['ps2', 'Black', 2006, 'FPS'], ['ps2', 'TimeSplitters 2', 2002, 'FPS'], ['ps2', 'Pro Evolution Soccer 5', 2005, 'Spor'],
   ["ps2", "Tony Hawk's Underground", 2003, 'Spor'], ['ps2', 'Katamari Damacy', 2004, 'Macera', 1], ['ps2', 'Disgaea: Hour of Darkness', 2003, 'RPG', 1],
   ['ps2', 'Star Wars: Battlefront II', 2005, 'FPS', 1], ['ps2', 'Devil May Cry', 2001, 'Aksiyon', 1], ['ps2', 'Onimusha: Warlords', 2001, 'Aksiyon', 1],
@@ -117,7 +117,7 @@ const GAMES = [
   ['ps3', 'Beyond: Two Souls', 2013, 'Macera', 1], ['ps3', 'Portal 2', 2011, 'Macera', 1], ['ps3', 'Borderlands 2', 2012, 'FPS', 1],
   ['ps3', 'Dead Space', 2008, 'Korku', 1], ['ps3', 'Street Fighter IV', 2008, 'Dövüş', 1], ['ps3', 'Tekken 6', 2009, 'Dövüş'],
   ['ps3', 'LittleBigPlanet 2', 2011, 'Platform'], ['ps3', 'Call of Duty 4: Modern Warfare', 2007, 'FPS', 1], ['ps3', 'L.A. Noire', 2011, 'Macera', 1],
-  ['ps3', 'Yakuza 3', 2009, 'Aksiyon', 1], ['ps3', 'Bayonetta', 2009, 'Aksiyon', 1], ['ps3', 'Metal Gear Rising: Revengeance', 2013, 'Aksiyon', 1],
+  ['ps3', 'Yakuza 3', 2009, 'Aksiyon', 1], ['ps3', 'Max Payne 3', 2012, 'Aksiyon', 1], ['ps3', 'Bayonetta', 2009, 'Aksiyon', 1], ['ps3', 'Metal Gear Rising: Revengeance', 2013, 'Aksiyon', 1],
   ['ps4', 'The Witcher 3: Wild Hunt', 2015, 'RPG', 1], ['ps4', 'Final Fantasy VII Remake', 2020, 'RPG', 1], ['ps4', 'Monster Hunter: World', 2018, 'RPG', 1],
   ['ps4', 'Resident Evil 2 Remake', 2019, 'Korku', 1], ['ps4', 'Resident Evil 7: Biohazard', 2017, 'Korku', 1], ['ps4', 'Dark Souls III', 2016, 'RPG', 1],
   ['ps4', 'Nier: Automata', 2017, 'Aksiyon', 1], ['ps4', 'Yakuza 0', 2015, 'Aksiyon', 1], ['ps4', 'Infamous Second Son', 2014, 'Açık Dünya'],
@@ -302,6 +302,12 @@ const banDays = (level, count) => Math.min(365, (BAN_BASE_DAYS[level] || 1) * 2 
 
 /* ---------- WHAT'S NEW (shown once after each update, and from the news button) ---------- */
 const CHANGELOG = [
+  {
+    v: '1.0.9', date: '2026-11-22', title: 'Max Payne serisi tamamlandı',
+    items: [
+      ['🌧️', 'Max Payne 2 ve 3', 'PS2 kataloğuna Max Payne 2: The Fall of Max Payne, PS3 kataloğuna Max Payne 3 eklendi; katalog artık 289 oyun.']
+    ]
+  },
   {
     v: '1.0.8', date: '2026-11-21', title: 'PS4 kütüphanesi büyüdü',
     items: [
