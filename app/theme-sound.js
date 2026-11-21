@@ -1,6 +1,7 @@
 'use strict';
 /* Kizuna — ambient theme sounds | Made by: Tv Man & FKOAC
    Everything is synthesized live (no audio files, no game audio):
+   japan  = garden stream, bamboo breeze, birds, shishi-odoshi, wind chime, far temple bell
    hawaii = surf, palm breeze, gulls, ship horn, warm sunset synth
    noir   = rain, city hum, passing cars, far horns and sirens, thunder synced to the lightning
    wild   = desert wind, crackling embers, helicopter, coyote, distant western guitar */
@@ -8,7 +9,7 @@ const ThemeSound = (() => {
   let current = null, on = true, vol = 0.7, root = null, live = [], timers = [], session = 0, buffers = null, unlock = false;
   const holds = new Set();
   const paused = () => holds.size > 0;
-  const MIX = { hawaii: .52, noir: 1.15, wild: 1.25 }; // evens out loudness between the themes
+  const MIX = { japan: 2.6, hawaii: .52, noir: 1.15, wild: 1.25 }; // evens out loudness between the themes
   const level = () => (on && current && !paused() ? vol * MIX[current] : 0);
   const R = (a, b) => a + Math.random() * (b - a);
   const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
@@ -88,6 +89,32 @@ const ThemeSound = (() => {
   let api_thunder = null;
 
   const SCAPES = {
+    /* ---------- Sakura Vadisi: a quiet Japanese garden by the lake ---------- */
+    japan({ ctx, bed, lfo, every, note, burst }) {
+      const stream = bed({ buf: 'pink', type: 'bandpass', f: 1050, q: .6, gain: .17, pan: -.35 }); lfo(stream.g.gain, .13, .045); lfo(stream.fl.frequency, .09, 240);
+      const trickle = bed({ buf: 'rain', type: 'bandpass', f: 2500, q: 1.1, gain: .13, pan: -.2, rate: .68 }); lfo(trickle.g.gain, .19, .035);
+      bed({ buf: 'brown', f: 190, gain: .1, pan: .25 });
+      const breeze = bed({ buf: 'pink', type: 'bandpass', f: 2300, q: .6, gain: .045, pan: .35 }); lfo(breeze.g.gain, .12, .032); lfo(breeze.fl.frequency, .07, 620);
+      every(() => { const d = R(2.2, 4.6), s = Math.random() < .5 ? -1 : 1; burst({ buf: 'white', type: 'bandpass', f: R(3000, 4700), f2: R(2100, 3000), q: .9, dur: d, vol: R(.012, .026), a: d * .42, pan: s * .75, pan2: -s * .25, am: R(7, 13) }); }, 6, 13, 4);
+      const warbler = () => { // bush warbler: a long held whistle, then a quick rising call
+        let t = ctx.currentTime; const pan = R(-.75, .75), k = R(.94, 1.08);
+        note({ f: 1240 * k, f2: 1290 * k, t, dur: R(.8, 1.2), vol: .018, a: .16, pan }); t += 1.08;
+        for (const [a, b, d] of [[2150, 3050, .12], [3050, 1980, .15], [1980, 2620, .28]]) { note({ f: a * k, f2: b * k, t, dur: d, vol: .021, a: .012, pan }); t += d * .92; }
+      };
+      every(warbler, 11, 24, 5);
+      every(() => { let t = ctx.currentTime; const pan = R(-.9, .9), f = R(2800, 4600); for (let i = 0; i < Math.round(R(2, 6)); i++) { note({ f: f * R(.92, 1.08), f2: f * R(.72, 1.16), t, dur: R(.05, .12), vol: .0085, a: .006, pan }); t += R(.09, .24); } }, 3, 8);
+      every(() => { // shishi-odoshi: water tips the bamboo, which knocks on stone
+        const t = ctx.currentTime + 1.1, pan = R(-.25, .35);
+        burst({ buf: 'pink', type: 'bandpass', f: 1500, f2: 900, q: 1.4, t: ctx.currentTime, dur: 1.2, vol: .035, a: .55, pan });
+        note({ f: 690, f2: 450, type: 'triangle', t, dur: .13, vol: .12, a: .002, pan }); note({ f: 1520, f2: 1080, type: 'sine', t, dur: .05, vol: .035, a: .001, pan });
+        burst({ type: 'bandpass', f: 1250, q: 5, t, dur: .04, vol: .12, a: .001, pan }); note({ f: 590, f2: 410, type: 'triangle', t: t + .34, dur: .08, vol: .028, a: .002, pan });
+      }, 15, 29, 7);
+      every(() => { // furin: a small glass wind chime
+        let t = ctx.currentTime; const pan = R(.1, .75), f = R(2250, 2600);
+        for (let i = 0; i < Math.round(R(1, 4)); i++) { const v = R(.012, .023); note({ f, t, dur: 1.9, vol: v, a: .002, pan }); note({ f: f * 2.71, t, dur: .75, vol: v * .36, a: .001, pan }); note({ f: f * 4.1, t, dur: .3, vol: v * .13, a: .001, pan }); t += R(.28, .85); }
+      }, 8, 18, 10);
+      every(() => { const f = 138, pan = R(-.4, .4); [[1, .07, 10], [2.01, .034, 7], [2.76, .02, 5], [5.4, .006, 2.6]].forEach(([h, v, d]) => note({ f: f * h, dur: d, vol: v, a: .006, pan })); }, 36, 68, 18);
+    },
     /* ---------- Vice Hawaii: sunset beach ---------- */
     hawaii({ ctx, bed, lfo, every, note, burst }) {
       const w1 = bed({ buf: 'pink', f: 1300, gain: .26, pan: -.45 }), w2 = bed({ buf: 'pink', f: 1000, gain: .24, pan: .45 });

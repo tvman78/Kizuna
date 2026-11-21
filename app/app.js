@@ -322,7 +322,7 @@ const ThemeFX = (() => {
   return { set(theme) { const m = SCENES[theme] ? theme : null; if (m === mode) return; if (m) start(m); else stop(); } };
 })();
 /* ---------- Theme ambience: on/off button in the top bar + switch and volume in Settings › Tema ---------- */
-const AMB_THEMES = ['hawaii', 'noir', 'wild'];
+const AMB_THEMES = ['japan', 'hawaii', 'noir', 'wild'];
 function syncThemeSound() {
   const has = AMB_THEMES.includes(S.theme);
   ThemeSound.set(has ? S.theme : null, S.themeSound, S.themeSoundVol);

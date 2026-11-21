@@ -304,6 +304,12 @@ const banDays = (level, count) => Math.min(365, (BAN_BASE_DAYS[level] || 1) * 2 
 /* ---------- WHAT'S NEW (shown once after each update, and from the news button) ---------- */
 const CHANGELOG = [
   {
+    v: '1.0.14', date: '2026-11-22', title: 'Sakura Vadisi artık sesli',
+    items: [
+      ['🎐', 'Japon bahçesi sesleri', 'Akan dere, bambu esintisi, kuş sesleri, bambu su çeşmesi, rüzgâr çanı ve uzaktan tapınak çanı. Üst çubuktaki hoparlör düğmesiyle aç/kapat.']
+    ]
+  },
+  {
     v: '1.0.13', date: '2026-11-22', title: 'Temalar artık canlı ve sesli',
     items: [
       ['🌴', 'Vice Hawaii canlandı', 'Palmiye yaprakları rüzgârda sallanıyor, gemiler ve yelkenliler ilerliyor, bulutlar gökyüzünde süzülüyor.'],
