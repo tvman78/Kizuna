@@ -303,6 +303,15 @@ const banDays = (level, count) => Math.min(365, (BAN_BASE_DAYS[level] || 1) * 2 
 /* ---------- WHAT'S NEW (shown once after each update, and from the news button) ---------- */
 const CHANGELOG = [
   {
+    v: '1.0.10', date: '2026-11-22', title: 'Oyunlar artık Kizuna’dan açılıyor',
+    items: [
+      ['🚀', 'Oyna butonu düzeltildi', 'Emülatörlerin ilk açılış pencereleri artık oyunun önüne geçmiyor; Oyna’ya basınca oyun doğrudan başlıyor.'],
+      ['💾', 'Otomatik BIOS', 'BIOS klasöründeki doğru dosya otomatik bulunup seçiliyor; alt klasörde veya ZIP içinde olsa bile.'],
+      ['🖼️', 'Görüntü kalitesi', 'Ayarlar’daki çözünürlük ölçeği artık PS1 ve PS2 oyunlarına gerçekten uygulanıyor.'],
+      ['🛟', 'Anlaşılır uyarılar', 'BIOS veya PS3 sistem yazılımı eksikse ya da oyun açılamazsa Kizuna ne yapman gerektiğini söylüyor.']
+    ]
+  },
+  {
     v: '1.0.9', date: '2026-11-22', title: 'Max Payne serisi tamamlandı',
     items: [
       ['🌧️', 'Max Payne 2 ve 3', 'PS2 kataloğuna Max Payne 2: The Fall of Max Payne, PS3 kataloğuna Max Payne 3 eklendi; katalog artık 289 oyun.']

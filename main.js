@@ -6,7 +6,7 @@ const fs = require('fs');
 const { spawn } = require('child_process');
 const { registerAi } = require('./ai');
 const { registerUpdater } = require('./updater');
-const { registerSchemes, registerServices, windowOptions, trackWindow } = require('./services');
+const { registerSchemes, registerServices, windowOptions, trackWindow, prepareLaunch } = require('./services');
 registerSchemes();
 
 let win = null, appIcon = null;
@@ -106,25 +106,31 @@ function buildArgs(c, game, fullscreen) {
   switch (c) {
     case 'ps1': return [...fs_, '-batch', '--', game];   // DuckStation
     case 'ps2': return [...fs_, '-batch', '--', game];   // PCSX2
-    case 'ps3': return ['--no-gui', game];               // RPCS3
-    default: return [game];                              // shadPS4
+    case 'ps3': return ['--no-gui', ...(fullscreen ? ['--fullscreen'] : []), game]; // RPCS3
+    default: return [...(fullscreen ? ['-f', 'true'] : []), '-g', game];            // shadPS4
   }
 }
 ipcMain.handle('launch', async (e, o) => {
   try {
-    const { consoleId, emulator, game, fullscreen } = o || {};
+    const { consoleId, emulator, game, fullscreen, scale } = o || {};
     if (!['ps1', 'ps2', 'ps3', 'ps4'].includes(consoleId)) return { ok: false, error: 'Desteklenmeyen konsol.' };
     if (typeof emulator !== 'string' || !fs.existsSync(emulator) ||
         (process.platform === 'win32' && !emulator.toLowerCase().endsWith('.exe')))
       return { ok: false, error: 'Emülatör bulunamadı. Ayarlar › Emülatörler bölümünden .exe dosyasını seç.' };
     if (typeof game !== 'string' || !fs.existsSync(game))
       return { ok: false, error: 'Oyun dosyası bulunamadı (taşınmış veya silinmiş olabilir).' };
-    const child = spawn(emulator, buildArgs(consoleId, game, !!fullscreen), {
+    const prep = await prepareLaunch(consoleId, emulator, game, scale);
+    if (!prep.ok) return prep;
+    const child = spawn(emulator, buildArgs(consoleId, prep.game, !!fullscreen), {
       cwd: path.dirname(emulator), detached: true, stdio: 'ignore'
     });
     await new Promise((res, rej) => { child.once('spawn', res); child.once('error', rej); });
-    child.once('exit', () => { if (win && !win.isDestroyed()) win.webContents.send('game-exit', consoleId); });
+    let exited = false;
+    child.once('exit', () => { exited = true; if (win && !win.isDestroyed()) win.webContents.send('game-exit', consoleId); });
     child.unref();
+    // An emulator that closes right away could not boot the game: tell the user instead of staying silent
+    await new Promise(r => setTimeout(r, 3500));
+    if (exited) return { ok: false, error: 'Emülatör oyunu açamadan kapandı. Oyun dosyası bozuk, eksik ya da bu emülatörle uyumsuz olabilir.' };
     return { ok: true };
   } catch (err) {
     return { ok: false, error: 'Başlatılamadı: ' + err.message };

@@ -4,7 +4,7 @@
    - One-click emulator install from the emulators' official GitHub releases
    - Game cover art lookup (Wikipedia REST API), cached on disk
    - Offline voice-recognition models (Vosk) downloaded once and served via kzres:// */
-const { app, ipcMain, net, protocol, shell, screen } = require('electron');
+const { app, ipcMain, net, protocol, shell, screen, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
@@ -125,6 +125,116 @@ async function installEmu(id, send) {
   } finally { emuBusy.delete(id); }
 }
 
+/* ---------- Launch preparation: skip first-run wizards, find the BIOS, apply quality settings ---------- */
+function patchIni(file, patches) {
+  let lines = [];
+  try { lines = fs.readFileSync(file, 'utf8').split(/\r?\n/); } catch {}
+  while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+  for (const [sec, kv] of Object.entries(patches)) {
+    let start = lines.findIndex(l => l.trim() === `[${sec}]`);
+    if (start < 0) { if (lines.length) lines.push(''); lines.push(`[${sec}]`); start = lines.length - 1; }
+    for (const [k, v] of Object.entries(kv)) {
+      let end = start + 1;
+      while (end < lines.length && !/^\s*\[.*\]\s*$/.test(lines[end])) end++;
+      const re = new RegExp('^\\s*' + k + '\\s*=');
+      const i = lines.slice(start + 1, end).findIndex(l => re.test(l));
+      if (i >= 0) lines[start + 1 + i] = `${k} = ${v}`; else lines.splice(start + 1, 0, `${k} = ${v}`);
+    }
+  }
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, lines.join('\r\n') + '\r\n');
+}
+function iniValue(file, sec, key) {
+  let inSec = false;
+  try {
+    for (const l of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
+      const h = l.match(/^\s*\[(.+)\]\s*$/);
+      if (h) { inSec = h[1] === sec; continue; }
+      const m = inSec && l.match(/^\s*([^=]+?)\s*=\s*(.*?)\s*$/);
+      if (m && m[1] === key) return m[2];
+    }
+  } catch {}
+  return '';
+}
+const BIOS_SIZE = { ps1: 524288, ps2: 4194304 };
+function biosFiles(dir, size, depth = 2) {
+  let ents; try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch { return []; }
+  const out = [];
+  for (const e of ents) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) { if (depth > 0) out.push(...biosFiles(p, size, depth - 1)); }
+    else { try { if (fs.statSync(p).size === size) out.push(p); } catch {} }
+  }
+  return out;
+}
+/* Finds a BIOS of the right size; unpacks zip/7z archives and moves it to the top of the bios folder */
+async function ensureBios(id, base) {
+  const dir = path.join(base, 'bios'), size = BIOS_SIZE[id];
+  fs.mkdirSync(dir, { recursive: true });
+  let found = biosFiles(dir, size);
+  if (!found.length) {
+    for (const f of fs.readdirSync(dir)) {
+      if (/\.(zip|7z)$/i.test(f)) { try { await extract(path.join(dir, f), dir); } catch {} }
+    }
+    found = biosFiles(dir, size);
+  }
+  if (!found.length) return null;
+  const top = found.find(f => path.dirname(f) === dir);
+  if (top) return path.basename(top);
+  const name = path.basename(found[0]);
+  fs.copyFileSync(found[0], path.join(dir, name));
+  return name;
+}
+/* shadPS4 shows a blocking "Save Migration" box on a brand-new data folder: create that folder once, out of sight */
+async function initShadPs4(emulator) {
+  const base = path.dirname(emulator), user = path.join(base, 'user');
+  if (fs.existsSync(path.join(user, 'config.json'))) return;
+  if (fs.existsSync(path.join(app.getPath('appData'), 'shadPS4'))) return; // keep an existing setup and its saves
+  fs.mkdirSync(user, { recursive: true });
+  const p = spawn(emulator, ['-g', path.join(base, 'kizuna-init.none')], { cwd: base, windowsHide: true, stdio: 'ignore' });
+  p.on('error', () => {});
+  for (let i = 0; i < 60 && !fs.existsSync(path.join(user, 'config.json')); i++) await new Promise(r => setTimeout(r, 250));
+  await new Promise(r => setTimeout(r, 400));
+  try { p.kill(); } catch {}
+}
+function pairedCue(game) {
+  const dir = path.dirname(game), same = path.join(dir, path.basename(game, path.extname(game)) + '.cue');
+  if (fs.existsSync(same)) return same;
+  try { const cues = fs.readdirSync(dir).filter(f => /\.cue$/i.test(f)); if (cues.length === 1) return path.join(dir, cues[0]); } catch {}
+  return game;
+}
+async function prepareLaunch(id, emulator, game, scale) {
+  let target = game;
+  if ((id === 'ps1' || id === 'ps2') && /\.bin$/i.test(game)) target = pairedCue(game);
+  if (id === 'ps3' && !/(^|[\\/])eboot\.bin$|\.(iso|self|elf)$/i.test(game))
+    return { ok: false, error: 'PS3 oyunu için oyun klasöründeki EBOOT.BIN (PS3_GAME\\USRDIR içinde) ya da ISO dosyasını seç.' };
+  if (id === 'ps4' && !/(^|[\\/])eboot\.bin$|\.elf$/i.test(game))
+    return { ok: false, error: 'PS4 oyunu için oyun klasöründeki eboot.bin dosyasını seç.' };
+
+  // Settings are only touched in the copy Kizuna installed, never in an emulator the user linked
+  const root = path.resolve(emuDir(id)) + path.sep;
+  if (!path.resolve(emulator).toLowerCase().startsWith(root.toLowerCase())) return { ok: true, game: target };
+  const base = path.dirname(emulator), mult = Math.min(8, Math.max(1, parseInt(scale, 10) || 1));
+  if (id === 'ps1' || id === 'ps2') {
+    const bios = await ensureBios(id, base);
+    if (!bios) return { ok: false, code: 'bios', error: `${EMUS[id].name} için geçerli BIOS bulunamadı. Açılan “bios” klasörüne konsolundan aldığın BIOS dosyasını koy (${id === 'ps1' ? '512 KB' : '4 MB'}).` };
+    if (id === 'ps1') patchIni(path.join(base, 'settings.ini'), { Main: { SetupWizardIncomplete: 'false' }, GPU: { ResolutionScale: mult } });
+    else {
+      const ini = path.join(base, 'inis', 'PCSX2.ini');
+      const cur = iniValue(ini, 'Filenames', 'BIOS');
+      const keep = cur && fs.existsSync(path.join(base, 'bios', cur));
+      patchIni(ini, {
+        UI: { SettingsVersion: iniValue(ini, 'UI', 'SettingsVersion') || 1, SetupWizardIncomplete: 'false' },
+        Folders: { Bios: 'bios' }, Filenames: { BIOS: keep ? cur : bios }, 'EmuCore/GS': { upscale_multiplier: mult }
+      });
+    }
+  } else if (id === 'ps3') {
+    if (!fs.existsSync(path.join(base, 'dev_flash', 'vsh', 'module', 'vsh.self')))
+      return { ok: false, code: 'firmware', error: 'RPCS3 için PS3 sistem yazılımı kurulu değil.' };
+  } else if (id === 'ps4') await initShadPs4(emulator);
+  return { ok: true, game: target };
+}
+
 /* ---------- Game covers (Wikipedia REST summary thumbnails) ---------- */
 const coverFile = () => userData('covers.json');
 let covers = null, coverQueue = [], coverRunning = false;
@@ -205,6 +315,15 @@ function registerServices(getWin) {
     spawn(info.path, [], { cwd: path.dirname(info.path), detached: true, stdio: 'ignore' }).unref(); return true;
   });
 
+  ipcMain.handle('emu-firmware', async () => {
+    const info = readJson(path.join(emuDir('ps3'), 'kizuna.json'), null);
+    if (!info || !fs.existsSync(info.path)) return { ok: false, error: 'Önce RPCS3’ü Kizuna’ya kur.' };
+    const r = await dialog.showOpenDialog(getWin(), { properties: ['openFile'], filters: [{ name: 'PS3 sistem yazılımı', extensions: ['pup', 'PUP'] }] });
+    if (r.canceled) return { ok: false };
+    spawn(info.path, ['--installfw', r.filePaths[0]], { cwd: path.dirname(info.path), detached: true, stdio: 'ignore' }).unref();
+    return { ok: true };
+  });
+
   ipcMain.handle('covers-get', (e, list) => {
     if (!covers) covers = readJson(coverFile(), {});
     const out = {};
@@ -230,4 +349,4 @@ function registerServices(getWin) {
   });
 }
 
-module.exports = { registerSchemes, registerServices, windowOptions, trackWindow };
+module.exports = { registerSchemes, registerServices, windowOptions, trackWindow, prepareLaunch };

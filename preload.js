@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('kizuna', {
     remove: (id) => ipcRenderer.invoke('emu-remove', id),
     open: (id, sub) => ipcRenderer.invoke('emu-open', id, sub),
     run: (id) => ipcRenderer.invoke('emu-run', id),
+    firmware: () => ipcRenderer.invoke('emu-firmware'),
     onProgress: (cb) => { ipcRenderer.removeAllListeners('emu-progress'); ipcRenderer.on('emu-progress', (e, p) => cb(p)); }
   },
   covers: {

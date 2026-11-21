@@ -1113,6 +1113,19 @@ async function addOwnGame(c, title, catalogId) {
   toast(`✅ <b>${esc(name)}</b> kütüphaneye eklendi`, 'ok');
   return true;
 }
+/* PS3 games need Sony's free system software, installed once into RPCS3 */
+function firmwareModal(c) {
+  const m = openModal(`<h2>${icon('download', 22)} PS3 sistem yazılımı gerekli</h2>
+  <p class="muted">RPCS3’ün oyun açabilmesi için resmi PS3 sistem yazılımı bir kez kurulmalı.</p>
+  <div class="dl-opt"><div><b>1 · Resmi dosyayı indir</b><small>PlayStation sitesinden PS3UPDAT.PUP dosyasını indir.</small></div><button class="btn ghost" id="fwGet">${icon('download', 14)} Siteyi aç</button></div>
+  <div class="dl-opt"><div><b>2 · Dosyayı seç</b><small>RPCS3 kurulumu yapar. Bitince oyunu yeniden başlat.</small></div><button class="btn primary" id="fwPick">${icon('folder', 14)} PUP dosyasını seç</button></div>`);
+  $('#fwGet', m).onclick = () => openExt(c.fw);
+  $('#fwPick', m).onclick = async () => {
+    const r = await api.emu.firmware();
+    if (r.ok) { closeModal(); toast('⏳ RPCS3 sistem yazılımını kuruyor. Bitince oyunu yeniden başlat.', 'ok', 7000); }
+    else if (r.error) toast(esc(r.error), 'err', 5000);
+  };
+}
 async function launch(g) {
   const c = CONSOLES[g.console];
   if (MOBILE) {
@@ -1127,8 +1140,12 @@ async function launch(g) {
   const emu = S.emulators[g.console];
   if (!emu) { toast(`${c.emu} bağlı değil — önce Ayarlar › Emülatörler'den bağla`, 'warn'); return go('settings', 'emu'); }
   toast(`🚀 <b>${esc(g.title)}</b> başlatılıyor...`);
-  const r = await api.launch({ consoleId: g.console, emulator: emu, game: g.path, fullscreen: S.graphics.fullscreen });
-  if (!r.ok) return toast(esc(r.error), 'err', 5000);
+  const r = await api.launch({ consoleId: g.console, emulator: emu, game: g.path, fullscreen: S.graphics.fullscreen, scale: S.graphics.scale });
+  if (!r.ok) {
+    if (r.code === 'bios') { api.emu.open(g.console, 'bios'); go('settings', 'emu'); return toast('📁 ' + esc(r.error), 'warn', 8000); }
+    if (r.code === 'firmware') return firmwareModal(c);
+    return toast(esc(r.error), 'err', 7000);
+  }
   g.plays = (g.plays || 0) + 1; g.lastPlayed = Date.now();
   S.played = [g.title, ...S.played.filter(x => x !== g.title)].slice(0, 50);
   log(`Oynandı: ${g.title} (${c.short})`); save();
