@@ -30,7 +30,7 @@ const DEFAULTS = {
   friends: [], requestsIn: [], requestsOut: [], blocked: [], reports: [],
   chats: {}, unread: {}, lastChat: '', aiChat: [], aiWarned: false,
   bg: '', bgType: '', bgDim: 0.55, userTracks: [], rail: true, musicRepeat: 'all',
-  micId: '', spkId: '', seenVersion: '', padNav: true
+  micId: '', spkId: '', seenVersion: '', padNav: true, themeSound: true, themeSoundVol: 0.7
 };
 function deepMerge(a, b) {
   for (const k in b) {
@@ -85,6 +85,7 @@ async function hydrate(root = document) {
 
 /* ======================= ICONS ======================= */
 const ICONS = {
+  speaker: 'M11 5 6 9H2v6h4l5 4V5zM15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13', speakerOff: 'M11 5 6 9H2v6h4l5 4V5zM22 9l-6 6M16 9l6 6',
   library: 'M4 4h4v16H4zM10 4h4v16h-4zM16 5l4 1-3 14-4-1z', catalog: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
   friends: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6 0 0 1 12 0v1M16 3.5a4 4 0 0 1 0 7.5M22 21v-1a6 6 0 0 0-4-5.6',
   messages: 'M4 5h16v11H8l-4 4z', ai: 'M12 2l2.4 5.6L20 10l-5.6 2.4L12 18l-2.4-5.6L4 10l5.6-2.4zM19 16l1 2 2 1-2 1-1 2-1-2-2-1 2-1z',
@@ -170,22 +171,41 @@ function applyAppearance() {
   const chip = $('#eraChip'); if (chip) chip.innerHTML = `<b>${S.year}</b> ${ERA_NAMES[eraFor(S.year)]}`;
   applyBg();
   ThemeFX.set(S.theme);
+  syncThemeSound();
   if (typeof I18n !== 'undefined') I18n.apply();
 }
 
 /* ---------- Animated theme scenes ---------- */
 const ThemeFX = (() => {
   const SCENES = { japan: paintJapanScene, hawaii: paintHawaiiScene, noir: paintNoirScene, wild: paintWildScene };
-  let mode = null, raf = 0, cv = null, g = null, drops = [], splashes = [], boltTimer = 0, embers = [], petals = [], glints = [], gulls = [], last = 0, sceneTimer = 0;
+  let mode = null, raf = 0, cv = null, g = null, drops = [], splashes = [], boltTimer = 0, embers = [], petals = [], glints = [], gulls = [], last = 0, sceneTimer = 0, gb = null, gm = null, anim = null, frameNo = 0;
   const reduce = () => S.graphics && S.graphics.fps === 'balanced' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  function size() { if (!cv) return; cv.width = innerWidth * Math.min(devicePixelRatio, 1.5); cv.height = innerHeight * Math.min(devicePixelRatio, 1.5); }
+  function size() {
+    if (!cv) return;
+    const w = innerWidth * Math.min(devicePixelRatio, 1.5), h = innerHeight * Math.min(devicePixelRatio, 1.5);
+    for (const el of [cv, gb && gb.canvas, gm && gm.canvas]) if (el) { el.width = w; el.height = h; }
+  }
   /* Scenes are painted at the screen's real pixel size (up to 4K) so they stay sharp */
   function paintScene() {
     const base = $('#sceneBase'); if (!base || !SCENES[mode]) return;
     const k = Math.min(Math.max(1, devicePixelRatio), 3840 / innerWidth, 2.5);
     const w = Math.round(innerWidth * k), h = Math.round(innerHeight * k);
-    if (base.width === w && base.height === h) return;
-    base.width = w; base.height = h; SCENES[mode](base);
+    if (base.width === w && base.height === h) { drawAnim(performance.now() / 1000, true); return; }
+    const sky = $('#sceneSky'), front = $('#sceneFront');
+    for (const el of [base, sky, front]) if (el) { el.width = w; el.height = h; }
+    anim = SCENES[mode](base, { sky, front }) || null;
+    drawAnim(performance.now() / 1000, true);
+  }
+  /* Moving parts: clouds behind the buildings, boats behind the beach, palms and cars on top */
+  function drawAnim(t, force) {
+    if (!anim || !g) return;
+    const W = cv.width, H = cv.height; frameNo++;
+    if (gb && (force || frameNo % 2 === 0)) { gb.setTransform(1, 0, 0, 1, 0, 0); gb.clearRect(0, 0, W, H); kzDrawDrift(gb, W, H, anim.clouds, t); }
+    if (mode === 'hawaii') {
+      gm.setTransform(1, 0, 0, 1, 0, 0); gm.clearRect(0, 0, W, H); kzDrawShips(gm, W, H, anim.ships, t);
+      kzDrawFronds(g, W, H, anim.fronds, t);
+    } else if (mode === 'noir') kzDrawCars(g, W, H, anim.cars, t);
+    g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1;
   }
   const newGlints = (n, x, w, y, h) => Array.from({ length: n }, () => ({ x: x + Math.random() * w, y: y + Math.random() * h, w: 6 + Math.random() * 22, p: Math.random() * 6.28, s: .5 + Math.random() * 1.2 }));
   const newGull = init => ({ x: init ? Math.random() : -.06, y: .08 + Math.random() * .3, v: .008 + Math.random() * .012, p: Math.random() * 6.28, r: 5 + Math.random() * 6 });
@@ -193,10 +213,14 @@ const ThemeFX = (() => {
     stop(); mode = m;
     const host = $('#fx'); if (!host) return;
     const base = '<canvas id="sceneBase"></canvas>';
-    host.innerHTML = m === 'noir' ? `<div class="noir-scene">${base}</div><canvas id="fxCanvas"></canvas><div class="bolt" id="bolt"></div>`
+    host.innerHTML = m === 'noir' ? `<div class="noir-scene"><canvas id="sceneSky"></canvas><canvas id="fxBack"></canvas>${base}</div><canvas id="fxCanvas"></canvas><div class="bolt" id="bolt"></div>`
       : m === 'wild' ? `<div class="wild-scene">${base}</div><canvas id="fxCanvas"></canvas>`
+      : m === 'hawaii' ? `<canvas id="sceneSky"></canvas><canvas id="fxBack"></canvas>${base}<canvas id="fxMid"></canvas><canvas id="sceneFront"></canvas><canvas id="fxCanvas"></canvas>`
       : `${base}<canvas id="fxCanvas"></canvas>`;
-    cv = $('#fxCanvas'); g = cv.getContext('2d'); size();
+    cv = $('#fxCanvas'); g = cv.getContext('2d');
+    const back = $('#fxBack'), mid = $('#fxMid');
+    gb = back ? back.getContext('2d') : null; gm = mid ? mid.getContext('2d') : null;
+    size();
     paintScene();
     if (reduce()) return; // the painting stays, only the animation is skipped
     if (m === 'japan') {
@@ -212,7 +236,7 @@ const ThemeFX = (() => {
   function stop() {
     cancelAnimationFrame(raf); raf = 0; clearTimeout(boltTimer); clearTimeout(sceneTimer); mode = null; drops = []; splashes = []; embers = []; petals = []; glints = []; gulls = [];
     const host = $('#fx'); if (host) host.innerHTML = '';
-    cv = g = null;
+    cv = g = gb = gm = anim = null;
   }
   const newDrop = init => { const z = Math.random(); return { x: Math.random() * 1.2 - 0.1, y: init ? Math.random() : -0.05 - Math.random() * 0.2, z, len: 0.012 + z * 0.03, v: 0.9 + z * 1.4 }; };
   const newEmber = init => ({ x: Math.random(), y: init ? Math.random() : 1.05, r: 0.6 + Math.random() * 2.2, v: 0.02 + Math.random() * 0.06, w: Math.random() * 6.28, a: 0.3 + Math.random() * 0.6 });
@@ -233,6 +257,7 @@ const ThemeFX = (() => {
     const dt = Math.max(0, Math.min(0.05, (t - last) / 1000)); last = t;
     const W = cv.width, H = cv.height;
     g.clearRect(0, 0, W, H);
+    drawAnim(t / 1000);
     if (mode === 'noir') {
       g.lineCap = 'round';
       for (const d of drops) {
@@ -281,6 +306,7 @@ const ThemeFX = (() => {
       const b = $('#bolt'), scene = $('.noir-scene');
       if (b && !document.hidden) {
         b.innerHTML = boltSVG(); b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash');
+        ThemeSound.thunder();
         if (scene) { scene.classList.remove('lit'); void scene.offsetWidth; scene.classList.add('lit'); }
         if (Math.random() < 0.45) setTimeout(() => { if (b.isConnected) { b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); } }, 180);
       }
@@ -295,6 +321,29 @@ const ThemeFX = (() => {
   addEventListener('resize', () => { size(); if (mode) { clearTimeout(sceneTimer); sceneTimer = setTimeout(paintScene, 180); } });
   return { set(theme) { const m = SCENES[theme] ? theme : null; if (m === mode) return; if (m) start(m); else stop(); } };
 })();
+/* ---------- Theme ambience: on/off button in the top bar + switch and volume in Settings › Tema ---------- */
+const AMB_THEMES = ['hawaii', 'noir', 'wild'];
+function syncThemeSound() {
+  const has = AMB_THEMES.includes(S.theme);
+  ThemeSound.set(has ? S.theme : null, S.themeSound, S.themeSoundVol);
+  const b = $('#ambBtn');
+  if (b) { b.classList.toggle('hidden', !has); b.classList.toggle('on', has && S.themeSound); b.innerHTML = icon(S.themeSound ? 'speaker' : 'speakerOff'); }
+  renderAmbBox();
+}
+function toggleThemeSound() {
+  S.themeSound = !S.themeSound; save(); syncThemeSound();
+  toast(S.themeSound ? '🔊 Tema sesleri açık' : '🔇 Tema sesleri kapalı', 'ok');
+}
+function renderAmbBox() {
+  const box = $('#ambBox'); if (!box) return;
+  if (!AMB_THEMES.includes(S.theme)) { box.innerHTML = ''; return; }
+  box.innerHTML = `<div class="field row"><label>Tema sesleri</label><label class="switch"><input type="checkbox" id="ambOn" ${S.themeSound ? 'checked' : ''}><i></i></label></div>
+  <div class="field row"><label>Tema ses seviyesi</label><input type="range" id="ambVol" min="0" max="100" value="${Math.round(S.themeSoundVol * 100)}" ${S.themeSound ? '' : 'disabled'}></div>`;
+  $('#ambOn', box).onchange = () => toggleThemeSound();
+  const vol = $('#ambVol', box);
+  vol.oninput = () => { S.themeSoundVol = vol.value / 100; ThemeSound.set(S.theme, S.themeSound, S.themeSoundVol); };
+  vol.onchange = () => save();
+}
 async function applyBg() {
   const el = $('#bgMedia');
   if (!S.bg) { el.innerHTML = ''; el.classList.remove('on'); return; }
@@ -666,6 +715,7 @@ async function installEmu(id) {
 }
 function bindEmuEvents() {
   if (!api || !api.emu) return;
+  if (api.onGameExit) api.onGameExit(() => ThemeSound.hold('game', false));
   api.emu.status().then(st => {
     emuInfo = Object.fromEntries(Object.entries(st).filter(([, v]) => v));
     let ch = false;
@@ -737,6 +787,7 @@ function showApp(first) {
   $('#meBtn').onclick = () => go('profile');
   $('#eraChip').onclick = () => go('settings', 'year');
   $('#musicBtn').onclick = () => Music.toggle();
+  $('#ambBtn').onclick = toggleThemeSound;
   $('#padBtn').onclick = padCheck;
   $('#voiceBtn').onclick = startVoice;
   $('#voiceBtn').oncontextmenu = e => { e.preventDefault(); typedCommand(); };
@@ -1082,7 +1133,7 @@ async function addOwnGameMobile(c, title, catalogId) {
 const PSX = {
   open(g) {
     if (!g.mid) return toast('Bu oyun bu telefonda eklenmemiş — Kütüphane › Oyun Ekle ile dosyanı ekle.', 'warn');
-    Music.stop(); this.close();
+    Music.stop(); this.close(); ThemeSound.hold('game', true);
     const fr = document.createElement('iframe');
     fr.id = 'psxFrame'; fr.allow = 'autoplay; fullscreen; gamepad';
     fr.src = `psx.html#id=${encodeURIComponent(g.mid)}&file=${encodeURIComponent(g.path || 'game.chd')}&lang=${S.lang}`;
@@ -1092,7 +1143,7 @@ const PSX = {
   },
   close() {
     const fr = $('#psxFrame'); if (!fr) return;
-    fr.remove(); document.body.classList.remove('psx-on');
+    fr.remove(); document.body.classList.remove('psx-on'); ThemeSound.hold('game', false);
     try { screen.orientation && screen.orientation.unlock && screen.orientation.unlock(); } catch {}
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
   }
@@ -1143,8 +1194,10 @@ async function launch(g) {
   const emu = S.emulators[g.console];
   if (!emu) { toast(`${c.emu} bağlı değil — önce Ayarlar › Emülatörler'den bağla`, 'warn'); return go('settings', 'emu'); }
   toast(`🚀 <b>${esc(g.title)}</b> başlatılıyor...`);
+  ThemeSound.hold('game', true); // ambience stays quiet while a game is running
   const r = await api.launch({ consoleId: g.console, emulator: emu, game: g.path, fullscreen: S.graphics.fullscreen, scale: S.graphics.scale });
   if (!r.ok) {
+    ThemeSound.hold('game', false);
     if (r.code === 'bios') { api.emu.open(g.console, 'bios'); go('settings', 'emu'); return toast('📁 ' + esc(r.error), 'warn', 8000); }
     if (r.code === 'firmware') return firmwareModal(c);
     return toast(esc(r.error), 'err', 7000);
@@ -1696,7 +1749,7 @@ VIEWS.settings = (v, arg) => {
     + `<div class="tabs sticky">${[['ai', 'Kizuna AI'], ['theme', 'Tema'], ['year', 'Yıl'], ['bg', 'Arka plan'], ['font', 'Yazı tipi'], ['sound', 'Sesler'], ['devices', 'Ses cihazları'], ['lang', 'Dil'], ['privacy', 'Gizlilik'], ['emu', 'Emülatörler'], ['gfx', 'Grafik'], ['pad', 'Kontrolcü'], ['app', 'Uygulama']].map(([k, l]) => `<button class="tab" data-jump="${k}">${l}</button>`).join('')}</div>`
     + `<div class="settings">`
     + sec('ai', '🤖 Kizuna AI — gerçek yapay zekâ', `<div id="aiSet"><p class="muted">Yükleniyor…</p></div>`)
-    + sec('theme', '🎨 Tema', themeTilesHTML() + `<div class="field row"><label>Özel vurgu rengi</label><div class="row-btns"><input type="color" data-k="accent" value="${S.accent || '#93C572'}"><button class="btn sm ghost" id="accReset">Sıfırla</button></div></div>`)
+    + sec('theme', '🎨 Tema', themeTilesHTML() + `<div class="field row"><label>Özel vurgu rengi</label><div class="row-btns"><input type="color" data-k="accent" value="${S.accent || '#93C572'}"><button class="btn sm ghost" id="accReset">Sıfırla</button></div></div><div id="ambBox"></div>`)
     + sec('year', '🕰️ Yıla göre arayüz', `<p class="muted">Bir yıl yaz — arayüz o yılın tasarım ruhuna bürünür (yazı tipi, renkler, köşeler, arka plan). 1960 → 60’lar pop · 1985 → synthwave · 1995 → piksel · 2077 → siberpunk.</p>${yearHTML()}`)
     + sec('bg', '🖼️ Arka plan', `<p class="muted">Arka plan olarak fotoğraf, GIF veya video kullanabilirsin.</p><div class="row-btns"><button class="btn primary" id="bgPick">Fotoğraf / GIF / Video seç</button>${S.bg ? '<button class="btn ghost" id="bgDel">Kaldır</button>' : ''}</div><div class="field"><label>Karartma</label><input type="range" min="0" max="0.9" step="0.05" data-k="bgDim"></div>`)
     + sec('font', '🔤 Yazı tipi', `<div class="font-grid">${FONTS.map(f => `<button class="font-btn ${S.font === f ? 'on' : ''}" data-font="${f}" style="${f === 'auto' ? '' : `font-family:'${f}'`}">${f === 'auto' ? 'Otomatik (tema/yıla göre)' : f}<small>Kizuna Aa 123</small></button>`).join('')}</div><div class="field"><label>Yazı boyutu</label><input type="range" min="12" max="20" step="1" data-k="fontSize"></div>`)
@@ -1713,7 +1766,7 @@ VIEWS.settings = (v, arg) => {
       <div class="pad-help">${[['✚ / Sol çubuk', 'Seçimi hareket ettir'], ['Ⓐ', 'Seç / tıkla'], ['Ⓑ', 'Geri / kapat'], ['LB / RB', 'Önceki / sonraki bölüm'], ['Ⓨ', 'Arama'], ['Ⓧ', 'Müzik çal / durdur'], ['Sağ çubuk', 'Sayfayı kaydır'], ['START', 'Menü rayını aç / kapat']].map(([k, d]) => `<div><kbd>${k}</kbd><span>${d}</span></div>`).join('')}</div>`)
     + sec('app', '⚙️ Uygulama', `<h4>Güncellemeler</h4><div id="updSet"></div><div class="row-btns" style="margin-top:8px"><button class="btn ghost" id="showNews">📰 Yenilikleri göster</button></div><h4 style="margin-top:14px">Diğer</h4><div class="row-btns"><button class="btn ghost" id="reTour">🗺️ Ürün turunu tekrar başlat</button><button class="btn ghost" id="reOb">📘 Öğreticiyi tekrar aç</button><button class="btn danger" id="resetAll">Tüm verileri sıfırla</button></div><div class="confirm hidden" id="resetConfirm"><p>Profil, kütüphane, sohbetler ve ayarlar silinecek. Emin misin?</p><div class="row-btns"><button class="btn danger" id="resetYes">Evet, sıfırla</button><button class="btn ghost" id="resetNo">Vazgeç</button></div></div><p class="muted small">Kizuna · Yapımcılar: Tv Man & FKOAC</p>`)
     + `</div>`;
-  bindKeys(v); bindThemeTiles(v); bindYear(v);
+  bindKeys(v); bindThemeTiles(v); bindYear(v); renderAmbBox();
   bindEmuRows(v, () => go('settings', 'emu'));
   $$('[data-jump]', v).forEach(b => b.onclick = () => $('#set-' + b.dataset.jump).scrollIntoView({ behavior: 'smooth', block: 'start' }));
   $('#accReset').onclick = () => { S.accent = ''; save(); applyAppearance(); go('settings', 'theme'); };

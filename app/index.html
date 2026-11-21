@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="kizuna-version" content="1.0.12">
+<meta name="kizuna-version" content="1.0.13">
 <title>Kizuna</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -95,7 +95,7 @@
   <aside id="rail">
     <div class="rail-head">
       <div id="railLogo"></div>
-      <div class="rail-brand">KIZUNA<small id="railVer">v1.0.12</small></div>
+      <div class="rail-brand">KIZUNA<small id="railVer">v1.0.13</small></div>
     </div>
     <nav id="nav"></nav>
     <button id="railToggle" class="rail-toggle" data-tip="Rayı genişlet / daralt"><span>⟨</span><em>Rayı daralt</em></button>
@@ -113,6 +113,7 @@
         <button class="icon-btn" id="voiceBtn" data-tip="Sesli komut (sağ tık: yazarak komut)"></button>
         <button class="icon-btn" id="padBtn" data-tip="Kontrolcü bağla"></button>
         <button class="icon-btn" id="musicBtn" data-tip="Müziği çal / durdur"></button>
+        <button class="icon-btn hidden" id="ambBtn" data-tip="Tema seslerini aç / kapat"></button>
         <button class="icon-btn" id="fsBtn" data-tip="Tam ekran (F11)"></button>
         <button class="me-btn" id="meBtn" data-tip="Profilin"><span id="meAv"></span><span id="meName"></span></button>
       </div>
@@ -146,6 +147,7 @@
 <script src="i18n-packs.js"></script>
 <script src="i18n.js"></script>
 <script src="audio.js"></script>
+<script src="theme-sound.js"></script>
 <script src="vendor/vosk.js"></script>
 <script src="scene-japan.js"></script>
 <script src="scene-themes.js"></script>

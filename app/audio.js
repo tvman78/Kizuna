@@ -9,6 +9,24 @@ const TRACKS = [
   { id: 'deniz', name: 'Sahil Esintisi', style: 'relax', mood: 'Rahatlatıcı · Dalga', bpm: 66, bars: 32, waves: true, prog: [[52, 59, 64, 68], [49, 56, 61, 64], [45, 52, 57, 61], [47, 54, 59, 63]] },
   { id: 'cay', name: 'Çay Bahçesi', style: 'koto', mood: 'Rahatlatıcı · Pentatonik', bpm: 76, bars: 32, prog: [[50, 57, 62], [48, 55, 60], [45, 52, 57], [47, 54, 59]], scale: [0, 2, 5, 7, 9] },
   { id: 'yildiz', name: 'Yıldız Tozu', style: 'lofi', mood: 'Rahatlatıcı · Chillhop', bpm: 74, bars: 32, prog: [[53, 57, 60, 64], [50, 53, 57, 60], [46, 50, 53, 57], [48, 52, 55, 58]] },
+  /* Japanese — original pieces in traditional scales (in, yo, hirajoshi) for koto, shakuhachi, temple bell and soft taiko.
+     mel = 2-bar koto phrases, fl = 4-bar flute phrases; each note is [step, scale degree, length in steps] */
+  { id: 'tsuki', name: 'Ay Işığı Bahçesi', style: 'japan', mood: 'Rahatlatıcı · Japon koto', bpm: 58, bars: 40, root: 62, scale: [0, 1, 5, 7, 8], bell: 8, prog: [[50, 57, 62], [55, 62, 67], [46, 58, 62], [50, 57, 62]],
+    mel: [[[0, 3, 8], [6, 4, 2], [8, 5, 8], [16, 4, 4], [20, 3, 4], [24, 2, 8]], [[0, 2, 6], [6, 3, 2], [8, 1, 8], [16, 0, 4], [20, 1, 4], [24, 0, 8]]],
+    fl: [[8, 5, 14], [24, 7, 8], [32, 6, 12], [48, 5, 14]] },
+  { id: 'kawa', name: 'Dere Kenarı', style: 'japan', mood: 'Rahatlatıcı · Koto & su', bpm: 72, bars: 40, root: 57, scale: [0, 2, 3, 7, 8], water: true, arp: true, prog: [[45, 52, 57], [48, 52, 60], [41, 48, 57], [40, 52, 59]],
+    mel: [[[0, 5, 4], [4, 6, 4], [8, 7, 6], [16, 6, 4], [20, 5, 4], [24, 4, 8]], [[0, 3, 4], [4, 4, 4], [8, 5, 6], [16, 4, 4], [20, 2, 4], [24, 0, 8]]] },
+  { id: 'tera', name: 'Sessiz Tapınak', style: 'japan', mood: 'Rahatlatıcı · Shakuhachi', bpm: 52, bars: 32, root: 52, scale: [0, 1, 5, 7, 8], bell: 4, drone: true, knock: true, prog: [[40, 47, 52], [45, 52, 57], [41, 48, 53], [40, 47, 52]],
+    mel: [[[0, 5, 16], [24, 7, 8]], [[8, 6, 12], [24, 5, 8]]],
+    fl: [[0, 8, 18], [20, 7, 6], [28, 6, 18], [48, 5, 14]] },
+  { id: 'yuki', name: 'Kar Yağarken', style: 'japan', mood: 'Rahatlatıcı · Japon piyano', bpm: 60, bars: 36, root: 62, scale: [0, 2, 5, 7, 9], arp: true, bell: 8, prog: [[50, 57, 62], [43, 50, 59], [45, 52, 57], [50, 57, 62]],
+    mel: [[[0, 7, 6], [6, 6, 2], [8, 5, 8], [16, 6, 6], [22, 7, 2], [24, 8, 8]], [[0, 7, 6], [6, 5, 2], [8, 4, 8], [16, 3, 4], [20, 4, 4], [24, 5, 8]]],
+    fl: [[16, 10, 12], [32, 9, 8], [40, 8, 18]] },
+  { id: 'momiji', name: 'Kızıl Yapraklar', style: 'japan', mood: 'Rahatlatıcı · Koto & taiko', bpm: 66, bars: 40, root: 62, scale: [0, 2, 3, 7, 8], taiko: true, prog: [[50, 57, 62], [46, 53, 58], [45, 52, 57], [50, 57, 62]],
+    mel: [[[0, 5, 3], [3, 6, 3], [6, 7, 2], [8, 8, 8], [16, 7, 3], [19, 6, 3], [22, 5, 2], [24, 3, 8]], [[0, 4, 3], [3, 5, 3], [6, 3, 2], [8, 2, 8], [16, 3, 4], [20, 2, 4], [24, 0, 8]]],
+    fl: [[32, 8, 10], [44, 7, 4], [48, 5, 14]] },
+  { id: 'hana', name: 'Bahar Çiçekleri', style: 'japan', mood: 'Rahatlatıcı · Yo gamı', bpm: 76, bars: 40, root: 65, scale: [0, 2, 5, 7, 9], arp: true, water: true, prog: [[53, 60, 65], [46, 53, 62], [48, 55, 60], [53, 60, 65]],
+    mel: [[[0, 5, 4], [4, 7, 4], [8, 8, 4], [12, 7, 4], [16, 9, 6], [22, 8, 2], [24, 7, 8]], [[0, 8, 4], [4, 7, 4], [8, 5, 4], [12, 4, 4], [16, 3, 4], [20, 4, 4], [24, 5, 8]]] },
   { id: 'katana', name: 'Katana Fırtınası', style: 'rock', mood: 'Rock', bpm: 150, bars: 48, prog: [[40], [40], [36], [38]], riff: [0, 0, 3, 5, 0, 7, 5, 3] },
   { id: 'ronin', name: 'Ronin Hücumu', style: 'rock', mood: 'Rock · Hızlı', bpm: 172, bars: 56, prog: [[45], [43], [41], [40]], riff: [0, 0, 0, 3, 0, 5, 3, 0] },
   { id: 'celik', name: 'Çelik Yumruk', style: 'rock', mood: 'Rock · Ağır', bpm: 138, bars: 48, prog: [[38], [38], [41], [36]], riff: [0, 0, 1, 0, 3, 0, 1, 5] },
@@ -27,13 +45,13 @@ const TRACKS = [
     mel: [[0, 3, 4], [4, 2, 4], [8, 1, 6], [14, 2, 2]] }
 ];
 const MUSIC_GROUPS = [
-  ['relax', '🌸 Rahatlatıcı', ['relax', 'lofi', 'koto']],
+  ['relax', '🌸 Rahatlatıcı', ['relax', 'lofi', 'koto', 'japan']],
   ['rock', '🎸 Rock & Aksiyon', ['rock', 'action']],
   ['drama', '🎻 Dram', ['drama']]
 ];
 
 const AudioEngine = (() => {
-  let ctx = null, master, sfx, music, analyser, delay, noiseBuf, distCurve;
+  let ctx = null, master, sfx, music, ambient, analyser, delay, noiseBuf, distCurve;
   let timer = null, track = null, step = 0, nextTime = 0, userEl = null, userSrc = null, onTrackEnd = null, sinkId = '';
 
   function ensure() {
@@ -43,6 +61,7 @@ const AudioEngine = (() => {
     ctx = new AC();
     master = ctx.createGain(); master.connect(ctx.destination);
     sfx = ctx.createGain(); sfx.gain.value = 0.6; sfx.connect(master);
+    ambient = ctx.createGain(); ambient.connect(master); // theme ambience (theme-sound.js)
     music = ctx.createGain(); music.gain.value = 0.45;
     analyser = ctx.createAnalyser(); analyser.fftSize = 256;
     music.connect(analyser); analyser.connect(master);
@@ -183,6 +202,38 @@ const AudioEngine = (() => {
     notes.forEach(m => [-8, 8].forEach(det => { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = mtof(m - 12); o.detune.value = det; o.connect(lp); o.start(t); o.stop(t + dur + 0.5); }));
   }
   const piano = (m, t, vol = 0.06) => { tone({ f: mtof(m), t, dur: 1.4, type: 'triangle', vol, dest: music, a: 0.004 }); tone({ f: mtof(m) * 2, t, dur: 0.6, vol: vol * 0.25, dest: music }); };
+  /* Koto: a plucked silk string with a tiny pitch bend, bright attack and long decay */
+  function koto(m, t, dur = 2, vol = 0.085) {
+    const f = mtof(m), g = ctx.createGain(); env(g, t, 0.003, vol, dur);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(Math.min(7000, f * 9), t); lp.frequency.exponentialRampToValueAtTime(Math.max(500, f * 2), t + dur * .55);
+    [['triangle', 1, 1], ['sawtooth', 1, .22], ['sine', 2, .3], ['sine', 3.01, .1]].forEach(([type, h, a]) => {
+      const o = ctx.createOscillator(), og = ctx.createGain(); o.type = type; og.gain.value = a;
+      o.frequency.setValueAtTime(f * h * 1.014, t); o.frequency.exponentialRampToValueAtTime(f * h, t + 0.07);
+      o.connect(og); og.connect(lp); o.start(t); o.stop(t + dur + 0.05);
+    });
+    lp.connect(g); g.connect(music); g.connect(delay);
+    noise({ t, dur: 0.018, vol: vol * .55, dest: music, type: 'bandpass', f: Math.min(6000, f * 5), q: 1.4 });
+  }
+  /* Shakuhachi: bamboo flute with a breathy tone, a scoop into the note and slow vibrato */
+  function shakuhachi(m, t, dur, vol = 0.05) {
+    const f = mtof(m), g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + Math.min(.5, dur * .3));
+    g.gain.setValueAtTime(vol, t + dur * .72); g.gain.exponentialRampToValueAtTime(0.0001, t + dur + .3);
+    const lfo = ctx.createOscillator(), depth = ctx.createGain(); lfo.frequency.value = 4.3;
+    depth.gain.setValueAtTime(0, t); depth.gain.setValueAtTime(0, t + dur * .35); depth.gain.linearRampToValueAtTime(f * .014, t + dur * .7); lfo.connect(depth);
+    [['sine', 1, 1], ['triangle', 2, .1]].forEach(([type, h, a]) => {
+      const o = ctx.createOscillator(), og = ctx.createGain(); o.type = type; og.gain.value = a;
+      o.frequency.setValueAtTime(f * h * .955, t); o.frequency.exponentialRampToValueAtTime(f * h, t + .24); depth.connect(o.frequency);
+      o.connect(og); og.connect(g); o.start(t); o.stop(t + dur + .35);
+    });
+    g.connect(music); g.connect(delay); lfo.start(t); lfo.stop(t + dur + .35);
+    noise({ t, dur: dur + .1, vol: vol * .2, dest: music, type: 'bandpass', f: f * 2, q: 7, a: Math.min(.4, dur * .25) });
+  }
+  /* Temple bell: inharmonic partials ringing for a long time */
+  function templeBell(m, t, vol = 0.05) { [[1, 1, 6], [2.01, .5, 4.4], [2.76, .34, 3.1], [5.4, .13, 1.6]].forEach(([h, a, d]) => tone({ f: mtof(m) * h, t, dur: d, vol: vol * a, dest: music, a: 0.004 })); }
+  const taiko = (t, v = 0.18) => { tone({ f: 96, f2: 50, t, dur: 0.75, vol: v, dest: music }); noise({ t, dur: 0.05, vol: v * .28, dest: music, type: 'lowpass', f: 700 }); };
+  const bambooKnock = t => { tone({ f: 640, f2: 430, t, dur: 0.07, type: 'triangle', vol: 0.09, dest: music }); noise({ t, dur: 0.035, vol: 0.09, dest: music, type: 'bandpass', f: 1250, q: 5 }); };
+  const waterDrop = (t, f) => tone({ f, f2: f * 1.7, t, dur: 0.09, vol: 0.022, dest: music, a: 0.004 });
 
   function playStep(s, t) {
     const T = track, sd = 60 / T.bpm / 4, bar = Math.floor(s / 16), i = s % 16, ch = T.prog[bar % T.prog.length];
@@ -196,6 +247,21 @@ const AudioEngine = (() => {
         if (ph) { const shift = bar % 4 === 2 ? 1 : 0; const idx = (ph[1] + shift) % ch.length; violin(ch[idx] + 12 + (bar % 8 >= 4 && idx < 2 ? 12 : 0), t, sd * ph[2]); }
       }
       if (i === 0 && bar % 4 === 0) tone({ f: mtof(ch[0] - 24), t, dur: sd * 14, vol: 0.06, dest: music, a: 0.6 });
+    } else if (T.style === 'japan') {
+      const n = T.scale.length, at = d => T.root + 12 * Math.floor(d / n) + T.scale[((d % n) + n) % n];
+      if (i === 0) pad(ch, t, sd * 16 * 1.03, T.drone ? 0.024 : 0.016);
+      if (i === 0 || (i === 8 && !T.drone)) tone({ f: mtof(ch[0] - 12), t, dur: sd * 7.5, vol: 0.05, dest: music, a: 0.05 });
+      if (T.arp && i % 2 === 0) koto(ch[[0, 1, 2, 1, 2, 1, 0, 1][i / 2]] + 12, t, 1.3, 0.034);
+      const phrase = T.mel[Math.floor(bar / 2) % T.mel.length], s32 = s % 32;
+      if (bar % 8 < 7 || s32 < 16) for (const [at32, deg, len] of phrase) if (at32 === s32) {
+        koto(at(deg), t, Math.max(1.5, sd * len * 1.25));
+        if (len >= 8 && bar % 4 === 3) koto(at(deg) + 12, t + sd * .5, 1.2, 0.03); // soft octave echo at the end of a section
+      }
+      if (T.fl && bar >= 4) { const s64 = s % 64; for (const [at64, deg, len] of T.fl) if (at64 === s64) shakuhachi(at(deg), t, sd * len); }
+      if (T.bell && i === 0 && bar % T.bell === 0) templeBell(T.root + 12, t);
+      if (T.taiko) { if (i === 0) taiko(t); if (i === 10 && bar % 2) taiko(t, 0.09); }
+      if (T.knock && bar % 4 === 2 && i === 12) bambooKnock(t);
+      if (T.water && i % 2 === 1 && Math.random() < 0.09) waterDrop(t, 900 + Math.random() * 1100);
     } else if (T.style === 'koto') {
       if (i === 0) pad(ch, t, sd * 16, 0.022);
       const sc = T.scale, root = ch[0] + 12;
@@ -287,6 +353,7 @@ const AudioEngine = (() => {
 
   return {
     ensure, click, key, notify, alarm, playSynth, playUser, stopAll, setMusicVol, setSfxVol, setSink, progress, time, seek,
+    ambientBus: () => (ensure() ? { ctx, bus: ambient } : null),
     get analyser() { return analyser; }, get context() { return ensure(); }
   };
 })();

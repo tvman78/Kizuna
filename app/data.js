@@ -304,6 +304,15 @@ const banDays = (level, count) => Math.min(365, (BAN_BASE_DAYS[level] || 1) * 2 
 /* ---------- WHAT'S NEW (shown once after each update, and from the news button) ---------- */
 const CHANGELOG = [
   {
+    v: '1.0.13', date: '2026-11-22', title: 'Temalar artık canlı ve sesli',
+    items: [
+      ['🌴', 'Vice Hawaii canlandı', 'Palmiye yaprakları rüzgârda sallanıyor, gemiler ve yelkenliler ilerliyor, bulutlar gökyüzünde süzülüyor.'],
+      ['🚗', 'Kara Yağmur canlandı', 'Arabalar caddede akıyor, ay yerinde dururken bulutlar önünden yavaşça geçiyor.'],
+      ['🔊', 'Temaya özel sesler', 'Hawaii’de dalga ve martılar, Kara Yağmur’da yağmur, şehir ve şimşek, Vahşi Saldırı’da çöl rüzgârı ve vahşi batı sesleri. Üst çubuktaki hoparlör düğmesiyle aç/kapat.'],
+      ['🎌', '6 yeni Japon müziği', 'Rahatlatıcı bölümüne koto, shakuhachi, tapınak çanı ve taiko ile özgün Japon parçaları eklendi.']
+    ]
+  },
+  {
     v: '1.0.12', date: '2026-11-22', title: 'Temalar baştan çizildi',
     items: [
       ['🌴', 'Vice Hawaii', 'Gün batımında neon otelli sahil, palmiyeler, yatlar, cankurtaran kulübesi ve suda yansıyan şehir.'],

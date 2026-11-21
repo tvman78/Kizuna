@@ -818,7 +818,8 @@ body[data-theme="japan"] .view-head p { display: inline-block; padding: 5px 12px
 body[data-theme="japan"] .tabs { background: rgba(18, 28, 36, .86); }
 body[data-theme="japan"] .tab:not(.on) { color: #efe9e3; }
 body[data-theme="japan"] .panel, body[data-theme="japan"] .card, body[data-theme="japan"] .gbody { background-color: rgba(18, 28, 36, .82); }
-#sceneBase { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#sceneBase, #sceneSky, #sceneFront, #fxBack, #fxMid { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#ambBox input[type="range"] { width: min(260px, 50%); accent-color: var(--accent); }
 /* Painted scenes: keep menus and text readable on top of them */
 body:is([data-theme="japan"], [data-theme="hawaii"], [data-theme="noir"], [data-theme="wild"]) .empty { width: fit-content; max-width: min(680px, 100%); margin: 28px auto; padding: 28px 36px; border: 1px solid var(--line); border-radius: 16px; color: var(--text); background: color-mix(in srgb, var(--panel-solid) 88%, transparent); }
 body:is([data-theme="japan"], [data-theme="hawaii"], [data-theme="noir"], [data-theme="wild"]) .empty :is(p, small, .muted) { color: var(--text); }
