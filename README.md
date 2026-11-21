@@ -24,6 +24,11 @@ Latest release: **[Releases](https://github.com/tvman78/Kizuna/releases/latest)*
 
 Kizuna does not distribute game files; players use their own copies.
 
+## Contributors
+
+- [@tvman78](https://github.com/tvman78)
+- [@navicationa-bl](https://github.com/navicationa-bl)
+
 ## Developer notes
 
 - `Baslat.bat` — opens the app in development mode
