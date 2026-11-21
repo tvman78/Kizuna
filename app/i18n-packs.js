@@ -165,6 +165,8 @@ const I18N_PACK_ROWS = [
   ['Kar Beyazı', 'Schneeweiß', 'Blanc neige', 'Blanco nieve', 'Bianco neve', 'Branco neve', 'Белоснежный', 'أبيض ثلجي', 'スノーホワイト', '雪白', '스노우 화이트', 'Qar Ağı'],
   ['Kara Yağmur', 'Schwarzer Regen', 'Pluie noire', 'Lluvia negra', 'Pioggia nera', 'Chuva negra', 'Чёрный дождь', 'المطر الأسود', '黒い雨', '黑雨', '검은 비', 'Qara Yağış'],
   ['Vahşi Saldırı', 'Wilder Angriff', 'Assaut sauvage', 'Asalto salvaje', 'Assalto selvaggio', 'Ataque selvagem', 'Дикий штурм', 'الهجوم الوحشي', 'ワイルドアサルト', '狂野突击', '와일드 어썰트', 'Vəhşi Hücum'],
+  ['Sakura Vadisi', 'Sakura-Tal', 'Vallée des Sakura', 'Valle Sakura', 'Valle dei Sakura', 'Vale Sakura', 'Долина сакуры', 'وادي الساكورا', '桜の谷', '樱花谷', '벚꽃 계곡', 'Sakura Vadisi'],
+  ['Rahatlatıcı Japon manzarası', 'Entspannende japanische Landschaft', 'Paysage japonais apaisant', 'Relajante paisaje japonés', 'Rilassante paesaggio giapponese', 'Paisagem japonesa relaxante', 'Умиротворяющий японский пейзаж', 'منظر ياباني مريح', '癒やしの日本の風景', '宁静的日本风景', '편안한 일본 풍경', 'Rahatladıcı Yapon mənzərəsi'],
   ['Siyah & Fıstık Yeşili', 'Schwarz & Pistaziengrün', 'Noir & vert pistache', 'Negro y verde pistacho', 'Nero e verde pistacchio', 'Preto e verde-pistache', 'Чёрный и фисташковый', 'أسود وأخضر فستقي', '黒＆ピスタチオグリーン', '黑色与开心果绿', '블랙 & 피스타치오 그린', 'Qara və püstə yaşılı'],
   ['Siyah & kırmızı', 'Schwarz & Rot', 'Noir & rouge', 'Negro y rojo', 'Nero e rosso', 'Preto e vermelho', 'Чёрный и красный', 'أسود وأحمر', '黒＆赤', '黑与红', '블랙 & 레드', 'Qara və qırmızı'],
   ['Siyah & altın', 'Schwarz & Gold', 'Noir & or', 'Negro y dorado', 'Nero e oro', 'Preto e dourado', 'Чёрный и золотой', 'أسود وذهبي', '黒＆ゴールド', '黑与金', '블랙 & 골드', 'Qara və qızılı'],

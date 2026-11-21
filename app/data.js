@@ -222,7 +222,8 @@ const THEMES = [
   { id: 'gold', name: 'Altın Şampiyon', sub: 'Siyah & altın', sw: ['#0d0a03', '#ffc845', '#ffe7a3'] },
   { id: 'snow', name: 'Kar Beyazı', sub: 'Açık tema', sw: ['#eef1f4', '#3a7d44', '#7fc28a'] },
   { id: 'noir', name: 'Kara Yağmur', sub: 'Max Payne esintili · yağmur & şimşek', sw: ['#05070a', '#c9d4e0', '#d8b46a'] },
-  { id: 'wild', name: 'Vahşi Saldırı', sub: 'Wild Assault esintili · taktik', sw: ['#120c06', '#ff7a1a', '#ffd23f'] }
+  { id: 'wild', name: 'Vahşi Saldırı', sub: 'Wild Assault esintili · taktik', sw: ['#120c06', '#ff7a1a', '#ffd23f'] },
+  { id: 'japan', name: 'Sakura Vadisi', sub: 'Rahatlatıcı Japon manzarası', sw: ['#5f93bd', '#f2a7b8', '#fbc9a2'] }
 ];
 const ERA_NAMES = {
   classic: 'Klasik Çağ', '60s': "60'lar Pop", '70s': "70'ler Disko", '80s': "80'ler Synthwave", '90s': "90'lar Piksel",
@@ -302,6 +303,13 @@ const banDays = (level, count) => Math.min(365, (BAN_BASE_DAYS[level] || 1) * 2 
 
 /* ---------- WHAT'S NEW (shown once after each update, and from the news button) ---------- */
 const CHANGELOG = [
+  {
+    v: '1.0.11', date: '2026-11-22', title: 'Yeni tema: Sakura Vadisi',
+    items: [
+      ['🌸', 'Rahatlatıcı Japon manzarası', 'Karlı dağ, beş katlı pagoda, torii kapısı, kırmızı köprü, geleneksel ev, bambular, çamlar ve sakura ağacı. Manzara ekranının çözünürlüğünde çizilir, her ayrıntı net görünür.'],
+      ['🍃', 'Canlı sahne', 'Sakura yaprakları süzülür, gün ışığı gölün üzerinde parıldar.']
+    ]
+  },
   {
     v: '1.0.10', date: '2026-11-22', title: 'Oyunlar artık Kizuna’dan açılıyor',
     items: [

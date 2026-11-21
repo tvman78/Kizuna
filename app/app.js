@@ -175,29 +175,42 @@ function applyAppearance() {
 
 /* ---------- Animated theme scenes ---------- */
 const ThemeFX = (() => {
-  let mode = null, raf = 0, cv = null, g = null, drops = [], splashes = [], boltTimer = 0, embers = [], last = 0;
+  let mode = null, raf = 0, cv = null, g = null, drops = [], splashes = [], boltTimer = 0, embers = [], petals = [], glints = [], last = 0, jpTimer = 0;
   const reduce = () => S.graphics && S.graphics.fps === 'balanced' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   function size() { if (!cv) return; cv.width = innerWidth * Math.min(devicePixelRatio, 1.5); cv.height = innerHeight * Math.min(devicePixelRatio, 1.5); }
+  /* The landscape is painted at the screen's real pixel size (up to 4K) so it stays sharp */
+  function paintJapan() {
+    const base = $('#jpBase'); if (!base) return;
+    const k = Math.min(Math.max(1, devicePixelRatio), 3840 / innerWidth, 2.5);
+    const w = Math.round(innerWidth * k), h = Math.round(innerHeight * k);
+    if (base.width === w && base.height === h) return;
+    base.width = w; base.height = h; paintJapanScene(base);
+  }
   function start(m) {
     stop(); mode = m;
     const host = $('#fx'); if (!host) return;
     host.innerHTML = m === 'noir'
       ? `<div class="noir-scene">${noirSceneSVG()}</div><canvas id="fxCanvas"></canvas><div class="bolt" id="bolt"></div>`
+      : m === 'japan' ? '<canvas id="jpBase"></canvas><canvas id="fxCanvas"></canvas>'
       : `<div class="wild-scene">${wildSceneSVG()}</div><canvas id="fxCanvas"></canvas>`;
     cv = $('#fxCanvas'); g = cv.getContext('2d'); size();
-    const n = m === 'noir' ? 520 : 70;
-    if (m === 'noir') drops = Array.from({ length: n }, () => newDrop(true));
-    else embers = Array.from({ length: n }, () => newEmber(true));
-    if (m === 'noir') scheduleBolt();
+    if (m === 'japan') {
+      paintJapan();
+      if (reduce()) return; // the painting stays, only the animation is skipped
+      petals = Array.from({ length: MOBILE ? 26 : 58 }, () => newPetal(true));
+      glints = Array.from({ length: MOBILE ? 18 : 42 }, () => ({ x: 1040 + Math.random() * 680, y: 668 + Math.random() * 230, w: 6 + Math.random() * 22, p: Math.random() * 6.28, s: .5 + Math.random() * 1.2 }));
+    } else if (m === 'noir') { drops = Array.from({ length: 520 }, () => newDrop(true)); scheduleBolt(); }
+    else embers = Array.from({ length: 70 }, () => newEmber(true));
     last = performance.now(); raf = requestAnimationFrame(frame);
   }
   function stop() {
-    cancelAnimationFrame(raf); raf = 0; clearTimeout(boltTimer); mode = null; drops = []; splashes = []; embers = [];
+    cancelAnimationFrame(raf); raf = 0; clearTimeout(boltTimer); clearTimeout(jpTimer); mode = null; drops = []; splashes = []; embers = []; petals = []; glints = [];
     const host = $('#fx'); if (host) host.innerHTML = '';
     cv = g = null;
   }
   const newDrop = init => { const z = Math.random(); return { x: Math.random() * 1.2 - 0.1, y: init ? Math.random() : -0.05 - Math.random() * 0.2, z, len: 0.012 + z * 0.03, v: 0.9 + z * 1.4 }; };
   const newEmber = init => ({ x: Math.random(), y: init ? Math.random() : 1.05, r: 0.6 + Math.random() * 2.2, v: 0.02 + Math.random() * 0.06, w: Math.random() * 6.28, a: 0.3 + Math.random() * 0.6 });
+  const newPetal = init => ({ x: Math.random() * 1.15 - .05, y: init ? Math.random() : -.04 - Math.random() * .12, r: 2.6 + Math.random() * 3.6, v: .022 + Math.random() * .04, d: .012 + Math.random() * .026, w: Math.random() * 6.28, sw: .7 + Math.random() * 1.1, a: Math.random() * 6.28, spin: (Math.random() < .5 ? -1 : 1) * (.6 + Math.random() * 1.6), c: ['#ffd9e3', '#fbbfd0', '#fff1f5', '#f4a9c0'][Math.floor(Math.random() * 4)] });
   function frame(t) {
     raf = requestAnimationFrame(frame);
     if (document.hidden || !g) return;
@@ -225,6 +238,22 @@ const ThemeFX = (() => {
         g.fillStyle = `rgba(255,${120 + Math.floor(e.a * 90)},40,${e.a * (0.4 + 0.6 * Math.abs(Math.sin(e.w)))})`;
         g.beginPath(); g.arc(x * W, e.y * H, e.r * (W / innerWidth), 0, Math.PI * 2); g.fill();
       }
+    } else if (mode === 'japan') {
+      const px = W / innerWidth, v = jpView(W, H), now = t / 1000;
+      g.strokeStyle = '#fff4dc'; g.lineCap = 'round'; g.lineWidth = px;
+      for (const l of glints) { // sunlight sparkling on the lake
+        const a = Math.pow(Math.max(0, Math.sin(now * l.s + l.p)), 3) * .55; if (a < .03) continue;
+        const x = v.ox + l.x * v.s, y = v.oy + l.y * v.s, w = l.w * v.s;
+        g.globalAlpha = a; g.beginPath(); g.moveTo(x - w, y); g.lineTo(x + w, y); g.stroke();
+      }
+      g.globalAlpha = 1;
+      for (const p of petals) {
+        p.y += p.v * dt; p.w += p.sw * dt; p.a += p.spin * dt; p.x += (p.d + Math.sin(p.w) * .018) * dt;
+        if (p.y > 1.04 || p.x > 1.08) Object.assign(p, newPetal(false));
+        const r = p.r * px;
+        g.save(); g.translate(p.x * W, p.y * H); g.rotate(p.a); g.scale(1, .32 + Math.abs(Math.sin(p.w)) * .68);
+        g.fillStyle = p.c; g.beginPath(); g.moveTo(-r, 0); g.quadraticCurveTo(-r * .2, -r * .95, r, -r * .12); g.lineTo(r * .68, 0); g.lineTo(r, r * .12); g.quadraticCurveTo(-r * .2, r * .95, -r, 0); g.fill(); g.restore();
+      }
     }
   }
   function scheduleBolt() {
@@ -244,8 +273,8 @@ const ThemeFX = (() => {
     while (y < 46) { y += 3 + Math.random() * 6; x += (Math.random() - 0.5) * 9; d += ` L${x.toFixed(1)} ${y.toFixed(1)}`; }
     return `<svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="${d}" fill="none" stroke="#eef4ff" stroke-width=".7"/><path d="${d}" fill="none" stroke="#9fc0ff" stroke-width="2.4" opacity=".35"/></svg>`;
   }
-  addEventListener('resize', () => size());
-  return { set(theme) { const m = theme === 'noir' || theme === 'wild' ? theme : null; if (m === mode) return; if (m && !reduce()) start(m); else stop(); } };
+  addEventListener('resize', () => { size(); if (mode === 'japan') { clearTimeout(jpTimer); jpTimer = setTimeout(paintJapan, 180); } });
+  return { set(theme) { const m = ['noir', 'wild', 'japan'].includes(theme) ? theme : null; if (m === mode) return; if (m && (m === 'japan' || !reduce())) start(m); else stop(); } };
 })();
 /* Original noir scene: rainy night skyline, a street lamp and a lone figure in a long coat (not any specific character) */
 function noirSceneSVG() {
@@ -1015,6 +1044,7 @@ function handleCommand(raw) {
   if (/yenilik|guncelleme|news|what.?s new/.test(t)) return showWhatsNew('');
   if (/noir|kara yagmur|max payne|yagmur tema/.test(t)) return setTheme('noir');
   if (/vahsi|wild assault/.test(t)) return setTheme('wild');
+  if (/japon|sakura vadisi|sakura tema/.test(t)) return setTheme('japan');
   if (/dram|keman|drama|violin/.test(t)) return Music.play('kara');
   if ((m = t.match(/(?:ara|bul|search)\s+(.+)/))) { $('#search').value = m[1]; $('#search').dispatchEvent(new Event('input')); $('#search').focus(); return; }
   if ((m = t.match(/(\d{4})/))) return setYear(+m[1]);
@@ -1537,6 +1567,7 @@ function aiReply(raw) {
   if (has('ban', 'kufur', 'kural', 'ceza')) return { text: 'Kizuna kuralları basit: saygılı ol 💚 Ceza süresi suçun ağırlığına göre:\n• **Küfür:** ilk seferde **1 gün**\n• **Başkasına ağır hakaret:** ilk seferde **3 gün**\nAynı ihlali her tekrarlayışta süre **iki katına** çıkar (1 → 2 → 4 → 8 gün…). Bana uygunsuz yazarsan önce uyarırım; devam edersen 20 saniye sonra ban başlar.' };
   if (has('emulator kur', 'emulatoru kur', 'duckstation', 'pcsx2', 'rpcs3', 'shadps4')) return { text: 'Emülatörler artık **Kizuna’nın içine** kuruluyor 🎮 **Ayarlar › Emülatörler**’de **Kizuna’ya kur**’a bas — resmi kaynaktan indirilir, kurulur ve otomatik bağlanır. PS1/PS2 için BIOS’u kendi konsolundan alıp **BIOS klasörü**’ne kopyalaman yeterli.', actions: [{ label: 'Emülatörler', act: 'go:settings' }] };
   if (has('dram', 'keman', 'huzunlu')) return { text: '🎻 **Kara Yağmur** çalıyor — keman, yağmur ve gece…', auto: 'music:kara' };
+  if (has('japon tema', 'japon manzara', 'sakura vadisi')) return { text: '🌸 **Sakura Vadisi** teması açılıyor: karlı dağ, pagoda, göl ve süzülen sakura yaprakları.', auto: 'theme:japan' };
   if (has('noir', 'max payne', 'kara yagmur')) return { text: '🌧️ **Kara Yağmur** teması açılıyor — yağmurlu, karanlık bir şehir ve arada bir çakan şimşekler.', auto: 'theme:noir' };
   if (has('saat', 'tarih', 'bugun', 'gun ne')) return { text: `📅 Bugün ${new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}, saat ${fmtTime(Date.now())}.` };
   if (has('saka', 'fikra', 'joke', 'guldur')) return { text: pick(['Neden samuray emülatör kullanmaz? Çünkü kılıcı zaten **Kızuna**’da (kınında) duruyor 😄', 'Bir oyuncu doktora gitmiş: “Doktor, her gece rüyamda yükleme ekranı görüyorum.” Doktor: “Sabırlı ol, %99’da takılı kalmaz.” 😂', 'Bir boss’a neden kek götürülmez? Çünkü her şeyi iki aşamada yer! 🐉']) };

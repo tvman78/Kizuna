@@ -62,7 +62,7 @@ Kizuna'nın özellikleri (kullanıcıya yol gösterirken kullan):
 - Sol ray: Kütüphane, Oyunlar (PS1–PS5 kataloğunda 289 oyun), Yapay Zeka, Müzik, Kaydedilenler, Geçmiş, Ayarlar, Yardım. Ray daraltılıp genişletilebilir. Kizuna ayrıca Android ve iPhone'da da var (telefonda PS1 oyunları uygulamanın içinde, ekrandaki PlayStation tuşlarıyla oynanır).
 - Üst çubuk: oyun arama (Ctrl+K), sesli komut, kontrolcü bağlama, müzik, profil.
 - Oyun ekleme: Ayarlar › Emülatörler'de emülatörü "Kizuna'ya kur" ile kur, sonra Kütüphane › Oyun Ekle ile kendi oyun yedeğini seç, Oyna'ya bas. Resmi PC sürümü olan oyunlarda İndir butonu oyunu Steam uygulamasında açar.
-- Temalar: Kizuna (siyah & fıstık yeşili), Vice Hawaii (GTA VI esintili pembe), Kızıl Ronin, Derin Okyanus, Mor Şimşek, Altın Şampiyon, Kar Beyazı, Kara Yağmur (noir: yağmurlu karanlık şehir, şimşekler), Vahşi Saldırı (taktik, turuncu).
+- Temalar: Kizuna (siyah & fıstık yeşili), Vice Hawaii (GTA VI esintili pembe), Kızıl Ronin, Derin Okyanus, Mor Şimşek, Altın Şampiyon, Kar Beyazı, Kara Yağmur (noir: yağmurlu karanlık şehir, şimşekler), Vahşi Saldırı (taktik, turuncu), Sakura Vadisi (rahatlatıcı, detaylı Japon manzarası: karlı dağ, pagoda, göl, sakura).
 - Yıla göre arayüz: kullanıcı bir yıl yazınca arayüz o döneme bürünür (1960'lar pop, 80'ler synthwave, 90'lar piksel, 2077 siberpunk...).
 - Müzik: Rahatlatıcı, Rock & Aksiyon ve kemanlı Dram bölümleri; 3 modlu Tekrarla (kapalı / tümünü / tek parça); bilgisayardan şarkı eklenebilir.
 - Profil: profil resminin yanındaki kalem simgesi düzenleme panelini açar; fotoğraf/GIF/video avatar ve kapak için kırpma paneli var; gizlilikten katılma tarihi ve oynanan oyunlar gizlenebilir.
@@ -77,7 +77,7 @@ ${games}`;
 const ACTIONS = ['theme', 'year', 'music', 'go', 'game'];
 const TOOL = {
   name: 'kizuna_action',
-  description: 'Kizuna arayüzünde bir işlem yapar. action="theme": value tema id (kizuna, hawaii, crimson, ocean, violet, gold, snow, noir, wild). action="year": value 1900-3000 arası yıl. action="music": value parça id (sakura, yagmur, bulut, deniz, cay, yildiz = rahatlatıcı; katana, ronin, celik, ejder = rock; neon, boss, sokak = aksiyon; kara, veda, gece, yalniz = dram/keman) veya "stop". action="go": value bölüm (library, catalog, music, saved, history, settings, help, profile). action="game": value katalog oyun id (oyun detayını açar).',
+  description: 'Kizuna arayüzünde bir işlem yapar. action="theme": value tema id (kizuna, hawaii, crimson, ocean, violet, gold, snow, noir, wild, japan). action="year": value 1900-3000 arası yıl. action="music": value parça id (sakura, yagmur, bulut, deniz, cay, yildiz = rahatlatıcı; katana, ronin, celik, ejder = rock; neon, boss, sokak = aksiyon; kara, veda, gece, yalniz = dram/keman) veya "stop". action="go": value bölüm (library, catalog, music, saved, history, settings, help, profile). action="game": value katalog oyun id (oyun detayını açar).',
   input_schema: {
     type: 'object',
     properties: {

@@ -168,7 +168,7 @@ input[type=checkbox] { width: auto; accent-color: var(--accent); }
 .theme-tile.on { border-color: var(--accent); box-shadow: var(--glow); }
 .theme-tile.on::after { content: '✓'; position: absolute; right: 10px; top: 8px; color: var(--accent); font-weight: 900; }
 .theme-tile small { color: var(--muted); }
-.tt-sw { display: flex; height: 38px; border-radius: 10px; overflow: hidden; margin-bottom: 6px; }
+.tt-sw { display: flex; flex: none; width: 100%; height: 38px; border-radius: 10px; overflow: hidden; margin-bottom: 6px; }
 .tt-sw i { flex: 1; }
 .tt-hawaii .tt-sw { background: linear-gradient(180deg, #2a0a3d, #c22a7a 60%, #ffb36b); } .tt-hawaii .tt-sw i { opacity: .55; }
 .year-box { margin-top: 10px; }
@@ -802,6 +802,28 @@ body[data-theme="wild"] h1 { text-transform: uppercase; letter-spacing: .06em; }
 body[data-theme="wild"] .nav-item.active { box-shadow: inset 4px 0 0 #ffd23f; }
 .wild-scene::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 110%, transparent 35%, rgba(0, 0, 0, .55) 80%); }
 .tt-wild .tt-sw { background: repeating-linear-gradient(-45deg, #ffd23f 0 6px, #120c06 6px 12px); } .tt-wild .tt-sw i { opacity: .8; }
+
+/* ---------- Theme: Sakura Vadisi (original Japanese landscape, painted in scene-japan.js) ---------- */
+body[data-theme="japan"] { --bg: #1b2a33; --panel: rgba(20, 30, 38, .66); --panel-solid: #1a2730; --line: rgba(255, 224, 212, .2); --accent: #f4a9bf; --accent2: #ffd9c2; --ink: #2c1520; --text: #fffaf5; --muted: #d3cdc7; --display: 'Cinzel', 'Noto Serif JP', serif; }
+body[data-theme="japan"] #bgLayer { background: #1b2a33; }
+body[data-theme="japan"] #bgLayer::before, body[data-theme="japan"] #bgLayer::after { content: none; }
+body[data-theme="japan"] .btn.primary { background: linear-gradient(180deg, #f9bfd0, #e4849f); color: #2c1520; }
+body[data-theme="japan"] h1, body[data-theme="japan"] h2 { text-shadow: 0 2px 12px rgba(10, 20, 28, .75); }
+body[data-theme="japan"] .gcard, body[data-theme="japan"] .card { box-shadow: 0 10px 30px rgba(10, 20, 28, .4); }
+body[data-theme="japan"] .welcome { background-image: linear-gradient(90deg, #fff, #ffe6ec, #ffd0dc, #fff); filter: drop-shadow(0 2px 3px rgba(10, 20, 28, .95)) drop-shadow(0 0 16px rgba(10, 20, 28, .65)); }
+body[data-theme="japan"] #intro p { color: #fff; text-shadow: 0 1px 5px rgba(10, 20, 28, .95); }
+body[data-theme="japan"] #rail { background: rgba(18, 28, 36, .9); }
+body[data-theme="japan"] #topbar { background: rgba(18, 28, 36, .8); }
+body[data-theme="japan"] .nav-item { color: #efe9e3; }
+body[data-theme="japan"] .nav-item:hover { color: #fff; }
+body[data-theme="japan"] .nav-item.active { color: #2c1520; background: linear-gradient(90deg, #f9bfd0, #ec97b0); }
+body[data-theme="japan"] .view-head h1 { color: #fff; }
+body[data-theme="japan"] .view-head p { display: inline-block; padding: 5px 12px; border-radius: 8px; color: #fff; background: rgba(18, 28, 36, .74); }
+body[data-theme="japan"] .tabs { background: rgba(18, 28, 36, .86); }
+body[data-theme="japan"] .tab:not(.on) { color: #efe9e3; }
+body[data-theme="japan"] .panel, body[data-theme="japan"] .card, body[data-theme="japan"] .gbody { background-color: rgba(18, 28, 36, .82); }
+#jpBase { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.tt-japan .tt-sw { background: linear-gradient(180deg, #5f93bd, #d4dcd9 55%, #fbc9a2); } .tt-japan .tt-sw i { opacity: .55; }
 
 /* v1.0.3 — seek bar, profile stats + recent games, update prompt */
 .seek { display: flex; align-items: center; gap: 12px; margin-top: 14px; grid-column: 1 / -1; font-variant-numeric: tabular-nums; font-size: .85em; color: var(--muted); }
