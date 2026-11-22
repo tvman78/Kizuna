@@ -17,26 +17,40 @@ const writeJson = (f, v) => { try { fs.mkdirSync(path.dirname(f), { recursive: t
 
 /* ---------- Window state ---------- */
 const stateFile = () => userData('window-state.json');
+/* Kizuna always opens in fullscreen. The window is created at the monitor's full size,
+   so it never appears small first. `normal` is the size it returns to when leaving fullscreen (F11). */
 function windowOptions() {
-  const s = readJson(stateFile(), null);
-  const o = { width: 1440, height: 900 };
-  if (s && s.bounds) {
+  const s = readJson(stateFile(), null), area = screen.getPrimaryDisplay().workArea;
+  const width = Math.min(1440, area.width), height = Math.min(900, area.height);
+  let normal = { x: area.x + Math.round((area.width - width) / 2), y: area.y + Math.round((area.height - height) / 2), width, height };
+  if (s && s.bounds && [s.bounds.x, s.bounds.y, s.bounds.width, s.bounds.height].every(Number.isFinite)) {
     const visible = screen.getAllDisplays().some(d => {
       const a = d.workArea, b = s.bounds;
       return b.x < a.x + a.width - 60 && b.x + b.width > a.x + 60 && b.y < a.y + a.height - 60 && b.y + 40 > a.y;
     });
-    if (visible) Object.assign(o, s.bounds);
+    if (visible) normal = { x: s.bounds.x, y: s.bounds.y, width: s.bounds.width, height: s.bounds.height };
   }
-  return { opts: o, maximized: !!(s && s.maximized), fullscreen: !!(s && s.fullscreen) };
+  const d = screen.getDisplayMatching(normal).bounds;
+  return { opts: { x: d.x, y: d.y, width: d.width, height: d.height, fullscreen: true }, normal, maximized: !!(s && s.maximized) };
 }
-function trackWindow(win) {
-  let t = null;
+function trackWindow(win, ws) {
+  let t = null, normal = ws.normal, keepMax = ws.maximized, restoring = false;
   const saveNow = () => {
-    if (win.isDestroyed()) return;
+    if (win.isDestroyed() || restoring) return;
     const full = win.isFullScreen(), max = win.isMaximized();
-    const prev = readJson(stateFile(), {});
-    writeJson(stateFile(), { bounds: full || max || win.isMinimized() ? (prev.bounds || win.getNormalBounds()) : win.getBounds(), maximized: max, fullscreen: full });
+    if (!full) keepMax = max;
+    if (!full && !max && !win.isMinimized()) normal = win.getBounds();
+    writeJson(stateFile(), { bounds: normal, maximized: keepMax, fullscreen: full });
   };
+  // Windows finishes its own restore just after this event, so the real size is applied a moment later
+  win.on('leave-full-screen', () => {
+    restoring = true;
+    setTimeout(() => {
+      if (win.isDestroyed()) return;
+      if (!win.isFullScreen()) { win.setBounds(normal); if (keepMax) win.maximize(); }
+      setTimeout(() => { restoring = false; later(); }, 150);
+    }, 60);
+  });
   const later = () => { clearTimeout(t); t = setTimeout(saveNow, 400); };
   ['resize', 'move', 'maximize', 'unmaximize', 'enter-full-screen', 'leave-full-screen'].forEach(ev => win.on(ev, later));
   win.on('close', saveNow);

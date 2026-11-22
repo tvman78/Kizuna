@@ -28,12 +28,8 @@ function createWindow() {
       autoplayPolicy: 'no-user-gesture-required'
     }
   });
-  win.once('ready-to-show', () => {
-    if (ws.maximized) win.maximize();
-    win.show();
-    if (ws.fullscreen) win.setFullScreen(true);
-  });
-  trackWindow(win);
+  win.once('ready-to-show', () => win.show());
+  trackWindow(win, ws);
   win.loadFile(path.join(__dirname, 'app', 'index.html'));
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https:\/\//i.test(url)) shell.openExternal(url);
