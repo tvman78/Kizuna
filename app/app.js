@@ -1352,7 +1352,7 @@ function recentPlayedHTML() {
 VIEWS.profile = v => {
   const p = S.profile;
   v.innerHTML = `<div class="profile">
-  <div class="pf-banner">${p.banner ? ['pf-bn-fill', 'pf-bn-square'].map(k => `<div class="${k}" data-mid="${p.banner}" data-mtype="${esc(p.bannerType)}" data-crop="${esc(JSON.stringify(p.bannerCrop || null))}"></div>`).join('') : ''}</div>
+  <div class="pf-banner" ${p.banner ? `data-mid="${p.banner}" data-mtype="${esc(p.bannerType)}" data-crop="${esc(JSON.stringify(p.bannerCrop || null))}"` : ''}></div>
   <div class="pf-head"><div class="pf-av">${meAvatar(132)}</div>
    <button class="pf-pen ${pfEdit ? 'on' : ''}" id="pfPen" data-tip="${pfEdit ? 'Düzenleme panelini kapat' : 'Profili özelleştir'}">${icon('pencil', 20)}</button>
    <div class="pf-id"><h1>${esc(p.name)}</h1><p class="muted"><i class="dot" style="background:${STATUS[p.status][1]}"></i>${STATUS[p.status][0]}${S.privacy.hideJoin ? '' : ' · Katıldı: ' + fmtDate(p.joined || Date.now())}</p><p>${esc(p.bio) || '<span class="muted">Hakkımda yazısı yok</span>'}</p></div>

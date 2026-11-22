@@ -304,9 +304,15 @@ const banDays = (level, count) => Math.min(365, (BAN_BASE_DAYS[level] || 1) * 2 
 /* ---------- WHAT'S NEW (shown once after each update, and from the news button) ---------- */
 const CHANGELOG = [
   {
+    v: '1.0.18', date: '2026-11-22', title: 'Kare kırpma, klasik profil',
+    items: [
+      ['✂️', 'Kare kırpma', 'Profil resmi ve kapak kare alanda kırpılıyor; profilin dış görünüşü yuvarlak resim ve geniş kapakla eski düzeninde kalıyor.']
+    ]
+  },
+  {
     v: '1.0.17', date: '2026-11-22', title: 'Kare profil ve kapak',
     items: [
-      ['✂️', 'Kare kırpma', 'Profil resmi ve kapak artık kare alanda kırpılıyor ve profilinde tam kırptığın gibi kare görünüyor.']
+      ['✂️', 'Kare kırpma', 'Profil resmi ve kapak için kare kırpma alanı eklendi.']
     ]
   },
   {

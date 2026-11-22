@@ -325,20 +325,16 @@ input[type=checkbox] { width: auto; accent-color: var(--accent); }
 .pad-anim { color: var(--accent); animation: floaty 2s infinite; filter: drop-shadow(0 0 20px var(--accent)); }
 
 /* Avatars */
-.av { --sz: 40px; width: var(--sz); height: var(--sz); border-radius: 0; display: inline-grid; place-items: center; font-family: var(--display); font-weight: 900; font-size: calc(var(--sz) * .42); color: #fff; position: relative; flex: none; overflow: visible; background: #222; }
-.av img, .av video { width: 100%; height: 100%; object-fit: cover; border-radius: 0; }
-.me-btn .av { border-radius: 7px; }
+.av { --sz: 40px; width: var(--sz); height: var(--sz); border-radius: 50%; display: inline-grid; place-items: center; font-family: var(--display); font-weight: 900; font-size: calc(var(--sz) * .42); color: #fff; position: relative; flex: none; overflow: visible; background: #222; }
+.av img, .av video { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
 .av.me { background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 30%, #000)); color: var(--ink); }
 .av .st { position: absolute; right: 0; bottom: 0; width: 28%; height: 28%; border-radius: 50%; border: 2px solid var(--panel-solid); }
 .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
 
 /* Profile */
 .profile { position: relative; }
-.pf-banner { position: relative; display: grid; place-items: center; height: 270px; border-radius: var(--radius); overflow: hidden; background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 60%, #000), #000 70%), repeating-linear-gradient(45deg, rgba(255, 255, 255, .05) 0 10px, transparent 10px 20px); border: 1px solid var(--line); }
+.pf-banner { height: 210px; border-radius: var(--radius); overflow: hidden; background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 60%, #000), #000 70%), repeating-linear-gradient(45deg, rgba(255, 255, 255, .05) 0 10px, transparent 10px 20px); border: 1px solid var(--line); }
 .pf-banner img, .pf-banner video { width: 100%; height: 100%; object-fit: cover; }
-/* The square crop is shown whole; a blurred copy fills the rest of the strip */
-.pf-bn-fill { position: absolute; inset: -24px; overflow: hidden; filter: blur(22px) brightness(.55); }
-.pf-bn-square { position: relative; height: 100%; aspect-ratio: 1 / 1; overflow: hidden; box-shadow: 0 0 28px rgba(0, 0, 0, .55); }
 .pf-bn-btn { position: absolute; right: 14px; top: 14px; backdrop-filter: blur(8px); background: rgba(0, 0, 0, .5); }
 .pf-head { display: flex; gap: 22px; align-items: flex-end; margin: -60px 0 22px 26px; position: relative; }
 .pf-av { position: relative; }
@@ -684,7 +680,7 @@ body[data-era="far"] input, body[data-era="far"] select, body[data-era="far"] te
 .pf-ed-tile:hover { border-color: var(--accent); }
 .pf-ed-tile .pf-ed-prev { grid-row: span 2; }
 .pf-ed-tile small { color: var(--muted); }
-.pf-ed-prev.bn { width: 86px; height: 86px; border-radius: 0; overflow: hidden; display: block; background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 60%, #000), #000); }
+.pf-ed-prev.bn { width: 130px; height: 56px; border-radius: 10px; overflow: hidden; display: block; background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 60%, #000), #000); }
 .pf-ed-prev.bn img, .pf-ed-prev.bn video { width: 100%; height: 100%; object-fit: cover; }
 .fcode { font-family: 'Orbitron', sans-serif; font-weight: 700; color: var(--accent); letter-spacing: .06em; }
 .fcode.big { font-size: 1.6em; display: block; }
@@ -694,7 +690,8 @@ body[data-era="far"] input, body[data-era="far"] select, body[data-era="far"] te
 .crop-card { max-width: 720px; }
 .crop-stage { position: relative; overflow: hidden; border-radius: 0; background: #000; cursor: grab; touch-action: none; user-select: none; margin: 10px auto; border: 1px solid var(--line); }
 .crop-stage.drag { cursor: grabbing; }
-.crop-stage.av, .crop-stage.bn { display: block; width: 400px; height: auto; max-width: 100%; aspect-ratio: 1 / 1; }
+.crop-stage.av, .crop-stage.bn { display: block; width: 400px; height: auto; max-width: 100%; aspect-ratio: 1 / 1; border-radius: 0; }
+.crop-stage.av img, .crop-stage.av video { border-radius: 0; } /* the crop panel stays square; only the profile itself is round */
 .crop-media, .crop-media img, .crop-media video { width: 100%; height: 100%; display: block; object-fit: cover; pointer-events: none; }
 .crop-mask { position: absolute; inset: 0; pointer-events: none; }
 .crop-stage .crop-mask { box-shadow: inset 0 0 0 2px var(--accent); background-image: linear-gradient(rgba(255, 255, 255, .28), rgba(255, 255, 255, .28)), linear-gradient(rgba(255, 255, 255, .28), rgba(255, 255, 255, .28)), linear-gradient(rgba(255, 255, 255, .28), rgba(255, 255, 255, .28)), linear-gradient(rgba(255, 255, 255, .28), rgba(255, 255, 255, .28)); background-size: 1px 100%, 1px 100%, 100% 1px, 100% 1px; background-position: 33.333% 0, 66.667% 0, 0 33.333%, 0 66.667%; background-repeat: no-repeat; }
@@ -919,7 +916,7 @@ body.psx-on #app, body.psx-on #toasts, body.psx-on .news-btn { visibility: hidde
   .chat-wrap { grid-template-columns: 1fr !important; height: auto; min-height: calc(100vh - 210px); }
   .chat-list { max-height: 30vh; border-right: 0; border-bottom: 1px solid var(--line); }
   .composer .tools { flex-wrap: wrap; }
-  .pf-banner { height: 180px; }
+  .pf-banner { height: 130px; }
   .pf-head { flex-wrap: wrap; margin: -46px 0 16px 10px; gap: 12px; }
   .pf-av .av { --sz: 96px !important; }
   .pf-stat { margin: 0 6px 6px auto; }
