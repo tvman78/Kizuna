@@ -157,7 +157,30 @@ const GAMES = [
   ['ps4', 'Rise of the Tomb Raider', 2016, 'Macera', 1], ['ps4', 'Borderlands 3', 2019, 'FPS', 1], ['ps4', 'Bloodstained: Ritual of the Night', 2019, 'Platform', 1],
   ['ps4', 'Ace Combat 7: Skies Unknown', 2019, 'Aksiyon', 1], ['ps4', 'Call of Duty: Black Ops III', 2015, 'FPS', 1], ['ps4', 'Mafia III', 2016, 'Açık Dünya', 1],
   ['ps4', 'Concrete Genie', 2019, 'Macera'], ['ps4', 'MediEvil (2019)', 2019, 'Platform'], ['ps4', 'Judgment', 2018, 'Aksiyon', 1],
-  ['ps4', 'Yakuza: Like a Dragon', 2020, 'RPG', 1], ['ps4', 'Ni no Kuni II: Revenant Kingdom', 2018, 'RPG', 1]
+  ['ps4', 'Yakuza: Like a Dragon', 2020, 'RPG', 1], ['ps4', 'Ni no Kuni II: Revenant Kingdom', 2018, 'RPG', 1],
+  // v1.0.21 — Midnight Club
+  ['ps2', 'Midnight Club: Street Racing', 2000, 'Yarış'], ['ps2', 'Midnight Club II', 2003, 'Yarış'], ['ps2', 'Midnight Club 3: DUB Edition', 2005, 'Yarış'],
+  ['ps2', 'Midnight Club 3: DUB Edition Remix', 2006, 'Yarış'], ['ps3', 'Midnight Club: Los Angeles', 2008, 'Yarış'], ['ps3', 'Midnight Club: Los Angeles Complete Edition', 2009, 'Yarış'],
+  // Need for Speed
+  ['ps1', 'The Need for Speed', 1996, 'Yarış'], ['ps1', 'Need for Speed II', 1997, 'Yarış'], ['ps1', 'Need for Speed III: Hot Pursuit', 1998, 'Yarış'],
+  ['ps1', 'Need for Speed: High Stakes', 1999, 'Yarış'], ['ps1', 'Need for Speed: Porsche Unleashed', 2000, 'Yarış'],
+  ['ps2', 'Need for Speed: Hot Pursuit 2', 2002, 'Yarış'], ['ps2', 'Need for Speed: Underground', 2003, 'Yarış'], ['ps2', 'Need for Speed: Carbon', 2006, 'Yarış'],
+  ['ps2', 'Need for Speed: ProStreet', 2007, 'Yarış'], ['ps2', 'Need for Speed: Undercover', 2008, 'Yarış'],
+  ['ps3', 'Need for Speed: Carbon', 2006, 'Yarış'], ['ps3', 'Need for Speed: ProStreet', 2007, 'Yarış'], ['ps3', 'Need for Speed: Undercover', 2008, 'Yarış'],
+  ['ps3', 'Need for Speed: Shift', 2009, 'Yarış'], ['ps3', 'Need for Speed: Hot Pursuit', 2010, 'Yarış'], ['ps3', 'Shift 2: Unleashed', 2011, 'Yarış'],
+  ['ps3', 'Need for Speed: The Run', 2011, 'Yarış'], ['ps3', 'Need for Speed: Most Wanted (2012)', 2012, 'Yarış'], ['ps3', 'Need for Speed Rivals', 2013, 'Yarış', 1],
+  ['ps4', 'Need for Speed Rivals', 2013, 'Yarış', 1], ['ps4', 'Need for Speed (2015)', 2015, 'Yarış', 1], ['ps4', 'Need for Speed Payback', 2017, 'Yarış', 1],
+  ['ps4', 'Need for Speed: Hot Pursuit Remastered', 2020, 'Yarış', 1], ['ps5', 'Need for Speed Unbound', 2022, 'Yarış', 1],
+  // Total Overdose, Watch Dogs
+  ['ps2', 'Total Overdose', 2005, 'Aksiyon'], ['ps3', 'Watch Dogs', 2014, 'Açık Dünya', 1], ['ps4', 'Watch Dogs', 2014, 'Açık Dünya', 1],
+  ['ps4', 'Watch Dogs 2', 2016, 'Açık Dünya', 1], ['ps4', 'Watch Dogs: Legion', 2020, 'Açık Dünya', 1], ['ps5', 'Watch Dogs: Legion', 2020, 'Açık Dünya', 1],
+  // Silent Hill
+  ['ps2', 'Silent Hill 4: The Room', 2004, 'Korku'], ['ps2', 'Silent Hill: Origins', 2008, 'Korku'], ['ps2', 'Silent Hill: Shattered Memories', 2010, 'Korku'],
+  ['ps3', 'Silent Hill: Homecoming', 2008, 'Korku', 1], ['ps3', 'Silent Hill: Downpour', 2012, 'Korku'], ['ps3', 'Silent Hill HD Collection', 2012, 'Korku'], ['ps5', 'Silent Hill f', 2025, 'Korku', 1],
+  // Plants vs. Zombies
+  ['ps3', 'Plants vs. Zombies', 2011, 'Strateji', 1], ['ps3', 'Plants vs. Zombies: Garden Warfare', 2014, 'Aksiyon'], ['ps4', 'Plants vs. Zombies: Garden Warfare', 2014, 'Aksiyon'],
+  ['ps4', 'Plants vs. Zombies: Garden Warfare 2', 2016, 'Aksiyon', 1], ['ps4', 'Plants vs. Zombies: Battle for Neighborville', 2019, 'Aksiyon', 1],
+  ['ps4', 'Plants vs. Zombies: Replanted', 2025, 'Strateji', 1], ['ps5', 'Plants vs. Zombies: Replanted', 2025, 'Strateji', 1]
 ].map(([c, t, y, g, pc]) => ({ id: c + '-' + t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''), c, t, y, g, pc: !!pc }));
 /* Cover art: English Wikipedia article for each game (the app reads its lead image via the public REST API) */
 const WIKI = {
@@ -186,7 +209,11 @@ const WIKI = {
   'ps4-the-last-of-us-remastered': 'The_Last_of_Us_(video_game)', 'ps4-celeste': 'Celeste_(video_game)', 'ps4-hades': 'Hades_(video_game)',
   'ps4-star-wars-battlefront-ii-2017': 'Star_Wars_Battlefront_II_(2017_video_game)', 'ps4-prey-2017': 'Prey_(2017_video_game)',
   'ps4-outlast': 'Outlast_(video_game)', 'ps4-life-is-strange': 'Life_Is_Strange_(video_game)', 'ps4-medievil-2019': 'MediEvil_(2019_video_game)',
-  'ps4-judgment': 'Judgment_(video_game)','ps4-the-elder-scrolls-v-skyrim': 'The_Elder_Scrolls_V:_Skyrim'
+  'ps4-judgment': 'Judgment_(video_game)','ps4-the-elder-scrolls-v-skyrim': 'The_Elder_Scrolls_V:_Skyrim',
+  'ps2-midnight-club-3-dub-edition-remix': 'Midnight_Club_3:_DUB_Edition', 'ps3-midnight-club-los-angeles-complete-edition': 'Midnight_Club:_Los_Angeles',
+  'ps3-need-for-speed-hot-pursuit': 'Need_for_Speed:_Hot_Pursuit_(2010_video_game)', 'ps4-need-for-speed-hot-pursuit-remastered': 'Need_for_Speed:_Hot_Pursuit_(2010_video_game)',
+  'ps3-need-for-speed-most-wanted-2012': 'Need_for_Speed:_Most_Wanted_(2012_video_game)', 'ps4-need-for-speed-2015': 'Need_for_Speed_(2015_video_game)',
+  'ps3-watch-dogs': 'Watch_Dogs_(video_game)', 'ps4-watch-dogs': 'Watch_Dogs_(video_game)', 'ps3-plants-vs-zombies': 'Plants_vs._Zombies_(video_game)'
 };
 GAMES.forEach(g => { g.wiki = WIKI[g.id] || g.t.replace(/ /g, '_'); });
 
@@ -303,6 +330,13 @@ const banDays = (level, count) => Math.min(365, (BAN_BASE_DAYS[level] || 1) * 2 
 
 /* ---------- WHAT'S NEW (shown once after each update, and from the news button) ---------- */
 const CHANGELOG = [
+  {
+    v: '1.0.21', date: '2026-11-22', title: '50 yeni oyun',
+    items: [
+      ['🏁', 'Midnight Club ve Need for Speed', 'Midnight Club serisinin tamamı ve PS1’den PS5’e Need for Speed oyunları eklendi.'],
+      ['🎮', 'Daha fazla seri', 'Total Overdose, Watch Dogs serisi, Silent Hill serisi ve Plants vs. Zombies oyunları kataloğa geldi; katalog artık 339 oyun.']
+    ]
+  },
   {
     v: '1.0.20', date: '2026-11-22', title: 'Normal pencere açılışı',
     items: [
