@@ -304,6 +304,14 @@ const banDays = (level, count) => Math.min(365, (BAN_BASE_DAYS[level] || 1) * 2 
 /* ---------- WHAT'S NEW (shown once after each update, and from the news button) ---------- */
 const CHANGELOG = [
   {
+    v: '1.0.16', date: '2026-11-22', title: 'Helikopterler, silah sesleri ve gerçek siren',
+    items: [
+      ['👁️', 'Göz butonu anında çalışıyor', 'Duvar kağıdı görünümünde soldaki butonlar artık gecikmeden kapanıp açılıyor.'],
+      ['🚁', 'Vahşi Saldırı canlandı', 'Helikopterler dönen pervaneleriyle gökyüzünde bir sağa bir sola uçuyor; uzaktan helikopter ve silah sesleri geliyor.'],
+      ['🚨', 'Daha ciddi polis sireni', 'Max Payne temasındaki siren artık gerçek bir polis sireni gibi yükselip alçalıyor ve binalarda yankılanıyor.']
+    ]
+  },
+  {
     v: '1.0.15', date: '2026-11-22', title: 'Duvar kağıdı görünümü ve canlı manzaralar',
     items: [
       ['👁️', 'Duvar kağıdı butonu', 'Kütüphanenin sağ altındaki göz butonu arayüzü tamamen gizler; tekrar basınca her şey geri gelir.'],

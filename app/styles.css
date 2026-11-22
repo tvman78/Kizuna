@@ -838,7 +838,9 @@ body:is([data-theme="hawaii"], [data-theme="noir"], [data-theme="wild"]) #intro 
 /* Library eye button: wallpaper-only view */
 .wall-btn { position: fixed; right: 26px; bottom: 56px; z-index: 40; width: 52px; height: 52px; display: grid; place-items: center; padding: 0; border-radius: 50%; border: 1px solid var(--line); background: color-mix(in srgb, var(--panel-solid) 88%, transparent); color: var(--text); box-shadow: 0 6px 22px rgba(0, 0, 0, .45); transition: opacity .2s, transform .15s, border-color .2s, color .2s; }
 .wall-btn:hover, .wall-btn:focus-visible { border-color: var(--accent); color: var(--accent); transform: scale(1.07); }
-body.wall-view #app, body.wall-view #toasts { visibility: hidden; }
+/* opacity on the parent is instant; hiding with visibility would wait for each button's own hover transition */
+body.wall-view #app { opacity: 0; pointer-events: none; }
+body.wall-view #toasts { visibility: hidden; }
 body.wall-view #bgMedia i { opacity: 0 !important; }
 body.wall-view .wall-btn { opacity: .5; }
 body.wall-view .wall-btn:hover, body.wall-view .wall-btn:focus-visible { opacity: 1; }

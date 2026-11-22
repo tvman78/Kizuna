@@ -4,7 +4,7 @@
    japan  = garden stream, bamboo breeze, birds, shishi-odoshi, wind chime, far temple bell
    hawaii = surf, palm breeze, gulls, ship horn, warm sunset synth
    noir   = rain, city hum, passing cars, far horns and sirens, thunder synced to the lightning
-   wild   = desert wind, crackling embers, helicopter, coyote, distant western guitar */
+   wild   = desert wind, crackling embers, helicopters, distant gunfire, coyote, western guitar */
 const ThemeSound = (() => {
   let current = null, on = true, vol = 0.7, root = null, live = [], timers = [], session = 0, buffers = null, unlock = false;
   const holds = new Set();
@@ -77,7 +77,34 @@ const ThemeSound = (() => {
       if (am) { const tr = ctx.createGain(); tr.gain.value = .55; const o = ctx.createOscillator(); o.frequency.value = am; const d = ctx.createGain(); d.gain.value = .45; o.connect(d); d.connect(tr.gain); o.start(t); o.stop(t + dur + .05); g.connect(tr); last = tr; }
       s.connect(fl); fl.connect(g); last.connect(p); p.connect(out); s.start(t, Math.random() * 7); s.stop(t + dur + .05);
     };
-    SCAPES[theme]({ ctx, bed, lfo, every, note, burst });
+    /* A real police siren: a harsh horn-speaker tone that wails and yelps, with Doppler and echoes off the buildings */
+    const curve = new Float32Array(1024);
+    for (let i = 0; i < 1024; i++) { const x = i / 511.5 - 1; curve[i] = Math.tanh(x * 3.4); }
+    const police = ({ t = ctx.currentTime, d = 15, pan = -.8, pan2 = .7, v = .1, low = 640, high = 1490 }) => {
+      const a = ctx.createOscillator(), b = ctx.createOscillator(), mix = ctx.createGain(), ws = ctx.createWaveShaper(); ws.curve = curve; ws.oversample = '2x';
+      a.type = 'sawtooth'; b.type = 'square'; b.detune.value = 7; mix.gain.value = .34;
+      const yelpAt = d * R(.38, .5), yelpEnd = yelpAt + d * R(.16, .26); let at = t, up = true;
+      for (const o of [a, b]) o.frequency.setValueAtTime(low, t);
+      while (at < t + d) {
+        const yelp = at - t >= yelpAt && at - t < yelpEnd, step = yelp ? .15 : 1.42; at += step;
+        for (const o of [a, b]) o.frequency.linearRampToValueAtTime(up ? high : low, at);
+        up = !up;
+      }
+      for (const o of [a, b]) { o.detune.setValueAtTime(o === b ? 47 : 40, t); o.detune.setValueAtTime(o === b ? 47 : 40, t + d * .42); o.detune.linearRampToValueAtTime(o === b ? -53 : -60, t + d * .58); }
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 430;
+      const horn = ctx.createBiquadFilter(); horn.type = 'peaking'; horn.frequency.value = 1320; horn.Q.value = .9; horn.gain.value = 9;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = .5; lp.frequency.setValueAtTime(1500, t); lp.frequency.linearRampToValueAtTime(3500, t + d * .5); lp.frequency.linearRampToValueAtTime(1300, t + d);
+      const g = ctx.createGain(); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(v * .28, t + d * .18); g.gain.exponentialRampToValueAtTime(v, t + d * .46); g.gain.setValueAtTime(v, t + d * .54); g.gain.exponentialRampToValueAtTime(v * .22, t + d * .84); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+      const p = ctx.createStereoPanner(); p.pan.setValueAtTime(pan, t); p.pan.linearRampToValueAtTime(pan2, t + d);
+      const eLp = ctx.createBiquadFilter(); eLp.type = 'lowpass'; eLp.frequency.value = 1500;
+      const d1 = ctx.createDelay(1), d2 = ctx.createDelay(1), e1 = ctx.createGain(), e2 = ctx.createGain(), eP = ctx.createStereoPanner();
+      d1.delayTime.value = .19; d2.delayTime.value = .41; e1.gain.value = .3; e2.gain.value = .16; eP.pan.value = -((pan + pan2) / 2) - .25;
+      a.connect(mix); b.connect(mix); mix.connect(ws); ws.connect(hp); hp.connect(horn); horn.connect(lp); lp.connect(g); g.connect(p); p.connect(out);
+      g.connect(eLp); eLp.connect(d1); eLp.connect(d2); d1.connect(e1); d2.connect(e2); e1.connect(eP); e2.connect(eP); eP.connect(out);
+      a.start(t); b.start(t); a.stop(t + d + .05); b.stop(t + d + .05);
+      a.onended = () => setTimeout(() => { for (const n of [mix, ws, hp, horn, lp, g, p, eLp, d1, d2, e1, e2, eP]) { try { n.disconnect(); } catch {} } }, 900);
+    };
+    SCAPES[theme]({ ctx, bed, lfo, every, note, burst, police });
     api_thunder = theme === 'noir' ? () => {
       const t = ctx.currentTime + R(.12, .9), big = R(.7, 1), pan = R(-.5, .5);
       burst({ buf: 'white', type: 'highpass', f: 1400, t, dur: .22, vol: .1 * big, pan });
@@ -132,7 +159,7 @@ const ThemeSound = (() => {
       every(() => burst({ buf: 'pink', type: 'bandpass', f: R(600, 1300), q: .8, dur: R(.8, 1.7), vol: R(.05, .1), a: .25, pan: R(-.8, .8) }), 2.6, 6);
     },
     /* ---------- Kara Yağmur: rain over a night city ---------- */
-    noir({ ctx, bed, lfo, every, note, burst }) {
+    noir({ ctx, bed, lfo, every, note, burst, police }) {
       const rain = bed({ buf: 'rain', type: 'highpass', f: 420, gain: .38, type2: 'lowpass', f2: 10500 }); lfo(rain.g.gain, .07, .08);
       const hiss = bed({ buf: 'white', type: 'highpass', f: 5600, gain: .022 }); lfo(hiss.g.gain, .11, .009);
       bed({ buf: 'rain', type: 'bandpass', f: 1500, q: .6, gain: .16, pan: .5, rate: .86 });
@@ -152,14 +179,8 @@ const ThemeSound = (() => {
       };
       every(horn, 5, 13, 3);
       // Police sirens far away: they approach, pass across the city and fade out
-      const siren = (delay = 0) => {
-        const t = ctx.currentTime + delay, d = R(11, 17), s = Math.random() < .5 ? -1 : 1, yelp = Math.random() < .3, f = R(880, 1020), depth = yelp ? 300 : 360, rate = yelp ? 3.1 : .46;
-        for (const [dt, v, lp] of [[0, .085, 1750], [.24, .026, 1050]]) {
-          note({ f, type: 'triangle', t: t + dt, dur: d, vol: v, a: d * .48, lp, pan: s * .86, pan2: -s * .72, vib: depth, vibRate: rate });
-          note({ f, type: 'sawtooth', t: t + dt, dur: d, vol: v * .16, a: d * .48, lp: lp * .8, pan: s * .86, pan2: -s * .72, vib: depth, vibRate: rate });
-        }
-      };
-      every(() => { siren(); if (Math.random() < .35) siren(R(1.2, 2.8)); }, 16, 34, 7);
+      const siren = (delay = 0, shift = 1) => { const s = Math.random() < .5 ? -1 : 1; police({ t: ctx.currentTime + delay, d: R(13, 19), pan: s * .88, pan2: -s * .74, v: R(.085, .115), low: 640 * shift, high: 1490 * shift }); };
+      every(() => { siren(); if (Math.random() < .4) siren(R(1.1, 2.6), R(.91, .96)); }, 18, 36, 6);
       every(() => { let t = ctx.currentTime; const p = R(-.7, .7), f = R(1800, 3400); for (let k = 0; k < Math.round(R(2, 5)); k++) { note({ f: f * R(.95, 1.05), f2: f * .55, t, dur: .07, vol: .02, a: .002, pan: p }); t += R(.14, .44); } }, 2.4, 6.5);
     },
     /* ---------- Vahşi Saldırı: wind across the wild desert ---------- */
@@ -172,7 +193,19 @@ const ThemeSound = (() => {
       every(() => { let t = ctx.currentTime; const pan = R(-.5, .5); for (let k = 0; k < Math.round(R(1, 5)); k++) { burst({ type: 'bandpass', f: R(1300, 5200), q: R(1, 4), t, dur: R(.012, .05), vol: R(.05, .18), a: .001, pan: pan + R(-.14, .14) }); t += R(.02, .13); } }, .28, 1.1);
       every(() => { let t = ctx.currentTime; const pan = R(.1, .8); for (let k = 0; k < Math.round(R(4, 9)); k++) { burst({ buf: 'pink', type: 'bandpass', f: R(420, 860), q: 1.1, t, dur: R(.06, .13), vol: R(.05, .11), a: .005, pan }); t += R(.09, .2); } }, 7, 17);
       every(() => { const f = R(170, 240), pan = R(-.6, .6); note({ f, f2: f * R(1.2, 1.5), type: 'sawtooth', dur: R(.8, 1.5), vol: .011, a: .1, lp: 900, pan, vib: 9, vibRate: 17 }); }, 13, 27);
-      every(() => { const d = R(10, 14), s = Math.random() < .5 ? -1 : 1, t = ctx.currentTime; burst({ buf: 'brown', type: 'lowpass', f: 300, f2: 620, q: .6, t, dur: d * .56, vol: .5, a: d * .46, pan: s * .92, pan2: 0, am: 13.5 }); burst({ buf: 'brown', type: 'lowpass', f: 620, f2: 240, q: .6, t: t + d * .52, dur: d * .48, vol: .46, a: .08, pan: 0, pan2: -s * .92, am: 13.5 }); burst({ buf: 'white', type: 'bandpass', f: 1400, q: 1.1, t, dur: d, vol: .018, a: d * .48, pan: s * .7, pan2: -s * .7, am: 27 }); }, 28, 58, 11);
+      // Helicopters passing in the distance: rotor chop that swells and fades across the stereo field
+      every(() => { const d = R(11, 16), s = Math.random() < .5 ? -1 : 1, t = ctx.currentTime, chop = R(12.5, 15.5); burst({ buf: 'brown', type: 'lowpass', f: 300, f2: 660, q: .7, t, dur: d * .56, vol: .78, a: d * .46, pan: s * .92, pan2: 0, am: chop }); burst({ buf: 'brown', type: 'lowpass', f: 660, f2: 240, q: .7, t: t + d * .52, dur: d * .48, vol: .72, a: .08, pan: 0, pan2: -s * .92, am: chop }); burst({ buf: 'pink', type: 'bandpass', f: 720, q: 1.3, t, dur: d, vol: .1, a: d * .47, pan: s * .8, pan2: -s * .8, am: chop }); burst({ buf: 'white', type: 'bandpass', f: 1500, q: 1.1, t, dur: d, vol: .026, a: d * .48, pan: s * .7, pan2: -s * .7, am: chop * 2 }); }, 15, 31, 5);
+      // Distant gunfire: single shots and short automatic bursts, each with a canyon echo
+      const shot = (t, pan, v) => {
+        burst({ buf: 'white', type: 'bandpass', f: R(1000, 1700), q: .8, t, dur: .055, vol: .13 * v, a: .001, pan });
+        burst({ buf: 'pink', type: 'lowpass', f: 720, f2: 95, q: .7, t, dur: .26, vol: .62 * v, a: .002, pan });
+        burst({ buf: 'pink', type: 'lowpass', f: 430, f2: 90, q: .6, t: t + R(.27, .4), dur: .46, vol: .17 * v, a: .018, pan: -pan * .7 });
+      };
+      every(() => {
+        let t = ctx.currentTime; const pan = R(-.9, .9), v = R(.55, 1), kind = Math.random();
+        if (kind < .3) { const n = Math.round(R(1, 3)); for (let i = 0; i < n; i++) { shot(t, pan, v); t += R(.55, 1.2); } }
+        else { const groups = kind < .72 ? 1 : 2; for (let g = 0; g < groups; g++) { const n = Math.round(R(4, 11)), gap = R(.085, .125); for (let i = 0; i < n; i++) { shot(t, pan, v * R(.82, 1)); t += gap * R(.92, 1.08); } t += R(.45, 1); } }
+      }, 5, 14, 3);
       every(() => { let t = ctx.currentTime; const pan = R(-.85, .85), yips = Math.round(R(1, 3)); for (let k = 0; k < yips; k++) { note({ f: R(540, 720), f2: R(900, 1060), type: 'sawtooth', t, dur: .22, vol: .009, a: .03, lp: 1700, pan }); t += .25; } const top = R(960, 1240); note({ f: 620, f2: top, type: 'triangle', t, dur: .68, vol: .034, a: .22, lp: 2300, pan }); note({ f: top, f2: top * .62, type: 'triangle', t: t + .62, dur: 2.2, vol: .036, a: .05, lp: 2200, pan, vib: 11, vibRate: 5.5 }); note({ f: top * 1.5, f2: top, type: 'sine', t: t + .64, dur: 1.5, vol: .007, a: .05, pan }); }, 21, 46, 9);
       const licks = [[52, 57, 60, 59, 57], [57, 60, 64, 62, 60, 57], [64, 62, 60, 59, 57], [45, 52, 57, 59, 60, 59, 57]];
       every(() => { let t = ctx.currentTime; const l = licks[Math.floor(R(0, licks.length))], pan = R(-.35, .35); l.forEach((m, k) => { const last = k === l.length - 1, f = mtof(m), d = last ? 3 : 1.05; note({ f, type: 'sawtooth', t, dur: d, vol: .029, a: .004, lp: 1650, pan, vib: last ? 3 : .7, vibRate: 6.2 }); note({ f: f * 2, type: 'triangle', t, dur: d * .55, vol: .011, a: .003, pan }); note({ f, type: 'sine', t: t + .3, dur: d, vol: .009, a: .006, pan: -pan }); t += last ? 0 : R(.36, .62); }); }, 24, 48, 14);

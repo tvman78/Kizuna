@@ -162,6 +162,33 @@ function kzDrawFoam(g, W, H, t) {
   }
   g.setTransform(1, 0, 0, 1, 0, 0);
 }
+/* Vahşi Saldırı: helicopters patrol the sky, flying one way, turning off-screen and coming back */
+function kzHeliSprite() {
+  return kzSprite(170, 70, 2.6, x => {
+    x.translate(56, 42); x.fillStyle = '#26130d'; x.strokeStyle = '#26130d';
+    x.beginPath(); x.moveTo(-46, -6); x.quadraticCurveTo(-38, -22, -12, -22); x.lineTo(18, -20); x.lineTo(86, -15); x.lineTo(96, -34); x.lineTo(104, -34); x.lineTo(100, -7); x.lineTo(26, 2); x.quadraticCurveTo(-24, 13, -46, -6); x.fill();
+    x.lineWidth = 3; x.beginPath(); x.moveTo(-2, -22); x.lineTo(-2, -32); x.stroke();
+    x.lineWidth = 1.8; x.beginPath(); x.moveTo(-26, 18); x.lineTo(34, 18); x.stroke();
+    x.lineWidth = 1.3; x.beginPath(); x.moveTo(-10, 6); x.lineTo(-14, 18); x.moveTo(16, 5); x.lineTo(20, 18); x.stroke();
+    x.fillStyle = '#ffa45a'; x.beginPath(); x.ellipse(-30, -8, 8, 6, 0, 0, 6.2832); x.fill();
+  });
+}
+function kzDrawHelis(g, W, H, helis, t) {
+  const v = jpView(W, H), span = JP_VW + 420;
+  for (const h of helis) {
+    const q = ((t / h.time + h.phase) % 2 + 2) % 2, right = q < 1, p = right ? q : 2 - q, x = -210 + p * span; // sprite nose points left
+    const y = h.y + Math.sin(t * .55 + h.phase * 6) * 7 * h.k, dir = right ? -1 : 1;
+    g.setTransform(v.s, 0, 0, v.s, v.ox, v.oy); g.translate(x, y); g.rotate((right ? 1 : -1) * .055 + Math.sin(t * .8 + h.phase) * .012); g.scale(dir * h.k, h.k);
+    g.drawImage(h.img.img, -56, -42, 170, 70);
+    const blade = Math.cos(t * 41 + h.phase * 9);
+    g.fillStyle = 'rgba(38,19,13,.17)'; g.beginPath(); g.ellipse(-2, -33, 77, 3.1, 0, 0, 6.2832); g.fill();
+    g.strokeStyle = 'rgba(38,19,13,.85)'; g.lineWidth = 1.8; g.lineCap = 'round'; g.beginPath(); g.moveTo(-2 - 76 * blade, -33); g.lineTo(-2 + 76 * blade, -33); g.stroke();
+    const tail = Math.sin(t * 57 + h.phase * 4);
+    g.strokeStyle = 'rgba(38,19,13,.72)'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(100, -26 - 13 * tail); g.lineTo(100, -26 + 13 * tail); g.stroke();
+    if (Math.sin(t * 5 + h.phase * 3) > .72) { g.fillStyle = '#ff3c1e'; g.beginPath(); g.arc(102, -35, 2.2, 0, 6.2832); g.fill(); }
+  }
+  g.setTransform(1, 0, 0, 1, 0, 0);
+}
 function kzCarSprite(rear) {
   return kzSprite(180, 100, 2.2, x => {
     const f = (fill, fn) => { x.fillStyle = fill; x.beginPath(); fn(); x.fill(); };
@@ -501,6 +528,11 @@ function paintNoirScene(cv, stage = {}) {
 
 /* ======================= VAHŞİ SALDIRI — desert outpost at dusk ======================= */
 function paintWildScene(cv) {
+  const anim = { helis: [
+    { img: kzHeliSprite(), y: 174, k: 1.05, time: 21, phase: .22 },
+    { img: kzHeliSprite(), y: 242, k: .68, time: 30, phase: 1.34 },
+    { img: kzHeliSprite(), y: 136, k: .46, time: 43, phase: .62 }
+  ] };
   const { c, rnd, R, grad, radial, rect, line, dots, poly, ell, wave } = kzTools(cv, 3361);
   const VW = 1920, VH = 1080, GY = 655, SX = 1370, SY = 340;
   rect(-200, -400, VW + 400, VH + 400, grad(0, -200, 0, GY, [[0, '#23120d'], [.3, '#5a2413'], [.56, '#b24a16'], [.78, '#ef8428'], [1, '#ffc35a']]));
@@ -617,12 +649,6 @@ function paintWildScene(cv) {
     rect(x + 156 * k, y - 60 * k, 13 * k, 7 * k, '#ffe6a8'); hazard(x - 150 * k, y - 58 * k, 216 * k, 8 * k);
     for (const wx of [-108, -56, 112]) { ell(x + wx * k, y - 22 * k, 26 * k, 26 * k, '#12100c'); ell(x + wx * k, y - 22 * k, 13 * k, 13 * k, '#5b533b'); ell(x + wx * k, y - 22 * k, 5 * k, 5 * k, '#1f1b12'); for (let a = 0; a < 16; a++) { const q = a * .3927; line(x + wx * k + Math.cos(q) * 22 * k, y - 22 * k + Math.sin(q) * 22 * k, x + wx * k + Math.cos(q) * 27 * k, y - 22 * k + Math.sin(q) * 27 * k, '#332b1c', 1.5 * k); } }
   };
-  const heli = (x, y, k) => {
-    c.fillStyle = '#26130d'; c.beginPath(); c.moveTo(x - 46 * k, y - 6 * k); c.quadraticCurveTo(x - 38 * k, y - 22 * k, x - 12 * k, y - 22 * k); c.lineTo(x + 18 * k, y - 20 * k); c.lineTo(x + 86 * k, y - 15 * k); c.lineTo(x + 96 * k, y - 34 * k); c.lineTo(x + 104 * k, y - 34 * k); c.lineTo(x + 100 * k, y - 7 * k); c.lineTo(x + 26 * k, y + 2 * k); c.quadraticCurveTo(x - 24 * k, y + 13 * k, x - 46 * k, y - 6 * k); c.fill();
-    line(x - 2 * k, y - 22 * k, x - 2 * k, y - 32 * k, '#26130d', 3 * k); line(x - 76 * k, y - 35 * k, x + 72 * k, y - 30 * k, 'rgba(38,19,13,.72)', 1.8 * k); line(x - 26 * k, y + 18 * k, x + 34 * k, y + 18 * k, '#26130d', 1.8 * k); line(x - 10 * k, y + 6 * k, x - 14 * k, y + 18 * k, '#26130d', 1.3 * k); line(x + 16 * k, y + 5 * k, x + 20 * k, y + 18 * k, '#26130d', 1.3 * k);
-    ell(x + 100 * k, y - 26 * k, 2.5 * k, 13 * k, 'rgba(38,19,13,.55)'); ell(x - 30 * k, y - 8 * k, 8 * k, 6 * k, '#ffa45a');
-  };
-  heli(640, 174, 1.05); heli(860, 242, .68); heli(1040, 136, .46);
   fence(-20, 744, 800, 690, 74);
   tent(1000, 716, .86); radar(835, 726, .98);
   container(1085, 736, 150, 62, '#7f3d21', '#42200f', 'K-07'); container(1228, 742, 158, 66, '#576045', '#272c1e', 'FOB'); container(1142, 680, 142, 56, '#2f5564', '#152c35', 'K-12');
@@ -643,4 +669,5 @@ function paintWildScene(cv) {
   sandbags(1462, 1004, 9, 3, 1.3);
   for (const [x, y, k] of [[962, 1024, 1], [120, 930, .78]]) { c.fillStyle = '#ece0c4'; c.beginPath(); c.ellipse(x, y, 19 * k, 15 * k, 0, 0, 6.2832); c.ellipse(x + 20 * k, y + 5 * k, 15 * k, 8 * k, 0, 0, 6.2832); c.fill(); ell(x - 7 * k, y - 2 * k, 4.6 * k, 5.4 * k, '#2c1a10'); ell(x + 7 * k, y - 2 * k, 4.6 * k, 5.4 * k, '#2c1a10'); poly([[x, y + 3 * k], [x - 2 * k, y + 7 * k], [x + 2 * k, y + 7 * k]], '#2c1a10'); for (let i = 0; i < 4; i++) rect(x + (10 + i * 5) * k, y + 3 * k, 1.2 * k, 7 * k, '#2c1a10'); }
   rect(-100, -100, VW + 200, VH + 200, radial(960, 560, 1250, [[0, 'rgba(0,0,0,0)'], [.62, 'rgba(18,6,0,.08)'], [1, 'rgba(14,4,0,.6)']]));
+  return anim;
 }

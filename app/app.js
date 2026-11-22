@@ -209,7 +209,8 @@ const ThemeFX = (() => {
     } else if (mode === 'japan') {
       gm.setTransform(1, 0, 0, 1, 0, 0); gm.clearRect(0, 0, W, H); kzDrawBoat(gm, W, H, anim.boat, t);
       kzDrawTufts(g, W, H, anim.tufts, t); kzDrawSakura(g, W, H, anim, t);
-    } else if (mode === 'noir') kzDrawCars(g, W, H, anim.cars, t);
+    } else if (mode === 'wild') kzDrawHelis(g, W, H, anim.helis, t);
+    else if (mode === 'noir') kzDrawCars(g, W, H, anim.cars, t);
     g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1;
   }
   const newGlints = (n, x, w, y, h) => Array.from({ length: n }, () => ({ x: x + Math.random() * w, y: y + Math.random() * h, w: 6 + Math.random() * 22, p: Math.random() * 6.28, s: .5 + Math.random() * 1.2 }));
