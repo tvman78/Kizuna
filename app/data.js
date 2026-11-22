@@ -304,6 +304,15 @@ const banDays = (level, count) => Math.min(365, (BAN_BASE_DAYS[level] || 1) * 2 
 /* ---------- WHAT'S NEW (shown once after each update, and from the news button) ---------- */
 const CHANGELOG = [
   {
+    v: '1.0.15', date: '2026-11-22', title: 'Duvar kağıdı görünümü ve canlı manzaralar',
+    items: [
+      ['👁️', 'Duvar kağıdı butonu', 'Kütüphanenin sağ altındaki göz butonu arayüzü tamamen gizler; tekrar basınca her şey geri gelir.'],
+      ['🌸', 'Sakura Vadisi canlandı', 'Sakura ağacı ve otlar rüzgârda sallanıyor, küçük kayık gölde sağa sola süzülüyor.'],
+      ['🌊', 'Vice Hawaii’de deniz', 'Deniz dalgalanıyor, dalgalar kıyıya geliyor ve köpükler kumu yalıyor.'],
+      ['🚨', 'Max Payne şehir sesleri', 'Şehir uğultusu güçlendi; uzaktan araba kornaları ve polis sirenleri geliyor.']
+    ]
+  },
+  {
     v: '1.0.14', date: '2026-11-22', title: 'Sakura Vadisi artık sesli',
     items: [
       ['🎐', 'Japon bahçesi sesleri', 'Akan dere, bambu esintisi, kuş sesleri, bambu su çeşmesi, rüzgâr çanı ve uzaktan tapınak çanı. Üst çubuktaki hoparlör düğmesiyle aç/kapat.']

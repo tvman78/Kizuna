@@ -85,6 +85,8 @@ async function hydrate(root = document) {
 
 /* ======================= ICONS ======================= */
 const ICONS = {
+  wallEye: 'M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  wallEyeOff: 'M3 3l18 18M10.6 5.1A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4M6.6 6.6A17 17 0 0 0 2 12s3.6 7 10 7c1.9 0 3.6-.6 5.1-1.5M9.9 9.9a3 3 0 0 0 4.2 4.2',
   speaker: 'M11 5 6 9H2v6h4l5 4V5zM15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13', speakerOff: 'M11 5 6 9H2v6h4l5 4V5zM22 9l-6 6M16 9l6 6',
   library: 'M4 4h4v16H4zM10 4h4v16h-4zM16 5l4 1-3 14-4-1z', catalog: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
   friends: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6 0 0 1 12 0v1M16 3.5a4 4 0 0 1 0 7.5M22 21v-1a6 6 0 0 0-4-5.6',
@@ -202,8 +204,11 @@ const ThemeFX = (() => {
     const W = cv.width, H = cv.height; frameNo++;
     if (gb && (force || frameNo % 2 === 0)) { gb.setTransform(1, 0, 0, 1, 0, 0); gb.clearRect(0, 0, W, H); kzDrawDrift(gb, W, H, anim.clouds, t); }
     if (mode === 'hawaii') {
-      gm.setTransform(1, 0, 0, 1, 0, 0); gm.clearRect(0, 0, W, H); kzDrawShips(gm, W, H, anim.ships, t);
+      gm.setTransform(1, 0, 0, 1, 0, 0); gm.clearRect(0, 0, W, H); kzDrawSea(gm, W, H, anim.sea, t); kzDrawFoam(gm, W, H, t); kzDrawShips(gm, W, H, anim.ships, t);
       kzDrawFronds(g, W, H, anim.fronds, t);
+    } else if (mode === 'japan') {
+      gm.setTransform(1, 0, 0, 1, 0, 0); gm.clearRect(0, 0, W, H); kzDrawBoat(gm, W, H, anim.boat, t);
+      kzDrawTufts(g, W, H, anim.tufts, t); kzDrawSakura(g, W, H, anim, t);
     } else if (mode === 'noir') kzDrawCars(g, W, H, anim.cars, t);
     g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1;
   }
@@ -216,7 +221,7 @@ const ThemeFX = (() => {
     host.innerHTML = m === 'noir' ? `<div class="noir-scene"><canvas id="sceneSky"></canvas><canvas id="fxBack"></canvas>${base}</div><canvas id="fxCanvas"></canvas><div class="bolt" id="bolt"></div>`
       : m === 'wild' ? `<div class="wild-scene">${base}</div><canvas id="fxCanvas"></canvas>`
       : m === 'hawaii' ? `<canvas id="sceneSky"></canvas><canvas id="fxBack"></canvas>${base}<canvas id="fxMid"></canvas><canvas id="sceneFront"></canvas><canvas id="fxCanvas"></canvas>`
-      : `${base}<canvas id="fxCanvas"></canvas>`;
+      : `${base}<canvas id="fxMid"></canvas><canvas id="sceneFront"></canvas><canvas id="fxCanvas"></canvas>`;
     cv = $('#fxCanvas'); g = cv.getContext('2d');
     const back = $('#fxBack'), mid = $('#fxMid');
     gb = back ? back.getContext('2d') : null; gm = mid ? mid.getContext('2d') : null;
@@ -433,6 +438,7 @@ function setAppIcon() {
 function showScreen(id) {
   ['intro', 'onboard', 'wizard', 'ban'].forEach(s => $('#' + s).classList.toggle('hidden', s !== id));
   $('#app').classList.toggle('hidden', id !== 'app');
+  syncWallBtn();
 }
 
 /* ---------- Global events: sounds, tooltips, shortcuts ---------- */
@@ -445,7 +451,7 @@ function bindGlobal() {
   document.addEventListener('keydown', e => {
     if (e.target.matches('input, textarea') && (e.key.length <= 2 || ['Backspace', 'Enter', ' ', 'Delete', 'Tab'].includes(e.key))) AudioEngine.key(S.keySound);
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k' && !$('#app').classList.contains('hidden')) { e.preventDefault(); $('#search').focus(); }
-    if (e.key === 'Escape') { closeModal(); $('#searchRes').classList.add('hidden'); }
+    if (e.key === 'Escape') { if (document.body.classList.contains('wall-view')) setWallView(false); closeModal(); $('#searchRes').classList.add('hidden'); }
   });
   document.addEventListener('mouseover', e => {
     const el = e.target.closest('[data-tip]');
@@ -788,6 +794,8 @@ function showApp(first) {
   $('#eraChip').onclick = () => go('settings', 'year');
   $('#musicBtn').onclick = () => Music.toggle();
   $('#ambBtn').onclick = toggleThemeSound;
+  $('#wallBtn').onclick = () => setWallView(!document.body.classList.contains('wall-view'));
+  setWallView(false); syncWallBtn();
   $('#padBtn').onclick = padCheck;
   $('#voiceBtn').onclick = startVoice;
   $('#voiceBtn').oncontextmenu = e => { e.preventDefault(); typedCommand(); };
@@ -809,6 +817,22 @@ function go(id, arg) {
   VIEWS[id](v, arg);
   cloudify(v); hydrate(v); v.scrollTop = 0;
   v.classList.remove('in'); void v.offsetWidth; v.classList.add('in');
+  syncWallBtn();
+}
+/* Eye button (Library): hides the whole interface to show only the wallpaper; pressing it again brings it back */
+function setWallView(on) {
+  const b = $('#wallBtn'), app = $('#app'); if (!b || !app) return;
+  document.body.classList.toggle('wall-view', on); app.inert = on;
+  b.innerHTML = icon(on ? 'wallEyeOff' : 'wallEye', 24);
+  b.dataset.tip = on ? 'Kütüphaneye dön' : 'Duvar kağıdını gör';
+  b.setAttribute('aria-label', b.dataset.tip); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  $('#tip').classList.remove('on');
+}
+function syncWallBtn() {
+  const b = $('#wallBtn'); if (!b) return;
+  const show = current === 'library' && !$('#app').classList.contains('hidden');
+  b.classList.toggle('hidden', !show);
+  if (!show && document.body.classList.contains('wall-view')) setWallView(false);
 }
 
 /* ---------- Search ---------- */

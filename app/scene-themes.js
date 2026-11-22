@@ -97,6 +97,71 @@ function kzDrawShips(g, W, H, ships, t) {
   }
   g.setTransform(1, 0, 0, 1, 0, 0);
 }
+/* Sakura Vadisi: grass, the cherry tree and the little boat */
+function kzDrawTufts(g, W, H, tufts, t) {
+  const v = jpView(W, H), gust = .68 + .32 * Math.sin(t * .29), N = 5;
+  g.setTransform(v.s, 0, 0, v.s, v.ox, v.oy);
+  for (const f of tufts) {
+    const sh = f.img.height / N, dh = f.h / N;
+    for (let i = 0; i < N; i++) {
+      const u = 1 - (i + .5) / N, dx = f.amp * gust * Math.pow(u, 1.7) * Math.sin(t * f.sp + f.p);
+      g.drawImage(f.img, 0, i * sh, f.img.width, Math.min(sh + 1, f.img.height - i * sh), f.x + dx, f.y + i * dh, f.w, dh + .5);
+    }
+  }
+  g.setTransform(1, 0, 0, 1, 0, 0);
+}
+function kzDrawSakura(g, W, H, a, t) {
+  const v = jpView(W, H), tr = a.tree, base = tr.y + tr.h, gust = .7 + .3 * Math.sin(t * .23);
+  const sway = y => { const u = Math.max(0, Math.min(1, (base - y) / tr.h)); return Math.pow(u, 1.8) * gust * (Math.sin(t * .85) * 11 + Math.sin(t * 1.7 + u * 2.4) * 3.6); };
+  g.setTransform(v.s, 0, 0, v.s, v.ox, v.oy);
+  const N = 44, sh = tr.img.height / N, dh = tr.h / N;
+  for (let i = 0; i < N; i++) g.drawImage(tr.img, 0, i * sh, tr.img.width, Math.min(sh + 1, tr.img.height - i * sh), tr.x + sway(tr.y + (i + .5) * dh), tr.y + i * dh, tr.w, dh + .5);
+  for (const b of a.blooms) {
+    const dx = sway(b.y + b.h / 2) + Math.sin(t * b.sp + b.p) * b.amp, dy = Math.cos(t * b.sp * .8 + b.p) * b.amp * .55;
+    g.drawImage(b.img, b.x + dx, b.y + dy, b.w, b.h);
+  }
+  g.setTransform(1, 0, 0, 1, 0, 0);
+}
+function kzDrawBoat(g, W, H, b, t) {
+  const v = jpView(W, H), x = b.cx + Math.sin(t * .11) * 170, dir = Math.cos(t * .11) < 0 ? -1 : 1, bob = Math.sin(t * .8) * 1.6, tilt = Math.sin(t * .9) * .018, wl = b.y + b.anchor;
+  g.setTransform(v.s, 0, 0, v.s, v.ox, v.oy);
+  g.strokeStyle = 'rgba(255,255,255,.3)'; g.lineWidth = 1;
+  for (let i = 0; i < 3; i++) { const q = (t * .35 + i / 3) % 1; g.globalAlpha = 1 - q; g.beginPath(); g.ellipse(x, wl + 6, 56 + q * 26, 4 + q * 4, 0, 0, 6.2832); g.stroke(); }
+  g.globalAlpha = .24; g.save(); g.translate(x, wl + 8 - bob * .4); g.scale(dir, -.72); g.drawImage(b.img, -b.w / 2, -b.anchor, b.w, b.h); g.restore();
+  g.globalAlpha = 1; g.translate(x, wl + bob); g.rotate(tilt); g.scale(dir, 1); g.drawImage(b.img, -b.w / 2, -b.anchor, b.w, b.h);
+  g.setTransform(1, 0, 0, 1, 0, 0);
+}
+/* Vice Hawaii: the whole sea ripples, swells roll in and foam washes the shore */
+function kzShore(x) { return 830 + Math.sin(x * .0038 + .9) * 38 + Math.sin(x * .012) * 9; }
+function kzDrawSea(g, W, H, sea, t) {
+  const v = jpView(W, H), N = 120, sh = sea.img.height / N, dh = sea.h / N;
+  g.setTransform(v.s, 0, 0, v.s, v.ox, v.oy);
+  for (let i = 0; i < N; i++) {
+    const d = i / N, amp = .5 + d * 7, dx = amp * (Math.sin(t * 1.3 + d * 26) + .55 * Math.sin(t * .72 - d * 11)), dy = Math.sin(t * .9 + d * 14) * d * 1.2;
+    g.drawImage(sea.img, 0, i * sh, sea.img.width, Math.min(sh + .5, sea.img.height - i * sh), dx - 8, sea.y + i * dh + dy, sea.w + 16, dh + .7);
+  }
+  g.lineCap = 'round';
+  for (let k = 0; k < 7; k++) { // swells travelling toward the beach
+    const p = (t * .055 + k / 7) % 1, y = sea.y + 16 + p * (sea.h - 36), a = Math.sin(p * Math.PI) * .3;
+    g.strokeStyle = `rgba(255,232,220,${a.toFixed(3)})`; g.lineWidth = .8 + p * 1.5; g.beginPath();
+    for (let x = -10; x <= sea.w + 10; x += 14) { const py = y + Math.sin(x * .009 + k * 2 + t * .5) * (2 + p * 4) + Math.sin(x * .031 - t) * 1.3; x < 0 ? g.moveTo(x, py) : g.lineTo(x, py); }
+    g.stroke();
+  }
+  g.setTransform(1, 0, 0, 1, 0, 0);
+}
+function kzDrawFoam(g, W, H, t) {
+  const v = jpView(W, H), wash = (Math.sin(t * .62) + 1) / 2;
+  g.setTransform(v.s, 0, 0, v.s, v.ox, v.oy);
+  for (let layer = 0; layer < 2; layer++) {
+    // painted under the beach layer, so foam never crosses umbrellas or palm trunks
+    const reach = (layer ? 7 : 14) + (1 - wash) * (layer ? 9 : 17), edge = x => kzShore(x) - reach + Math.sin(x * .021 + t * .7 + layer * 2) * 2.6 + Math.sin(x * .057 - t * .5) * 1.3;
+    g.fillStyle = layer ? 'rgba(255,255,255,.46)' : `rgba(255,236,228,${(.2 + wash * .12).toFixed(3)})`; g.beginPath();
+    for (let x = -10; x <= JP_VW + 10; x += 8) { const y = kzShore(x) + 4; x < 0 ? g.moveTo(x, y) : g.lineTo(x, y); }
+    for (let x = JP_VW + 10; x >= -10; x -= 8) g.lineTo(x, edge(x));
+    g.closePath(); g.fill();
+  }
+  g.setTransform(1, 0, 0, 1, 0, 0);
+}
 function kzCarSprite(rear) {
   return kzSprite(180, 100, 2.2, x => {
     const f = (fill, fn) => { x.fillStyle = fill; x.beginPath(); fn(); x.fill(); };
@@ -202,6 +267,10 @@ function paintHawaiiScene(cv, stage = {}) {
   for (let i = 0; i < 1500; i++) { const y = R(HZ + 10, 930), w = R(4, 10 + (y - HZ) * .14), x = R(-20, VW + 20); line(x - w, y, x + w, y, i % 3 ? 'rgba(255,205,225,.15)' : 'rgba(26,10,74,.3)', R(.35, 1.05)); }
   const swell = (y, a) => { c.strokeStyle = `rgba(255,232,214,${a})`; c.lineWidth = 1.5; c.beginPath(); for (let x = -10; x <= VW + 10; x += 10) { const py = y + Math.sin(x * .009 + y) * 4 + Math.sin(x * .03) * 1.4; x < 0 ? c.moveTo(x, py) : c.lineTo(x, py); } c.stroke(); };
   [690, 728, 764, 802].forEach((y, i) => swell(y, .12 + i * .05));
+  { // a copy of the finished sea, redrawn every frame with moving ripples
+    const y0 = HZ + 9, h = 930 - y0, k = Math.min(v.s, 1.25);
+    anim.sea = { ...kzSprite(VW, h, k, q => { q.setTransform(1, 0, 0, 1, 0, 0); q.drawImage(cv, v.ox, v.oy + y0 * v.s, VW * v.s, h * v.s, 0, 0, Math.ceil(VW * k), Math.ceil(h * k)); }), y: y0 };
+  }
   { // Boats are painted once on a spare layer, then cut out as moving sprites
   const shipCv = kzLayer(cv), { c, poly, rect, line, grad, ell } = kzTools(shipCv, 1);
   const grab = (x0, y0, w, h, anchor, speed, wake, bob) => {
@@ -222,7 +291,7 @@ function paintHawaiiScene(cv, stage = {}) {
 
   /* Beach (a separate front layer, so boats sail behind it) */
   { const { c, rnd, R, grad, radial, rect, line, dots, poly, ell } = kzTools(frontCv, 7123);
-  const shore = x => 830 + Math.sin(x * .0038 + .9) * 38 + Math.sin(x * .012) * 9;
+  const shore = kzShore;
   for (let f = 3; f >= 0; f--) { c.fillStyle = `rgba(255,${238 - f * 8},${232 - f * 8},${.2 + (3 - f) * .17})`; c.beginPath(); c.moveTo(-20, VH + 10); for (let x = -20; x <= VW + 20; x += 5) c.lineTo(x, shore(x) - 7 * f - Math.abs(Math.sin(x * .021 + f)) * 5); c.lineTo(VW + 20, VH + 10); c.closePath(); c.fill(); }
   c.beginPath(); c.moveTo(-20, VH + 10); for (let x = -20; x <= VW + 20; x += 5) c.lineTo(x, shore(x)); c.lineTo(VW + 20, VH + 10); c.closePath(); c.fillStyle = grad(0, 800, 0, VH, [[0, '#d98283'], [.14, '#f6b47d'], [.48, '#e58b73'], [1, '#6e2f6d']]); c.fill();
   const grains = [[], [], []]; for (let i = 0; i < 7600; i++) { const x = R(-20, VW + 20), y = R(shore(x) + 2, VH + 4); grains[i % 3].push([x, y, R(.35, 1.3)]); } dots(grains[0], 'rgba(255,224,170,.7)'); dots(grains[1], 'rgba(118,50,92,.46)'); dots(grains[2], 'rgba(255,167,120,.65)');

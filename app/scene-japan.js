@@ -1,7 +1,8 @@
 'use strict';
 /* Kizuna — "Sakura Vadisi" theme | Made by: Tv Man & FKOAC
    An original Japanese landscape painted in code at the screen's real resolution, so every
-   tree, ridge and building stays sharp. Painted once per window size; only petals are animated. */
+   tree, ridge and building stays sharp. Painted once per window size; the cherry tree, grass,
+   boat and petals are separate moving parts. */
 const JP_VW = 1920, JP_VH = 1080, JP_SHORE = 650;
 
 /* Maps painting coordinates to canvas pixels (cover, anchored to the bottom) */
@@ -10,9 +11,13 @@ function jpView(W, H) {
   return { s, ox: (W - JP_VW * s) / 2, oy: H - JP_VH * s };
 }
 
-function paintJapanScene(cv) {
-  const c = cv.getContext('2d'), W = cv.width, H = cv.height, v = jpView(W, H);
+function paintJapanScene(cv, stage = {}) {
+  let c = cv.getContext('2d');
+  const W = cv.width, H = cv.height, v = jpView(W, H), anim = { boat: null, tufts: [], tree: null, blooms: [] };
+  const frontCv = stage.front || kzLayer(cv), frontCtx = frontCv.getContext('2d'), spare = kzLayer(cv), spareCtx = spare.getContext('2d');
   const view = () => c.setTransform(v.s, 0, 0, v.s, v.ox, v.oy);
+  const use = ctx => { c = ctx; c.lineCap = 'round'; c.lineJoin = 'round'; view(); }; // paint onto another layer
+  const cut = (x, y, w, h, res) => kzSprite(w, h, res, q => { q.setTransform(1, 0, 0, 1, 0, 0); q.drawImage(spare, v.ox + x * v.s, v.oy + y * v.s, w * v.s, h * v.s, 0, 0, Math.ceil(w * res), Math.ceil(h * res)); });
   let seed = 7741;
   const rnd = () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t ^= t + Math.imul(t ^ (t >>> 7), 61 | t); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
   const R = (a, b) => a + rnd() * (b - a);
@@ -245,7 +250,10 @@ function paintJapanScene(cv) {
     c.fillStyle = '#b89a62'; c.beginPath(); c.moveTo(x - 30, y - 27); c.quadraticCurveTo(x, y - 41, x + 26, y - 27); c.closePath(); c.fill();
     for (let i = 0; i < 9; i++) line(x - 25 + i * 6, y - 28, x - 16 + i * 4, y - 35, 'rgba(90,66,36,.7)', .5);
   };
-  boat(520, 846);
+  use(spareCtx); boat(450, 846);
+  anim.boat = { ...cut(384, 800, 132, 62, v.s), cx: 450, y: 800, anchor: 46 };
+  c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, W, H);
+  use(frontCtx); // everything below sits in front of the lake and the boat
 
   /* ---------- Foreground: shore, rocks, reeds, bamboo, cherry tree ---------- */
   const fg = x => 958 - Math.sin(x * .0042 + .4) * 34 - Math.sin(x * .013) * 9;
@@ -255,7 +263,12 @@ function paintJapanScene(cv) {
   dots(mosses[0], '#1c3a30'); dots(mosses[1], '#47764b'); dots(mosses[2], '#6e9d5c');
   [[230, 978, 72, 38], [132, 1012, 94, 50], [356, 1004, 54, 28], [1640, 988, 84, 42], [1760, 1020, 110, 56], [1490, 1018, 50, 25], [950, 1046, 66, 28], [660, 1054, 44, 18]].forEach(a => rock(...a));
   lantern(1560, 1000, 1.02);
-  const blades = (x, y, n, h, cols) => { for (const col of cols) { c.strokeStyle = col; c.lineWidth = 1.25; c.beginPath(); for (let i = 0; i < n; i++) { const bx = x + R(-34, 34), l = h * R(.55, 1.15), b = R(-24, 24); c.moveTo(bx, y + R(-3, 5)); c.quadraticCurveTo(bx + b * .15, y - l * .6, bx + b, y - l); } c.stroke(); } };
+  const blades = (x, y, n, h, cols) => { // each grass tuft is a sprite that bends in the breeze
+    const ww = 132, hh = h * 1.2 + 10;
+    const sp = kzSprite(ww, hh, Math.min(v.s, 1.4), q => { for (const col of cols) { q.strokeStyle = col; q.lineWidth = 1.25; q.beginPath(); for (let i = 0; i < n; i++) { const bx = ww / 2 + R(-34, 34), l = h * R(.55, 1.15), b = R(-24, 24); q.moveTo(bx, hh - 5 + R(-3, 4)); q.quadraticCurveTo(bx + b * .15, hh - 5 - l * .6, bx + b, hh - 5 - l); } q.stroke(); } });
+    // motion values use Math.random so the painting's own seeded layout never changes
+    anim.tufts.push({ ...sp, x: x - ww / 2, y: y - hh + 5, sp: .95 + Math.random() * .5, p: x * .012 + Math.random() * .9, amp: 3 + h * .13 });
+  };
   for (let i = 0; i < 46; i++) { const x = R(-10, JP_VW + 10); blades(x, fg(x) + R(8, 90), 24, R(22, 46), ['#1d3f30', '#4d8350', '#83b56d']); }
   const irises = []; for (let i = 0; i < 70; i++) { const x = R(420, 1450); irises.push([x, fg(x) + R(4, 90), R(1.6, 3.2)]); }
   dots(irises.filter((_, i) => i % 2), '#7f6cd2'); dots(irises.filter((_, i) => !(i % 2)), '#f4e9ff'); dots(irises.map(([x, y]) => [x, y, .8]), '#f3c64f');
@@ -269,7 +282,8 @@ function paintJapanScene(cv) {
   const leaves = [['#20492f', 300], ['#3e7741', 260], ['#7aaf58', 150]];
   for (const [col, n] of leaves) { c.fillStyle = col; c.beginPath(); for (let i = 0; i < n; i++) { const x = R(1760, JP_VW + 20), y = R(-40, 560), a = R(.25, 2.9), l = R(16, 34), nx = Math.cos(a), ny = Math.sin(a), wd = l * .13; c.moveTo(x, y); c.quadraticCurveTo(x + nx * l * .5 - ny * wd, y + ny * l * .5 + nx * wd, x + nx * l, y + ny * l); c.quadraticCurveTo(x + nx * l * .5 + ny * wd, y + ny * l * .5 - nx * wd, x, y); } c.fill(); }
 
-  /* Great cherry tree framing the valley */
+  /* Great cherry tree framing the valley: branches and blossom clusters sway separately */
+  use(spareCtx);
   const tips = [];
   const branch = (x, y, a, len, w, depth) => {
     const seg = Math.max(3, Math.round(len / 18)); let px4 = x, py4 = y, ang = a;
@@ -286,15 +300,36 @@ function paintJapanScene(cv) {
   branch(58, JP_VH + 30, -1.36, 245, 50, 5);
   branch(92, 790, -.62, 125, 22, 4);
   branch(116, 610, -.34, 92, 13, 3);
-  const pink = [[], [], [], [], []];
-  for (const [x, y] of tips) { const n = 46; for (let i = 0; i < n; i++) { const a = R(0, 6.28), q = Math.sqrt(rnd()) * 36, px5 = x + Math.cos(a) * q, py5 = y + Math.sin(a) * q * .74; pink[Math.min(4, Math.floor(rnd() * 5))].push([px5, py5, R(1.2, 3.3)]); } }
-  dots(pink[0], '#c76c8d'); dots(pink[1], '#e88fac'); dots(pink[2], '#f6b4c7'); dots(pink[3], '#fcd2dd'); dots(pink[4], '#fff0f4');
+  const tx0 = Math.min(...tips.map(p => p[0])) - 60, tx1 = Math.max(...tips.map(p => p[0])) + 60, ty0 = Math.min(...tips.map(p => p[1])) - 60, ty1 = JP_VH + 34;
+  anim.tree = { ...cut(tx0, ty0, tx1 - tx0, ty1 - ty0, Math.min(v.s, 1.5)), x: tx0, y: ty0 };
+  c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, W, H); view();
+  const CELL = 70, cells = new Map(), PINK = ['#c76c8d', '#e88fac', '#f6b4c7', '#fcd2dd', '#fff0f4'];
+  const cellAt = (x, y, pad) => {
+    const key = Math.floor(x / CELL) + ':' + Math.floor(y / CELL);
+    if (!cells.has(key)) cells.set(key, { dots: [[], [], [], [], []], flowers: [], x0: 1e9, x1: -1e9, y0: 1e9, y1: -1e9 });
+    const b = cells.get(key); b.x0 = Math.min(b.x0, x - pad); b.x1 = Math.max(b.x1, x + pad); b.y0 = Math.min(b.y0, y - pad); b.y1 = Math.max(b.y1, y + pad);
+    return b;
+  };
+  for (const [x, y] of tips) { const n = 46; for (let i = 0; i < n; i++) { const a = R(0, 6.28), q = Math.sqrt(rnd()) * 36, px5 = x + Math.cos(a) * q, py5 = y + Math.sin(a) * q * .74, r = R(1.2, 3.3); cellAt(px5, py5, r + 1).dots[Math.min(4, Math.floor(rnd() * 5))].push([px5, py5, r]); } }
   for (let i = 0; i < 190; i++) { // open five-petal blossoms on top
-    const [tx, ty] = tips[Math.floor(rnd() * tips.length)], x = tx + R(-36, 36), y = ty + R(-28, 28), r = R(4.6, 7.4), rot = R(0, 6.28);
-    c.fillStyle = rnd() < .5 ? '#ffe5ec' : '#fbc6d6'; c.beginPath();
-    for (let p = 0; p < 5; p++) { const a = rot + p * 1.2566; c.moveTo(x, y); c.quadraticCurveTo(x + Math.cos(a - .55) * r * 1.2, y + Math.sin(a - .55) * r * 1.2, x + Math.cos(a) * r, y + Math.sin(a) * r); c.quadraticCurveTo(x + Math.cos(a + .55) * r * 1.2, y + Math.sin(a + .55) * r * 1.2, x, y); }
-    c.fill(); c.fillStyle = '#c23f68'; c.beginPath(); c.arc(x, y, r * .2, 0, 6.2832); c.fill();
+    const [tx, ty] = tips[Math.floor(rnd() * tips.length)], x = tx + R(-36, 36), y = ty + R(-28, 28), r = R(4.6, 7.4);
+    cellAt(x, y, r * 1.4).flowers.push({ x, y, r, rot: R(0, 6.28), col: rnd() < .5 ? '#ffe5ec' : '#fbc6d6' });
   }
+  for (const b of cells.values()) {
+    const w = b.x1 - b.x0, h = b.y1 - b.y0;
+    const sp = kzSprite(w, h, Math.min(v.s, 1.5), q => {
+      q.translate(-b.x0, -b.y0);
+      b.dots.forEach((list, k) => { q.fillStyle = PINK[k]; q.beginPath(); for (const [x, y, r] of list) { q.moveTo(x + r, y); q.arc(x, y, r, 0, 6.2832); } q.fill(); });
+      for (const { x, y, r, rot, col } of b.flowers) {
+        q.fillStyle = col; q.beginPath();
+        for (let p = 0; p < 5; p++) { const a = rot + p * 1.2566; q.moveTo(x, y); q.quadraticCurveTo(x + Math.cos(a - .55) * r * 1.2, y + Math.sin(a - .55) * r * 1.2, x + Math.cos(a) * r, y + Math.sin(a) * r); q.quadraticCurveTo(x + Math.cos(a + .55) * r * 1.2, y + Math.sin(a + .55) * r * 1.2, x, y); }
+        q.fill(); q.fillStyle = '#c23f68'; q.beginPath(); q.arc(x, y, r * .2, 0, 6.2832); q.fill();
+      }
+    });
+    anim.blooms.push({ ...sp, x: b.x0, y: b.y0, sp: 1.05 + Math.random() * .65, p: Math.random() * 6.28, amp: 1.4 + Math.random() * 2 });
+  }
+  use(frontCtx);
   const fallen = []; for (let i = 0; i < 520; i++) { const x = R(-10, 760), y = fg(x) + R(0, 120); fallen.push([x, y, R(1.1, 2.7)]); } dots(fallen.filter((_, i) => i % 2), '#f6b8ca'); dots(fallen.filter((_, i) => !(i % 2)), '#ffe3ea');
   c.setTransform(1, 0, 0, 1, 0, 0);
+  return anim;
 }

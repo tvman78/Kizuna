@@ -57,14 +57,14 @@ const ThemeSound = (() => {
     };
     const lfo = (param, rate, depth, type = 'sine') => { const o = ctx.createOscillator(); o.type = type; o.frequency.value = rate; const g = ctx.createGain(); g.gain.value = depth; o.connect(g); g.connect(param); o.start(ctx.currentTime + Math.random()); live.push(o); };
     const every = (fn, min, max, first = null) => {
-      const next = wait => { const t = setTimeout(() => { if (id !== session) return; if (!paused() && on && !document.hidden) { try { fn(); } catch {} } next(R(min, max)); }, wait * 1000); timers.push(t); if (timers.length > 40) timers.splice(0, 20); };
+      const next = wait => { const t = setTimeout(() => { if (id !== session) return; if (!paused() && on && !document.hidden) { try { fn(); } catch (e) { console.error('ThemeSound', e); } } next(R(min, max)); }, wait * 1000); timers.push(t); if (timers.length > 40) timers.splice(0, 20); };
       next(first === null ? R(min * .4, max) : first);
     };
-    const note = ({ f, f2 = 0, type = 'sine', t = ctx.currentTime, dur = 1, vol: v = 0.05, a: at = 0.02, lp = 0, pan = 0, vib = 0, vibRate = 5 }) => {
+    const note = ({ f, f2 = 0, type = 'sine', t = ctx.currentTime, dur = 1, vol: v = 0.05, a: at = 0.02, lp = 0, pan = 0, pan2 = null, vib = 0, vibRate = 5 }) => {
       const o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
       const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(v, 0.0002), t + at); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
       let n = o; if (lp) { const fl = ctx.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = lp; n.connect(fl); n = fl; }
-      const p = ctx.createStereoPanner(); p.pan.value = pan; n.connect(g); g.connect(p); p.connect(out);
+      const p = ctx.createStereoPanner(); p.pan.setValueAtTime(pan, t); if (pan2 !== null) p.pan.linearRampToValueAtTime(pan2, t + dur); n.connect(g); g.connect(p); p.connect(out);
       let m = null; if (vib) { m = ctx.createOscillator(); m.frequency.value = vibRate; const mg = ctx.createGain(); mg.gain.value = vib; m.connect(mg); mg.connect(o.frequency); m.start(t); m.stop(t + dur + .05); }
       o.start(t); o.stop(t + dur + .05);
     };
@@ -133,15 +133,33 @@ const ThemeSound = (() => {
     },
     /* ---------- Kara Yağmur: rain over a night city ---------- */
     noir({ ctx, bed, lfo, every, note, burst }) {
-      const rain = bed({ buf: 'rain', type: 'highpass', f: 420, gain: .46, type2: 'lowpass', f2: 10500 }); lfo(rain.g.gain, .07, .09);
+      const rain = bed({ buf: 'rain', type: 'highpass', f: 420, gain: .38, type2: 'lowpass', f2: 10500 }); lfo(rain.g.gain, .07, .08);
       const hiss = bed({ buf: 'white', type: 'highpass', f: 5600, gain: .022 }); lfo(hiss.g.gain, .11, .009);
       bed({ buf: 'rain', type: 'bandpass', f: 1500, q: .6, gain: .16, pan: .5, rate: .86 });
       bed({ buf: 'rain', type: 'bandpass', f: 2300, q: .6, gain: .1, pan: -.5, rate: 1.14 });
-      const city = bed({ buf: 'brown', f: 260, gain: .34 }); lfo(city.g.gain, .04, .07);
-      const traffic = bed({ buf: 'pink', type: 'bandpass', f: 430, q: .9, gain: .05 }); lfo(traffic.g.gain, .083, .03); lfo(traffic.fl.frequency, .05, 120);
+      const city = bed({ buf: 'brown', f: 300, gain: .5 }); lfo(city.g.gain, .04, .1);
+      const traffic = bed({ buf: 'pink', type: 'bandpass', f: 430, q: .9, gain: .12 }); lfo(traffic.g.gain, .083, .05); lfo(traffic.fl.frequency, .05, 120);
+      const street = bed({ buf: 'pink', type: 'bandpass', f: 820, q: 1.2, gain: .045, pan: -.3, rate: .8 }); lfo(street.g.gain, .061, .022);
       every(() => { const d = R(3.6, 6.2), s = Math.random() < .5 ? -1 : 1, t = ctx.currentTime; burst({ buf: 'pink', type: 'bandpass', f: 520, f2: 880, q: .7, t, dur: d * .58, vol: .13, a: d * .44, pan: s * .92, pan2: 0 }); burst({ buf: 'pink', type: 'bandpass', f: 880, f2: 330, q: .7, t: t + d * .52, dur: d * .5, vol: .12, a: .06, pan: 0, pan2: -s * .92 }); burst({ buf: 'white', type: 'highpass', f: 3600, t: t + d * .36, dur: d * .42, vol: .018, a: d * .16, pan: s * .3, pan2: -s * .4 }); note({ f: 62, f2: 74, type: 'sawtooth', t, dur: d, vol: .018, a: d * .46, lp: 210 }); }, 6, 15, 4);
-      every(() => { const pan = R(-.8, .8), t = ctx.currentTime, twice = Math.random() < .5; for (const [dt, d] of twice ? [[0, .22], [.34, .5]] : [[0, .62]]) for (const f of [349, 440]) note({ f, type: 'sawtooth', t: t + dt, dur: d, vol: .014, a: .015, lp: 1050, pan }); }, 17, 42);
-      every(() => { const pan = R(-.8, .8), t = ctx.currentTime, d = R(7, 10); note({ f: 760, type: 'triangle', t, dur: d, vol: .022, a: 2.2, lp: 1500, pan, vib: 250, vibRate: .55 }); note({ f: 1140, type: 'sine', t, dur: d, vol: .006, a: 2.4, lp: 1800, pan, vib: 330, vibRate: .55 }); }, 42, 90);
+      // Distant car horns: different cars and honking patterns, with an echo off the buildings
+      const HORNS = [[349, 440], [392, 494], [311, 415], [165, 208]], HONKS = [[[0, .62]], [[0, .22], [.32, .55]], [[0, .17], [.25, .17], [.5, .72]], [[0, 1.1]]];
+      const horn = () => {
+        const t = ctx.currentTime, pan = R(-.88, .88), near = R(.6, 1), tones = HORNS[Math.floor(R(0, HORNS.length))], pat = HONKS[Math.floor(R(0, HONKS.length))];
+        for (const [dt, d] of pat) for (const f of tones) {
+          note({ f, type: 'sawtooth', t: t + dt, dur: d + .28, vol: .052 * near, a: .014, lp: 1300, pan });
+          note({ f, type: 'sawtooth', t: t + dt + .21, dur: d + .34, vol: .016 * near, a: .02, lp: 780, pan: -pan * .6 });
+        }
+      };
+      every(horn, 5, 13, 3);
+      // Police sirens far away: they approach, pass across the city and fade out
+      const siren = (delay = 0) => {
+        const t = ctx.currentTime + delay, d = R(11, 17), s = Math.random() < .5 ? -1 : 1, yelp = Math.random() < .3, f = R(880, 1020), depth = yelp ? 300 : 360, rate = yelp ? 3.1 : .46;
+        for (const [dt, v, lp] of [[0, .085, 1750], [.24, .026, 1050]]) {
+          note({ f, type: 'triangle', t: t + dt, dur: d, vol: v, a: d * .48, lp, pan: s * .86, pan2: -s * .72, vib: depth, vibRate: rate });
+          note({ f, type: 'sawtooth', t: t + dt, dur: d, vol: v * .16, a: d * .48, lp: lp * .8, pan: s * .86, pan2: -s * .72, vib: depth, vibRate: rate });
+        }
+      };
+      every(() => { siren(); if (Math.random() < .35) siren(R(1.2, 2.8)); }, 16, 34, 7);
       every(() => { let t = ctx.currentTime; const p = R(-.7, .7), f = R(1800, 3400); for (let k = 0; k < Math.round(R(2, 5)); k++) { note({ f: f * R(.95, 1.05), f2: f * .55, t, dur: .07, vol: .02, a: .002, pan: p }); t += R(.14, .44); } }, 2.4, 6.5);
     },
     /* ---------- Vahşi Saldırı: wind across the wild desert ---------- */

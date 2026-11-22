@@ -835,6 +835,15 @@ body:is([data-theme="hawaii"], [data-theme="noir"], [data-theme="wild"]) .welcom
 body:is([data-theme="hawaii"], [data-theme="noir"], [data-theme="wild"]) #intro p { color: #fff; text-shadow: 0 1px 5px rgba(0, 0, 0, .95); }
 .tt-japan .tt-sw { background: linear-gradient(180deg, #5f93bd, #d4dcd9 55%, #fbc9a2); } .tt-japan .tt-sw i { opacity: .55; }
 
+/* Library eye button: wallpaper-only view */
+.wall-btn { position: fixed; right: 26px; bottom: 56px; z-index: 40; width: 52px; height: 52px; display: grid; place-items: center; padding: 0; border-radius: 50%; border: 1px solid var(--line); background: color-mix(in srgb, var(--panel-solid) 88%, transparent); color: var(--text); box-shadow: 0 6px 22px rgba(0, 0, 0, .45); transition: opacity .2s, transform .15s, border-color .2s, color .2s; }
+.wall-btn:hover, .wall-btn:focus-visible { border-color: var(--accent); color: var(--accent); transform: scale(1.07); }
+body.wall-view #app, body.wall-view #toasts { visibility: hidden; }
+body.wall-view #bgMedia i { opacity: 0 !important; }
+body.wall-view .wall-btn { opacity: .5; }
+body.wall-view .wall-btn:hover, body.wall-view .wall-btn:focus-visible { opacity: 1; }
+@media (max-width: 760px) { .wall-btn { right: 14px; bottom: calc(132px + env(safe-area-inset-bottom)); width: 46px; height: 46px; } }
+
 /* v1.0.3 — seek bar, profile stats + recent games, update prompt */
 .seek { display: flex; align-items: center; gap: 12px; margin-top: 14px; grid-column: 1 / -1; font-variant-numeric: tabular-nums; font-size: .85em; color: var(--muted); }
 .seek-bar { position: relative; flex: 1; height: 18px; cursor: pointer; touch-action: none; }
