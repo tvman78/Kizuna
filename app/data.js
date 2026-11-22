@@ -304,6 +304,12 @@ const banDays = (level, count) => Math.min(365, (BAN_BASE_DAYS[level] || 1) * 2 
 /* ---------- WHAT'S NEW (shown once after each update, and from the news button) ---------- */
 const CHANGELOG = [
   {
+    v: '1.0.17', date: '2026-11-22', title: 'Kare profil ve kapak',
+    items: [
+      ['✂️', 'Kare kırpma', 'Profil resmi ve kapak artık kare alanda kırpılıyor ve profilinde tam kırptığın gibi kare görünüyor.']
+    ]
+  },
+  {
     v: '1.0.16', date: '2026-11-22', title: 'Helikopterler, silah sesleri ve gerçek siren',
     items: [
       ['👁️', 'Göz butonu anında çalışıyor', 'Duvar kağıdı görünümünde soldaki butonlar artık gecikmeden kapanıp açılıyor.'],
