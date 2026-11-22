@@ -28,7 +28,7 @@ function createWindow() {
       autoplayPolicy: 'no-user-gesture-required'
     }
   });
-  win.once('ready-to-show', () => win.show());
+  win.once('ready-to-show', () => { if (ws.maximized) win.maximize(); win.show(); });
   trackWindow(win, ws);
   win.loadFile(path.join(__dirname, 'app', 'index.html'));
   win.webContents.setWindowOpenHandler(({ url }) => {

@@ -304,6 +304,12 @@ const banDays = (level, count) => Math.min(365, (BAN_BASE_DAYS[level] || 1) * 2 
 /* ---------- WHAT'S NEW (shown once after each update, and from the news button) ---------- */
 const CHANGELOG = [
   {
+    v: '1.0.20', date: '2026-11-22', title: 'Normal pencere açılışı',
+    items: [
+      ['🪟', 'Normal pencere', 'Kizuna artık tam ekran değil, son kullandığın boyutta normal pencere olarak ve boyutu zıplamadan açılıyor. Tam ekran için F11.']
+    ]
+  },
+  {
     v: '1.0.19', date: '2026-11-22', title: 'Doğrudan tam ekran açılış',
     items: [
       ['🖥️', 'Küçülme sorunu giderildi', 'Kizuna artık önce küçük pencere ve beyaz ekran göstermeden, doğrudan tam ekran açılıyor.']

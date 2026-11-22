@@ -17,8 +17,8 @@ const writeJson = (f, v) => { try { fs.mkdirSync(path.dirname(f), { recursive: t
 
 /* ---------- Window state ---------- */
 const stateFile = () => userData('window-state.json');
-/* Kizuna always opens in fullscreen. The window is created at the monitor's full size,
-   so it never appears small first. `normal` is the size it returns to when leaving fullscreen (F11). */
+/* Kizuna opens as a normal window at its last size, never in fullscreen. A window that was maximized
+   is created at the screen's work area, so it doesn't jump. `normal` is its restored size. */
 function windowOptions() {
   const s = readJson(stateFile(), null), area = screen.getPrimaryDisplay().workArea;
   const width = Math.min(1440, area.width), height = Math.min(900, area.height);
@@ -30,8 +30,9 @@ function windowOptions() {
     });
     if (visible) normal = { x: s.bounds.x, y: s.bounds.y, width: s.bounds.width, height: s.bounds.height };
   }
-  const d = screen.getDisplayMatching(normal).bounds;
-  return { opts: { x: d.x, y: d.y, width: d.width, height: d.height, fullscreen: true }, normal, maximized: !!(s && s.maximized) };
+  const maximized = !!(s && s.maximized), d = screen.getDisplayMatching(normal).workArea;
+  const opts = maximized ? { x: d.x, y: d.y, width: d.width, height: d.height } : { ...normal };
+  return { opts, normal, maximized };
 }
 function trackWindow(win, ws) {
   let t = null, normal = ws.normal, keepMax = ws.maximized, restoring = false;
@@ -48,6 +49,14 @@ function trackWindow(win, ws) {
     setTimeout(() => {
       if (win.isDestroyed()) return;
       if (!win.isFullScreen()) { win.setBounds(normal); if (keepMax) win.maximize(); }
+      setTimeout(() => { restoring = false; later(); }, 150);
+    }, 60);
+  });
+  if (ws.maximized) win.once('unmaximize', () => { // it was created at full work-area size: go back to the real window size
+    restoring = true;
+    setTimeout(() => {
+      if (win.isDestroyed()) return;
+      if (!win.isMaximized() && !win.isFullScreen()) win.setBounds(normal);
       setTimeout(() => { restoring = false; later(); }, 150);
     }, 60);
   });
