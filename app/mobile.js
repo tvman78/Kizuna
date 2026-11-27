@@ -118,10 +118,31 @@ Katalog:\n${games}`;
     while (queue.length) {
       const [id, slug] = queue.shift();
       try {
-        const r = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(slug), { headers: { 'Api-User-Agent': 'Kizuna/1.0 (PlayStation game launcher)' } });
-        if (r.status === 429) { queue.push([id, slug]); await new Promise(x => setTimeout(x, 3000)); continue; }
-        const j = r.ok ? await r.json() : {};
-        const u = (j.originalimage && j.originalimage.width <= 1200 && j.originalimage.source) || (j.thumbnail && j.thumbnail.source) || null;
+        const H = { headers: { 'Api-User-Agent': 'Kizuna/1.0 (PlayStation game launcher)' } };
+        let pages = [slug];
+        if (slug.startsWith('?')) { // a game that is not in the catalog: search Wikipedia for it
+          const s = await fetch('https://en.wikipedia.org/w/api.php?action=query&list=search&format=json&origin=*&srlimit=8&srsearch=' + encodeURIComponent(slug.slice(1) + ' video game'), H);
+          if (s.status === 429) { queue.push([id, slug]); await new Promise(x => setTimeout(x, 3000)); continue; }
+          const sj = s.ok ? await s.json() : {};
+          // rank like the desktop app: the exact name first, and never a different sequel number
+          const norm = v => String(v || '').toLowerCase().replace(/\([^)]*\)/g, ' ').replace(/[^a-z0-9]+/g, ' ').replace(/\b(ii|iii|iv|vi)\b/g, r => ({ ii: '2', iii: '3', iv: '4', vi: '6' })[r]).replace(/\b(the|video|game)\b/g, ' ').replace(/\s+/g, ' ').trim();
+          const q = norm(slug.slice(1)), words = q.split(' ').filter(Boolean), nums = words.filter(w => /^\d+$/.test(w));
+          pages = ((sj.query && sj.query.search) || []).map(x => x.title).filter(t => !/^List of|\(franchise\)|\bseries\b/i.test(t)).map(t => {
+            const tw = norm(t).split(' ');
+            if (nums.some(x => !tw.includes(x)) || tw.some(x => /^\d+$/.test(x) && !nums.includes(x) && !/^(19|20)\d\d$/.test(x))) return null;
+            return { t, score: norm(t) === q ? 0 : words.every(w => tw.includes(w)) ? 1 : 2 };
+          }).filter(Boolean).sort((a, b) => a.score - b.score).map(x => x.t).slice(0, 3);
+        }
+        let u = null, limited = false;
+        for (const page of pages) {
+          const r = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(page), H);
+          if (r.status === 429) { limited = true; break; }
+          const j = r.ok ? await r.json() : {};
+          if (slug.startsWith('?') && !/video game|game\b/i.test(j.description || '')) continue;
+          u = (j.originalimage && j.originalimage.width <= 1200 && j.originalimage.source) || (j.thumbnail && j.thumbnail.source) || null;
+          if (u) break;
+        }
+        if (limited) { queue.push([id, slug]); await new Promise(x => setTimeout(x, 3000)); continue; }
         covers[id] = { u, t: Date.now() }; ls.set('kz_covers', covers);
         if (u && coverCb) coverCb({ id, u });
       } catch {}
@@ -148,7 +169,7 @@ Katalog:\n${games}`;
       open: async () => false, run: async () => false, onProgress: () => {}
     },
     covers: {
-      get: async list => { const out = {}; for (const [id, slug] of list || []) { const c = covers[id]; if (c && c.u) out[id] = c.u; else if (!c || (c.u === null && Date.now() - c.t > 7 * 864e5)) queue.push([id, slug]); } coverLoop(); return out; },
+      get: async list => { const out = {}; for (const [id, slug, first] of list || []) { const c = covers[id]; if (c && c.u) out[id] = c.u; else if (!c || (c.u === null && Date.now() - c.t > 7 * 864e5)) { if (first || slug.startsWith('?')) queue.unshift([id, slug]); else queue.push([id, slug]); } } coverLoop(); return out; },
       onCover: cb => { coverCb = cb; }
     },
     voice: { model: async lang => { const M = { tr: 'vosk-model-small-tr-0.3', en: 'vosk-model-small-en-us-0.15', de: 'vosk-model-small-de-0.15', fr: 'vosk-model-small-fr-pguyot-0.3', es: 'vosk-model-small-es-0.3', it: 'vosk-model-small-it-0.4', pt: 'vosk-model-small-pt-0.3', ru: 'vosk-model-small-ru-0.4', zh: 'vosk-model-small-cn-0.3', az: 'vosk-model-small-tr-0.3' }; return { ok: true, url: 'https://ccoreilly.github.io/vosk-browser/models/' + (M[lang] || M.en) + '.tar.gz', lang: M[lang] ? lang : 'en' }; }, onProgress: () => {} },

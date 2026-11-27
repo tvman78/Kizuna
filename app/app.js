@@ -1123,10 +1123,45 @@ VIEWS.library = v => {
       : empty('🎮', 'Kütüphanen boş', 'Oyunlar bölümünden bir oyun seçip kendi dosyanı ekleyebilir ya da oyun klasörünü taratabilirsin.', `<button class="btn primary" data-go="catalog">Oyunlara göz at ›</button>`));
   $('#addGameBtn').onclick = () => addGameModal();
   const sb = $('#scanBtn'); if (sb) sb.onclick = () => scanAndOffer($('#scanBox'));
+  requestLibCovers();
 };
+/* Cover art for library games: the matching catalog game's cover, or a Wikipedia search by the game's name */
+const normTitle = s => fold(s).replace(/\.(iso|bin|cue|chd|pbp|cso|elf|m3u|img|gz|self|7z|zip)$/, '').replace(/\[[^\]]*\]|\([^)]*\)/g, ' ')
+  .replace(/\b(disc|disk|cd)\s*\d+\b/g, ' ').replace(/[^a-z0-9]+/g, ' ').replace(/\b(the|usa|europe|japan|ntsc|pal)\b/g, ' ')
+  .replace(/\b(ii|iii|iv|vi)\b/g, r => ({ ii: '2', iii: '3', iv: '4', vi: '6' })[r]).replace(/\s+/g, ' ').trim();
+const NORM_GAMES = new Map();
+function matchCatalog(name, c) {
+  const n = normTitle(name); if (n.length < 3) return null;
+  let best = null, score = 0;
+  for (const g of GAMES) {
+    if (!NORM_GAMES.has(g.id)) NORM_GAMES.set(g.id, normTitle(g.t));
+    const t = NORM_GAMES.get(g.id); if (t.length < 3) continue;
+    let s = t === n ? 1000 + t.length : (' ' + n + ' ').includes(' ' + t + ' ') ? t.length : 0;
+    if (s && s < 1000 && /^\d/.test((' ' + n + ' ').split(' ' + t + ' ')[1] || '')) s = 0; // "Ape Escape 2" is not "Ape Escape"
+    if (s && g.c === c) s += 500;
+    if (s > score) { score = s; best = g; }
+  }
+  return best;
+}
+function libCoverId(l) {
+  const g = (l.catalogId && GAMES.find(x => x.id === l.catalogId)) || matchCatalog(l.title, l.console) || matchCatalog(l.path && l.path.split(/[\\/]/).pop(), l.console);
+  return g ? g.id : 'lib-' + l.id;
+}
+function requestLibCovers() {
+  if (!api || !api.covers) return;
+  const want = S.library.map(l => [libCoverId(l), l]).filter(([id]) => !COVERS[id]).map(([id, l]) => {
+    const g = !id.startsWith('lib-') && GAMES.find(x => x.id === id);
+    return g ? [id, g.wiki, true] : [id, '?' + (normTitle(l.title) || l.title)]; // library covers are fetched before the rest of the catalog
+  });
+  if (!want.length) return;
+  api.covers.get(want).then(map => {
+    Object.assign(COVERS, map);
+    $$('[data-cover]').forEach(el => { if (!el.querySelector('.cv-img') && COVERS[el.dataset.cover]) el.insertAdjacentHTML('afterbegin', coverImg(el.dataset.cover)); });
+  }).catch(() => {});
+}
 function libCard(g) {
-  const c = CONSOLES[g.console];
-  return `<article class="gcard lib"><div class="cover" style="${coverStyle(g.title)}">${coverInner(g.title, g.console)}<button class="play-fab" data-play="${g.id}" data-tip="${T('play')}">${icon('play', 26)}</button></div>
+  const c = CONSOLES[g.console], cid = libCoverId(g);
+  return `<article class="gcard lib"><div class="cover ${COVERS[cid] ? 'has-img' : ''}" data-cover="${esc(cid)}" style="${coverStyle(g.title)}">${coverImg(cid)}${coverInner(g.title, g.console)}<button class="play-fab" data-play="${g.id}" data-tip="${T('play')}">${icon('play', 26)}</button></div>
   <div class="gbody"><h4 title="${esc(g.title)}">${esc(g.title)}</h4><p>${c.short} · ${g.plays || 0} kez oynandı</p><p class="path" title="${esc(g.path)}">${esc(g.path)}</p>
   <div class="gact"><button class="btn sm primary" data-play="${g.id}">${icon('play', 14)} ${T('play')}</button><button class="btn sm ghost" data-del="${g.id}" data-tip="Kütüphaneden kaldır (dosyan silinmez)">${icon('x', 14)}</button></div></div></article>`;
 }
@@ -1148,8 +1183,9 @@ async function addOwnGameMobile(c, title, catalogId) {
   if (/\.cue$/i.test(f.name)) { toast('CUE dosyası tek başına çalışmaz — CUE ve BIN dosyalarını bir ZIP içine koyup ZIP’i ekle ya da CHD/PBP kullan.', 'warn', 6000); return false; }
   toast('⏳ Oyun dosyası Kizuna’ya kopyalanıyor…', 'info', 2500);
   let m; try { m = await storeMedia(f); } catch (e) { toast('Dosya kaydedilemedi (telefonda yer kalmamış olabilir): ' + esc(e.message || ''), 'err', 6000); return false; }
-  const name = title || f.name.replace(/\.[^.]+$/, '');
-  S.library.unshift({ id: uid(), title: name, console: c, path: f.name, mid: m.id, size: f.size, catalogId: catalogId || null, added: Date.now(), plays: 0 });
+  const cat = catalogId ? GAMES.find(x => x.id === catalogId) : matchCatalog(title || f.name, c);
+  const name = title || (cat ? cat.t : f.name.replace(/\.[^.]+$/, ''));
+  S.library.unshift({ id: uid(), title: name, console: c, path: f.name, mid: m.id, size: f.size, catalogId: cat ? cat.id : null, added: Date.now(), plays: 0 });
   log(`Kütüphaneye eklendi: ${name} (${CONSOLES[c].short})`); save();
   toast(`✅ <b>${esc(name)}</b> kütüphaneye eklendi — Oyna’ya bas!`, 'ok');
   return true;
@@ -1186,8 +1222,11 @@ async function addOwnGame(c, title, catalogId) {
     const f = await pickLocal(con.ext.map(e => '.' + e).join(',')); if (!f) return false; path = f.name;
   }
   if (S.library.some(l => l.path === path)) { toast('Bu dosya zaten kütüphanende', 'warn'); return false; }
-  const name = title || path.split(/[\\/]/).pop().replace(/\.[^.]+$/, '');
-  S.library.unshift({ id: uid(), title: name, console: c, path, catalogId: catalogId || null, added: Date.now(), plays: 0 });
+  const parts = path.split(/[\\/]/); let fileName = parts.pop().replace(/\.[^.]+$/, '');
+  if (/^eboot$/i.test(fileName)) { const i = parts.findIndex(p => /^ps3_game$/i.test(p)); fileName = parts[i > 0 ? i - 1 : parts.length - 1] || fileName; } // PS3/PS4: use the game's folder name
+  const cat = catalogId ? GAMES.find(x => x.id === catalogId) : matchCatalog(title || fileName, c);
+  const name = title || (cat ? cat.t : fileName);
+  S.library.unshift({ id: uid(), title: name, console: c, path, catalogId: cat ? cat.id : null, added: Date.now(), plays: 0 });
   log(`Kütüphaneye eklendi: ${name} (${con.short})`); save();
   toast(`✅ <b>${esc(name)}</b> kütüphaneye eklendi`, 'ok');
   return true;

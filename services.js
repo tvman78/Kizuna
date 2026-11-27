@@ -260,6 +260,29 @@ async function prepareLaunch(id, emulator, game, scale) {
 
 /* ---------- Game covers (Wikipedia REST summary thumbnails) ---------- */
 const coverFile = () => userData('covers.json');
+async function wikiJson(url) {
+  for (let tries = 0; ; tries++) {
+    const r = await net.fetch(url, { headers: { 'User-Agent': UA, Accept: 'application/json' } });
+    if (r.status === 429 && tries < 4) { await new Promise(x => setTimeout(x, 2000 * (tries + 1))); continue; }
+    return r.ok ? r.json() : null;
+  }
+}
+/* Same idea as the app's title matching: "Ape Escape 2" must never get the cover of "Ape Escape" */
+const normName = s => String(s || '').toLowerCase().replace(/\([^)]*\)/g, ' ').replace(/[^a-z0-9]+/g, ' ')
+  .replace(/\b(ii|iii|iv|vi)\b/g, r => ({ ii: '2', iii: '3', iv: '4', vi: '6' })[r]).replace(/\b(the|video|game)\b/g, ' ').replace(/\s+/g, ' ').trim();
+function rankPages(name, titles) {
+  const q = normName(name), words = q.split(' ').filter(Boolean), nums = words.filter(w => /^\d+$/.test(w));
+  return titles.map(t => {
+    const n = normName(t), tw = n.split(' ');
+    if (nums.some(x => !tw.includes(x)) || tw.some(x => /^\d+$/.test(x) && !nums.includes(x) && !/^(19|20)\d\d$/.test(x))) return null; // different sequel
+    return { t, score: n === q ? 0 : words.every(w => tw.includes(w)) ? 1 : 2 };
+  }).filter(Boolean).sort((a, b) => a.score - b.score).map(x => x.t);
+}
+async function wikiSearch(name) {
+  const j = await wikiJson('https://en.wikipedia.org/w/api.php?action=query&list=search&format=json&srlimit=8&srsearch=' + encodeURIComponent(name + ' video game'));
+  if (!j) throw new Error('search failed');
+  return rankPages(name, ((j.query && j.query.search) || []).map(x => x.title).filter(t => !/^List of|\(franchise\)|\bseries\b/i.test(t)));
+}
 let covers = null, coverQueue = [], coverRunning = false;
 async function coverLoop(send) {
   if (coverRunning) return; coverRunning = true;
@@ -267,19 +290,20 @@ async function coverLoop(send) {
     while (coverQueue.length) {
       const [id, slug] = coverQueue.shift();
       if (covers[id] && covers[id].u !== undefined) continue;
-      let tries = 0;
-      for (;;) {
-        try {
-          const r = await net.fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(slug), { headers: { 'User-Agent': UA, Accept: 'application/json' } });
-          if (r.status === 429 && tries++ < 4) { await new Promise(x => setTimeout(x, 2000 * tries)); continue; }
-          const j = r.ok ? await r.json() : {};
-          const src = (j.originalimage && j.originalimage.width <= 1200 && j.originalimage.source) || (j.thumbnail && j.thumbnail.source) || null;
-          covers[id] = { u: src, t: Date.now() };
-          writeJson(coverFile(), covers);
-          if (src) send(id, src);
-        } catch { /* offline — try again next launch */ }
-        break;
-      }
+      try {
+        // "?name" = a game that is not in the catalog: search Wikipedia for its article first
+        const pages = slug.startsWith('?') ? await wikiSearch(slug.slice(1)) : [slug];
+        let src = null;
+        for (const page of pages.slice(0, 3)) {
+          const j = await wikiJson('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(page));
+          if (!j || (slug.startsWith('?') && !/video game|game\b/i.test(j.description || ''))) continue;
+          src = (j.originalimage && j.originalimage.width <= 1200 && j.originalimage.source) || (j.thumbnail && j.thumbnail.source) || null;
+          if (src) break;
+        }
+        covers[id] = { u: src, t: Date.now() };
+        writeJson(coverFile(), covers);
+        if (src) send(id, src);
+      } catch { /* offline — try again next launch */ }
       await new Promise(x => setTimeout(x, 300));
     }
   } finally { coverRunning = false; }
@@ -351,11 +375,11 @@ function registerServices(getWin) {
     if (!covers) covers = readJson(coverFile(), {});
     const out = {};
     const week = 7 * 864e5;
-    for (const [id, slug] of Array.isArray(list) ? list.slice(0, 500) : []) {
+    for (const [id, slug, first] of Array.isArray(list) ? list.slice(0, 500) : []) {
       if (typeof id !== 'string' || typeof slug !== 'string') continue;
       const c = covers[id];
       if (c && c.u) out[id] = c.u;
-      else if (!c || (c.u === null && Date.now() - c.t > week)) { if (c) delete covers[id]; coverQueue.push([id, slug]); }
+      else if (!c || (c.u === null && Date.now() - c.t > week)) { if (c) delete covers[id]; if (first || slug.startsWith('?')) coverQueue.unshift([id, slug]); else coverQueue.push([id, slug]); } // the user's own games first
     }
     coverLoop((id, u) => send('cover', { id, u }));
     return out;

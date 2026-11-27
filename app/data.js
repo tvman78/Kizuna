@@ -331,6 +331,12 @@ const banDays = (level, count) => Math.min(365, (BAN_BASE_DAYS[level] || 1) * 2 
 /* ---------- WHAT'S NEW (shown once after each update, and from the news button) ---------- */
 const CHANGELOG = [
   {
+    v: '1.0.22', date: '2026-11-27', title: 'Kütüphanede oyun kapakları',
+    items: [
+      ['🖼️', 'Kapaklar kütüphanede', 'Eklediğin oyunun kapak resmi artık kütüphanede görünüyor. Dosya adı “(USA)”, “Disc 1” gibi eklerle olsa da katalogdaki oyunla eşleşiyor; katalogda olmayan oyunların kapağı internetten bulunuyor.']
+    ]
+  },
+  {
     v: '1.0.21', date: '2026-11-22', title: '50 yeni oyun',
     items: [
       ['🏁', 'Midnight Club ve Need for Speed', 'Midnight Club serisinin tamamı ve PS1’den PS5’e Need for Speed oyunları eklendi.'],
