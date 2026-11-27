@@ -108,14 +108,14 @@ function buildArgs(c, game, fullscreen) {
 }
 ipcMain.handle('launch', async (e, o) => {
   try {
-    const { consoleId, emulator, game, fullscreen, scale } = o || {};
+    const { consoleId, emulator, game, fullscreen, scale, vsync } = o || {};
     if (!['ps1', 'ps2', 'ps3', 'ps4'].includes(consoleId)) return { ok: false, error: 'Desteklenmeyen konsol.' };
     if (typeof emulator !== 'string' || !fs.existsSync(emulator) ||
         (process.platform === 'win32' && !emulator.toLowerCase().endsWith('.exe')))
       return { ok: false, error: 'Emülatör bulunamadı. Ayarlar › Emülatörler bölümünden .exe dosyasını seç.' };
     if (typeof game !== 'string' || !fs.existsSync(game))
       return { ok: false, error: 'Oyun dosyası bulunamadı (taşınmış veya silinmiş olabilir).' };
-    const prep = await prepareLaunch(consoleId, emulator, game, scale);
+    const prep = await prepareLaunch(consoleId, emulator, game, scale, vsync !== false);
     if (!prep.ok) return prep;
     const child = spawn(emulator, buildArgs(consoleId, prep.game, !!fullscreen), {
       cwd: path.dirname(emulator), detached: true, stdio: 'ignore'

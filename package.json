@@ -1,8 +1,8 @@
 {
   "name": "kizuna",
   "productName": "Kizuna",
-  "version": "1.0.22",
-  "description": "Kizuna - PlayStation (PS1-PS5) oyun başlatıcısı ve oyuncu topluluğu",
+  "version": "1.0.23",
+  "description": "Kizuna - PlayStation (PS1-PS5) oyun başlatıcısı",
   "author": "Tv Man & FKOAC",
   "license": "UNLICENSED",
   "repository": "github:tvman78/Kizuna",

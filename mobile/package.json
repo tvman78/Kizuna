@@ -1,7 +1,7 @@
 {
   "name": "kizuna-mobile",
   "private": true,
-  "version": "1.0.22",
+  "version": "1.0.23",
   "dependencies": {
     "@capacitor/android": "^8.6.2",
     "@capacitor/cli": "^8.6.2",

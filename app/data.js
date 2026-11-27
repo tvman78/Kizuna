@@ -217,8 +217,7 @@ const WIKI = {
 };
 GAMES.forEach(g => { g.wiki = WIKI[g.id] || g.t.replace(/ /g, '_'); });
 
-/* Friends are real players on a Kizuna Server — no fake / demo players */
-const USERS = [];
+const USERS = []; // kept empty: the friends feature was removed in v1.0.5
 const STATUS = { online: ['Çevrimiçi', '#3ee06b'], game: ['Oyunda', '#2fd3ff'], away: ['Uzakta', '#ffc845'], offline: ['Çevrimdışı', '#6b6f73'], dnd: ['Rahatsız Etme', '#ff3b4f'] };
 
 const EMOJIS = '😀 😁 😂 🤣 😅 😊 😍 😎 🤩 🥳 😇 🤔 😴 😭 😡 🤯 😱 🥶 🤠 👻 💀 🤖 👾 🎮 🕹️ 🏆 ⚔️ 🗡️ 🛡️ 🔥 ⚡ 💥 ✨ 🌸 🌴 🌺 🍕 🍜 🍣 ☕ 🎧 🎵 🎸 🥁 💚 💖 💜 💙 👍 👎 👏 🙌 🤝 ✌️ 🤘 👀 💯 ✅ ❌ 🚀 🌙 ⭐ 🌈 🐉 🦊 🐱 🐼 🥷'.split(' ');
@@ -229,8 +228,8 @@ const STICKERS = [
 ];
 
 const FEATURES = [
-  { i: '⚡', t: 'Yüksek FPS Modu', d: 'Emülatörleri tam ekran ve yüksek kare hızı tercihiyle tek tıkla başlat.' },
-  { i: '☁️', t: 'Bulut Kayıt', d: 'Profilin ve ayarların güvende. Kizuna sunucusu açıldığında kayıtların buluta senkronlanır.' },
+  { i: '⚡', t: 'Yüksek Kalite', d: 'Çözünürlük ölçeği ve VSync emülatörlere otomatik uygulanır; oyunlar tek tıkla açılır.' },
+  { i: '🌸', t: 'Canlı Temalar', d: 'Sakura Vadisi, Vice Hawaii, Kara Yağmur ve Vahşi Saldırı: hareketli manzaralar ve temaya özel sesler.' },
   { i: '🎮', t: 'PS1 → PS5 Kataloğu', d: 'Beş neslin efsane oyunları tek kütüphanede. Arat, bul, oyna.' },
   { i: '📱', t: 'Telefonda da Kizuna', d: 'Android ve iPhone’da aynı arayüz; PS1 oyunları ekrandaki PlayStation tuşlarıyla.' },
   { i: '🤖', t: 'Kizuna AI', d: 'Sana oyun öneren, tema değiştiren, sohbet eden kendi yapay zekan.' },
@@ -282,19 +281,19 @@ const LANGS = {
 const I18N_KEYS = ['welcome', 'next', 'skip', 'back', 'finish', 'search', 'play', 'download', 'add', 'save',
   'nav.library', 'nav.catalog', 'nav.friends', 'nav.messages', 'nav.ai', 'nav.music', 'nav.saved', 'nav.history', 'nav.settings', 'nav.help', 'makers'];
 const I18N_RAW = {
-  tr: ['Hoş Geldiniz', 'Sonraki', 'Geç', 'Geri', 'Bitir', 'Oyun, oyuncu veya ayar ara...', 'Oyna', 'İndir', 'Ekle', 'Kaydet', 'Kütüphane', 'Oyunlar', 'Arkadaşlar', 'Mesajlar', 'Yapay Zeka', 'Müzik', 'Kaydedilenler', 'Geçmiş', 'Ayarlar', 'Yardım', 'Yapımcılar'],
-  en: ['Welcome', 'Next', 'Skip', 'Back', 'Finish', 'Search games, players or settings...', 'Play', 'Download', 'Add', 'Save', 'Library', 'Games', 'Friends', 'Messages', 'AI', 'Music', 'Saved', 'History', 'Settings', 'Help', 'Created by'],
-  de: ['Willkommen', 'Weiter', 'Überspringen', 'Zurück', 'Fertig', 'Spiele, Spieler oder Einstellungen suchen...', 'Spielen', 'Herunterladen', 'Hinzufügen', 'Speichern', 'Bibliothek', 'Spiele', 'Freunde', 'Nachrichten', 'KI', 'Musik', 'Gespeichert', 'Verlauf', 'Einstellungen', 'Hilfe', 'Entwickelt von'],
-  fr: ['Bienvenue', 'Suivant', 'Passer', 'Retour', 'Terminer', 'Rechercher jeux, joueurs ou réglages...', 'Jouer', 'Télécharger', 'Ajouter', 'Enregistrer', 'Bibliothèque', 'Jeux', 'Amis', 'Messages', 'IA', 'Musique', 'Enregistrés', 'Historique', 'Paramètres', 'Aide', 'Créé par'],
-  es: ['Bienvenido', 'Siguiente', 'Omitir', 'Atrás', 'Finalizar', 'Buscar juegos, jugadores o ajustes...', 'Jugar', 'Descargar', 'Añadir', 'Guardar', 'Biblioteca', 'Juegos', 'Amigos', 'Mensajes', 'IA', 'Música', 'Guardados', 'Historial', 'Ajustes', 'Ayuda', 'Creado por'],
-  it: ['Benvenuto', 'Avanti', 'Salta', 'Indietro', 'Fine', 'Cerca giochi, giocatori o impostazioni...', 'Gioca', 'Scarica', 'Aggiungi', 'Salva', 'Libreria', 'Giochi', 'Amici', 'Messaggi', 'IA', 'Musica', 'Salvati', 'Cronologia', 'Impostazioni', 'Aiuto', 'Creato da'],
-  pt: ['Bem-vindo', 'Próximo', 'Pular', 'Voltar', 'Concluir', 'Pesquisar jogos, jogadores ou configurações...', 'Jogar', 'Baixar', 'Adicionar', 'Salvar', 'Biblioteca', 'Jogos', 'Amigos', 'Mensagens', 'IA', 'Música', 'Salvos', 'Histórico', 'Configurações', 'Ajuda', 'Criado por'],
-  ru: ['Добро пожаловать', 'Далее', 'Пропустить', 'Назад', 'Готово', 'Поиск игр, игроков или настроек...', 'Играть', 'Скачать', 'Добавить', 'Сохранить', 'Библиотека', 'Игры', 'Друзья', 'Сообщения', 'ИИ', 'Музыка', 'Сохранённое', 'История', 'Настройки', 'Помощь', 'Создатели'],
-  ar: ['أهلاً وسهلاً', 'التالي', 'تخطي', 'رجوع', 'إنهاء', 'ابحث عن الألعاب أو اللاعبين أو الإعدادات...', 'العب', 'تنزيل', 'إضافة', 'حفظ', 'المكتبة', 'الألعاب', 'الأصدقاء', 'الرسائل', 'الذكاء الاصطناعي', 'الموسيقى', 'المحفوظات', 'السجل', 'الإعدادات', 'المساعدة', 'من صنع'],
-  ja: ['ようこそ', '次へ', 'スキップ', '戻る', '完了', 'ゲーム、プレイヤー、設定を検索...', 'プレイ', 'ダウンロード', '追加', '保存', 'ライブラリ', 'ゲーム', 'フレンド', 'メッセージ', 'AI', '音楽', '保存済み', '履歴', '設定', 'ヘルプ', '制作'],
-  zh: ['欢迎', '下一步', '跳过', '返回', '完成', '搜索游戏、玩家或设置...', '开始游戏', '下载', '添加', '收藏', '游戏库', '游戏', '好友', '消息', '人工智能', '音乐', '已收藏', '历史记录', '设置', '帮助', '制作者'],
-  ko: ['환영합니다', '다음', '건너뛰기', '뒤로', '완료', '게임, 플레이어 또는 설정 검색...', '플레이', '다운로드', '추가', '저장', '라이브러리', '게임', '친구', '메시지', 'AI', '음악', '저장됨', '기록', '설정', '도움말', '제작'],
-  az: ['Xoş gəlmisiniz', 'Növbəti', 'Keç', 'Geri', 'Bitir', 'Oyun, oyunçu və ya ayar axtar...', 'Oyna', 'Yüklə', 'Əlavə et', 'Saxla', 'Kitabxana', 'Oyunlar', 'Dostlar', 'Mesajlar', 'Süni İntellekt', 'Musiqi', 'Saxlanılanlar', 'Tarixçə', 'Ayarlar', 'Kömək', 'Yaradıcılar']
+  tr: ['Hoş Geldiniz', 'Sonraki', 'Geç', 'Geri', 'Bitir', 'Oyun veya ayar ara...', 'Oyna', 'İndir', 'Ekle', 'Kaydet', 'Kütüphane', 'Oyunlar', 'Arkadaşlar', 'Mesajlar', 'Yapay Zeka', 'Müzik', 'Kaydedilenler', 'Geçmiş', 'Ayarlar', 'Yardım', 'Yapımcılar'],
+  en: ['Welcome', 'Next', 'Skip', 'Back', 'Finish', 'Search games or settings...', 'Play', 'Download', 'Add', 'Save', 'Library', 'Games', 'Friends', 'Messages', 'AI', 'Music', 'Saved', 'History', 'Settings', 'Help', 'Created by'],
+  de: ['Willkommen', 'Weiter', 'Überspringen', 'Zurück', 'Fertig', 'Spiele oder Einstellungen suchen...', 'Spielen', 'Herunterladen', 'Hinzufügen', 'Speichern', 'Bibliothek', 'Spiele', 'Freunde', 'Nachrichten', 'KI', 'Musik', 'Gespeichert', 'Verlauf', 'Einstellungen', 'Hilfe', 'Entwickelt von'],
+  fr: ['Bienvenue', 'Suivant', 'Passer', 'Retour', 'Terminer', 'Rechercher des jeux ou des réglages...', 'Jouer', 'Télécharger', 'Ajouter', 'Enregistrer', 'Bibliothèque', 'Jeux', 'Amis', 'Messages', 'IA', 'Musique', 'Enregistrés', 'Historique', 'Paramètres', 'Aide', 'Créé par'],
+  es: ['Bienvenido', 'Siguiente', 'Omitir', 'Atrás', 'Finalizar', 'Buscar juegos o ajustes...', 'Jugar', 'Descargar', 'Añadir', 'Guardar', 'Biblioteca', 'Juegos', 'Amigos', 'Mensajes', 'IA', 'Música', 'Guardados', 'Historial', 'Ajustes', 'Ayuda', 'Creado por'],
+  it: ['Benvenuto', 'Avanti', 'Salta', 'Indietro', 'Fine', 'Cerca giochi o impostazioni...', 'Gioca', 'Scarica', 'Aggiungi', 'Salva', 'Libreria', 'Giochi', 'Amici', 'Messaggi', 'IA', 'Musica', 'Salvati', 'Cronologia', 'Impostazioni', 'Aiuto', 'Creato da'],
+  pt: ['Bem-vindo', 'Próximo', 'Pular', 'Voltar', 'Concluir', 'Pesquisar jogos ou configurações...', 'Jogar', 'Baixar', 'Adicionar', 'Salvar', 'Biblioteca', 'Jogos', 'Amigos', 'Mensagens', 'IA', 'Música', 'Salvos', 'Histórico', 'Configurações', 'Ajuda', 'Criado por'],
+  ru: ['Добро пожаловать', 'Далее', 'Пропустить', 'Назад', 'Готово', 'Поиск игр или настроек...', 'Играть', 'Скачать', 'Добавить', 'Сохранить', 'Библиотека', 'Игры', 'Друзья', 'Сообщения', 'ИИ', 'Музыка', 'Сохранённое', 'История', 'Настройки', 'Помощь', 'Создатели'],
+  ar: ['أهلاً وسهلاً', 'التالي', 'تخطي', 'رجوع', 'إنهاء', 'ابحث عن الألعاب أو الإعدادات...', 'العب', 'تنزيل', 'إضافة', 'حفظ', 'المكتبة', 'الألعاب', 'الأصدقاء', 'الرسائل', 'الذكاء الاصطناعي', 'الموسيقى', 'المحفوظات', 'السجل', 'الإعدادات', 'المساعدة', 'من صنع'],
+  ja: ['ようこそ', '次へ', 'スキップ', '戻る', '完了', 'ゲームや設定を検索...', 'プレイ', 'ダウンロード', '追加', '保存', 'ライブラリ', 'ゲーム', 'フレンド', 'メッセージ', 'AI', '音楽', '保存済み', '履歴', '設定', 'ヘルプ', '制作'],
+  zh: ['欢迎', '下一步', '跳过', '返回', '完成', '搜索游戏或设置...', '开始游戏', '下载', '添加', '收藏', '游戏库', '游戏', '好友', '消息', '人工智能', '音乐', '已收藏', '历史记录', '设置', '帮助', '制作者'],
+  ko: ['환영합니다', '다음', '건너뛰기', '뒤로', '완료', '게임 또는 설정 검색...', '플레이', '다운로드', '추가', '저장', '라이브러리', '게임', '친구', '메시지', 'AI', '음악', '저장됨', '기록', '설정', '도움말', '제작'],
+  az: ['Xoş gəlmisiniz', 'Növbəti', 'Keç', 'Geri', 'Bitir', 'Oyun və ya ayar axtar...', 'Oyna', 'Yüklə', 'Əlavə et', 'Saxla', 'Kitabxana', 'Oyunlar', 'Dostlar', 'Mesajlar', 'Süni İntellekt', 'Musiqi', 'Saxlanılanlar', 'Tarixçə', 'Ayarlar', 'Kömək', 'Yaradıcılar']
 };
 const I18N = Object.fromEntries(Object.entries(I18N_RAW).map(([l, arr]) => [l, Object.fromEntries(I18N_KEYS.map((k, i) => [k, arr[i]]))]));
 
@@ -330,6 +329,14 @@ const banDays = (level, count) => Math.min(365, (BAN_BASE_DAYS[level] || 1) * 2 
 
 /* ---------- WHAT'S NEW (shown once after each update, and from the news button) ---------- */
 const CHANGELOG = [
+  {
+    v: '1.0.23', date: '2026-11-27', title: 'Hatalar ve eksikler giderildi',
+    items: [
+      ['🧹', 'Eski özelliklerden kalan yazılar', 'Kaldırılan arkadaşlar, mesajlar ve sunucu özelliklerinden kalan yanlış yazılar ve ayarlar temizlendi.'],
+      ['⚙️', 'Grafik ayarları gerçekten çalışıyor', 'VSync artık emülatörlere uygulanıyor; hiçbir şey yapmayan “Kare hızı” ayarı kaldırıldı.'],
+      ['📱', 'Telefon sürümüne uygun yazılar', 'Telefonda kütüphane ve yapay zekâ ayarlarındaki bilgisayara özgü yazılar düzeltildi.']
+    ]
+  },
   {
     v: '1.0.22', date: '2026-11-27', title: 'Kütüphanede oyun kapakları',
     items: [
@@ -485,4 +492,3 @@ const CHANGELOG = [
     items: [['⬆️', 'Otomatik güncelleme', 'Kizuna artık yeni sürümleri GitHub üzerinden kendiliğinden indirip kuruyor.']]
   }
 ];
-const COMMUNITY_URL = 'https://raw.githubusercontent.com/tvman78/Kizuna/main/community.json';

@@ -226,7 +226,7 @@ function pairedCue(game) {
   try { const cues = fs.readdirSync(dir).filter(f => /\.cue$/i.test(f)); if (cues.length === 1) return path.join(dir, cues[0]); } catch {}
   return game;
 }
-async function prepareLaunch(id, emulator, game, scale) {
+async function prepareLaunch(id, emulator, game, scale, vsync = true) {
   let target = game;
   if ((id === 'ps1' || id === 'ps2') && /\.bin$/i.test(game)) target = pairedCue(game);
   if (id === 'ps3' && !/(^|[\\/])eboot\.bin$|\.(iso|self|elf)$/i.test(game))
@@ -241,14 +241,14 @@ async function prepareLaunch(id, emulator, game, scale) {
   if (id === 'ps1' || id === 'ps2') {
     const bios = await ensureBios(id, base);
     if (!bios) return { ok: false, code: 'bios', error: `${EMUS[id].name} için geçerli BIOS bulunamadı. Açılan “bios” klasörüne konsolundan aldığın BIOS dosyasını koy (${id === 'ps1' ? '512 KB' : '4 MB'}).` };
-    if (id === 'ps1') patchIni(path.join(base, 'settings.ini'), { Main: { SetupWizardIncomplete: 'false' }, GPU: { ResolutionScale: mult } });
+    if (id === 'ps1') patchIni(path.join(base, 'settings.ini'), { Main: { SetupWizardIncomplete: 'false' }, GPU: { ResolutionScale: mult }, Display: { VSync: vsync ? 'true' : 'false' } });
     else {
       const ini = path.join(base, 'inis', 'PCSX2.ini');
       const cur = iniValue(ini, 'Filenames', 'BIOS');
       const keep = cur && fs.existsSync(path.join(base, 'bios', cur));
       patchIni(ini, {
         UI: { SettingsVersion: iniValue(ini, 'UI', 'SettingsVersion') || 1, SetupWizardIncomplete: 'false' },
-        Folders: { Bios: 'bios' }, Filenames: { BIOS: keep ? cur : bios }, 'EmuCore/GS': { upscale_multiplier: mult }
+        Folders: { Bios: 'bios' }, Filenames: { BIOS: keep ? cur : bios }, 'EmuCore/GS': { upscale_multiplier: mult, VsyncEnable: vsync ? 'true' : 'false' }
       });
     }
   } else if (id === 'ps3') {

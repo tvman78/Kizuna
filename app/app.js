@@ -181,7 +181,7 @@ function applyAppearance() {
 const ThemeFX = (() => {
   const SCENES = { japan: paintJapanScene, hawaii: paintHawaiiScene, noir: paintNoirScene, wild: paintWildScene };
   let mode = null, raf = 0, cv = null, g = null, drops = [], splashes = [], boltTimer = 0, embers = [], petals = [], glints = [], gulls = [], last = 0, sceneTimer = 0, gb = null, gm = null, anim = null, frameNo = 0;
-  const reduce = () => S.graphics && S.graphics.fps === 'balanced' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reduce = () => matchMedia('(prefers-reduced-motion: reduce)').matches; // the system's "reduce animations" setting
   function size() {
     if (!cv) return;
     const w = innerWidth * Math.min(devicePixelRatio, 1.5), h = innerHeight * Math.min(devicePixelRatio, 1.5);
@@ -503,7 +503,7 @@ const OB = [
         <div class="m-main"><div class="m-top"><span class="m-search">🔍 Arama çubuğu</span><span>🎙️</span><span>🎮</span><span>🎵</span><span class="m-me">👤 Profil</span></div>
         <div class="m-grid">${Array.from({ length: 8 }, () => '<i></i>').join('')}</div><div class="m-foot">Yapımcılar: Tv Man &amp; FKOAC</div></div>
       </div>
-      <ul class="ob-list"><li><b>Sol ray</b> — tüm bölümler. Ray genişletilip daraltılabilir.</li><li><b>Üst çubuk</b> — oyun arama, sesli komut, kontrolcü, müzik ve profilin.</li><li><b>Orta alan</b> — oyunların, sohbetlerin ve ayarların.</li></ul>`;
+      <ul class="ob-list"><li><b>Sol ray</b> — tüm bölümler. Ray genişletilip daraltılabilir.</li><li><b>Üst çubuk</b> — oyun arama, sesli komut, kontrolcü, müzik ve profilin.</li><li><b>Orta alan</b> — oyunlar, kütüphanen ve ayarların.</li></ul>`;
     }
   },
   {
@@ -598,7 +598,7 @@ const WZ = [
       b.innerHTML = `<h2>Her şey hazır! 🎉</h2><p class="muted">Özet:</p>
       <ul class="sum"><li>${ok(1)} Profil: <b>${esc(S.profile.name)}</b></li><li>${ok(1)} Tema: <b>${THEMES.find(t => t.id === S.theme).name}</b> · Yıl: <b>${S.year}</b></li>
       <li>${ok(S.gameFolder)} Oyun klasörü: ${esc(S.gameFolder || 'daha sonra')}</li><li>${ok(emus)} Kurulu emülatör: ${emus}/4</li>
-      <li>${ok(1)} Grafik: ${S.graphics.fps === 'high' ? 'Yüksek FPS Modu' : S.graphics.fps === 'unlimited' ? 'Sınırsız' : 'Dengeli'} · ${S.graphics.fullscreen ? 'Tam ekran' : 'Pencere'}</li></ul>
+      <li>${ok(1)} Grafik: <b>${esc(S.graphics.scale)}</b> · ${S.graphics.fullscreen ? 'Tam ekran' : 'Pencere'}</li></ul>
       <p>Bitir'e bastığında sana kısa bir <b>ürün turu</b> göstereceğim. 🗺️</p>`;
     }
   }
@@ -736,7 +736,6 @@ function bindEmuEvents() {
 function graphicsHTML() {
   return `<div class="form-grid">
   <div class="field"><label>Çözünürlük ölçeği</label><select data-k="graphics.scale"><option value="1x">Yerel (orijinal)</option><option value="2x">2x · 720p</option><option value="3x">3x · 1080p</option><option value="4x">4x · 1440p</option><option value="6x">6x · 4K</option></select></div>
-  <div class="field"><label>Kare hızı</label><select data-k="graphics.fps"><option value="balanced">Dengeli</option><option value="high">⚡ Yüksek FPS Modu</option><option value="unlimited">Sınırsız</option></select></div>
   <div class="field row"><label>Dikey senkronizasyon (VSync)</label><label class="switch"><input type="checkbox" data-k="graphics.vsync"><i></i></label></div>
   <div class="field row"><label>Oyunları tam ekran başlat</label><label class="switch"><input type="checkbox" data-k="graphics.fullscreen"><i></i></label></div></div>`;
 }
@@ -754,7 +753,6 @@ function bindKeys(root) {
 function onKeyChange(k, v) {
   if (['font', 'fontSize', 'accent', 'lang', 'bgDim'].includes(k)) applyAppearance();
   if (k === 'privacy.hideJoin' && current === 'profile') go('profile');
-  if (k === 'privacy.hideGames') { const n = $('#privNote'); if (n) n.innerHTML = privNote(); }
   if (k === 'musicVol') AudioEngine.setMusicVol(v);
   if (k === 'sfxVol') { AudioEngine.setSfxVol(v); AudioEngine.click(S.clickSound); }
   if (k === 'clickSound') AudioEngine.click(v);
@@ -1045,7 +1043,7 @@ async function renderDeviceSettings() {
     <div class="field"><label>🎙️ Mikrofon (giriş) <small class="muted">— ${d.mics.length ? d.mics.filter(x => x.deviceId !== 'default' && x.deviceId !== 'communications').length + ' cihaz algılandı' : 'mikrofon bulunamadı'}</small></label><select id="devMic">${opt(d.mics, S.micId, 'Windows varsayılanı')}</select></div>
     <div class="field"><label>🔊 Hoparlör / kulaklık (çıkış)</label><select id="devSpk">${opt(d.spks, S.spkId, 'Windows varsayılanı')}</select></div></div>
     <div class="row-btns"><button class="btn ghost" id="devTest">🎙️ Mikrofonu test et</button><button class="btn ghost" id="devSpkTest">🔊 Hoparlörü test et</button><div class="mic-meter"><i id="devLvl"></i></div></div>
-    <p class="muted small">Sesli komutlar ve sesli sohbet seçtiğin mikrofonu, müzik ve sesler seçtiğin hoparlörü kullanır. Yeni bir cihaz takınca Kizuna otomatik algılar.</p>`;
+    <p class="muted small">Sesli komutlar seçtiğin mikrofonu, müzik ve sesler seçtiğin hoparlörü kullanır. Yeni bir cihaz takınca Kizuna otomatik algılar.</p>`;
   $('#devMic', box).onchange = e => { S.micId = e.target.value; save(); toast('Mikrofon seçildi ✓', 'ok'); };
   $('#devSpk', box).onchange = async e => { S.spkId = e.target.value; save(); const ok = await AudioEngine.setSink(S.spkId); const ra = $('#remoteAudio'); if (ra && ra.setSinkId) ra.setSinkId(S.spkId).catch(() => {}); toast(ok ? 'Hoparlör seçildi ✓' : 'Bu cihaz seçilemedi', ok ? 'ok' : 'err'); AudioEngine.notify(); };
   $('#devSpkTest', box).onclick = () => AudioEngine.notify();
@@ -1116,11 +1114,11 @@ const empty = (ic, t, d, act = '') => `<div class="empty"><div class="empty-ic">
 
 /* ---------- Library ---------- */
 VIEWS.library = v => {
-  v.innerHTML = head(T('nav.library'), 'Bilgisayarındaki kendi oyun kopyaların. Oynamak için ilgili emülatör bağlı olmalı.',
+  v.innerHTML = head(T('nav.library'), MOBILE ? 'Telefonuna eklediğin oyunlar. PS1 oyunları Kizuna’nın içinde oynanır.' : 'Bilgisayarındaki kendi oyun kopyaların. Oynamak için ilgili emülatör bağlı olmalı.',
     `<button class="btn primary" id="addGameBtn" data-tip="Kendi oyun dosyanı (ISO, CUE, CHD, PBP, EBOOT.BIN) ekle">${icon('plus', 18)} Oyun Ekle</button>${window.KZ_MOBILE ? '' : `<button class="btn ghost" id="scanBtn" data-tip="Oyun klasörünü tara">${icon('folder', 18)} Klasörü Tara</button>`}`)
     + `<div id="scanBox"></div>`
     + (S.library.length ? `<div class="game-grid">${S.library.map(libCard).join('')}</div>`
-      : empty('🎮', 'Kütüphanen boş', 'Oyunlar bölümünden bir oyun seçip kendi dosyanı ekleyebilir ya da oyun klasörünü taratabilirsin.', `<button class="btn primary" data-go="catalog">Oyunlara göz at ›</button>`));
+      : empty('🎮', 'Kütüphanen boş', MOBILE ? 'Oyun Ekle ile telefonundaki PS1 oyun dosyanı ekleyebilirsin.' : 'Oyunlar bölümünden bir oyun seçip kendi dosyanı ekleyebilir ya da oyun klasörünü taratabilirsin.', `<button class="btn primary" data-go="catalog">Oyunlara göz at ›</button>`));
   $('#addGameBtn').onclick = () => addGameModal();
   const sb = $('#scanBtn'); if (sb) sb.onclick = () => scanAndOffer($('#scanBox'));
   requestLibCovers();
@@ -1259,7 +1257,7 @@ async function launch(g) {
   if (!emu) { toast(`${c.emu} bağlı değil — önce Ayarlar › Emülatörler'den bağla`, 'warn'); return go('settings', 'emu'); }
   toast(`🚀 <b>${esc(g.title)}</b> başlatılıyor...`);
   ThemeSound.hold('game', true); // ambience stays quiet while a game is running
-  const r = await api.launch({ consoleId: g.console, emulator: emu, game: g.path, fullscreen: S.graphics.fullscreen, scale: S.graphics.scale });
+  const r = await api.launch({ consoleId: g.console, emulator: emu, game: g.path, fullscreen: S.graphics.fullscreen, scale: S.graphics.scale, vsync: S.graphics.vsync !== false });
   if (!r.ok) {
     ThemeSound.hold('game', false);
     if (r.code === 'bios') { api.emu.open(g.console, 'bios'); go('settings', 'emu'); return toast('📁 ' + esc(r.error), 'warn', 8000); }
@@ -1414,7 +1412,6 @@ VIEWS.profile = v => {
   <section class="card pf-recent"><h3>🕒 En son oynananlar</h3>${recentPlayedHTML()}</section>
   </div>`;
   bindKeys(v); bindThemeTiles(v);
-  $$('[data-copy]', v).forEach(el => el.onclick = () => navigator.clipboard.writeText(el.dataset.copy).then(() => toast('📋 Arkadaş kodun kopyalandı'), () => {}));
   $('#pfPen').onclick = () => { pfEdit = !pfEdit; go('profile'); if (pfEdit) setTimeout(() => { const e = $('#pfEditor'); if (e) e.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 60); };
   $('#pfCancel').onclick = () => { pfEdit = false; go('profile'); };
   $('#pfSave').onclick = async () => {
@@ -1666,7 +1663,7 @@ function aiReply(raw) {
   if (has('yapimci', 'kim yapti', 'gelistirici', 'yapan')) return { text: 'Kizuna, **Tv Man & FKOAC** tarafından yapıldı. 🎮' };
   if (has('ps5')) return recommend(t);
   if (has('ayar', 'settings')) return { text: 'Ayarlarda tema, yıl arayüzü, yazı tipi, sesler, dil, gizlilik ve emülatörler var ⚙️', actions: [{ label: 'Ayarları aç', act: 'go:settings' }] };
-  return { text: pick(['Bunu tam anlayamadım ama öğrenmeye açığım! 🤔 Bana oyun önerisi, tema, yıl, müzik, arkadaşlar veya ayarlar hakkında sorabilirsin.', 'İlginç! Biraz daha açar mısın? İstersen “bana aksiyon oyunu öner” ya da “yılı 1985 yap” diyebilirsin.']) };
+  return { text: pick(['Bunu tam anlayamadım ama öğrenmeye açığım! 🤔 Bana oyun önerisi, tema, yıl, müzik veya ayarlar hakkında sorabilirsin.', 'İlginç! Biraz daha açar mısın? İstersen “bana aksiyon oyunu öner” ya da “yılı 1985 yap” diyebilirsin.']) };
 }
 function runAction(a) {
   const i = String(a).indexOf(':'), k = a.slice(0, i), v = a.slice(i + 1);
@@ -1806,7 +1803,6 @@ function viz() {
 }
 
 /* ---------- Settings ---------- */
-const privNote = () => S.privacy.hideGames ? 'Arkadaşların profilinde <b>oyunlarını göremez</b> 🔒' : 'Arkadaşların profilinde oynadığın oyunları <b>görebilir</b>.';
 VIEWS.settings = (v, arg) => {
   const sec = (id, t, body) => `<section class="card" id="set-${id}"><h3>${t}</h3>${body}</section>`;
   v.innerHTML = head(T('nav.settings'), 'Kizuna’yı tamamen kendine göre ayarla.')
@@ -1822,12 +1818,11 @@ VIEWS.settings = (v, arg) => {
       <div class="field"><label>Efekt ses seviyesi</label><input type="range" min="0" max="1" step="0.01" data-k="sfxVol"></div><div class="field"><label>Dene</label><input placeholder="Klavye sesini denemek için yaz..."></div></div><button class="btn ghost" data-go="music">${icon('music', 16)} Müzik ayarları ›</button>`)
     + sec('devices', '🎧 Ses cihazları — mikrofon & hoparlör', `<div id="devSet"><p class="muted">Cihazlar algılanıyor…</p></div>`)
     + sec('lang', '🌍 Dil', `<div class="lang-grid">${Object.entries(LANGS).map(([k, l]) => `<button class="lang-btn ${S.lang === k ? 'on' : ''}" data-lang="${k}"><span>${l.flag}</span>${l.name}</button>`).join('')}</div><p class="muted small" id="langNote">${I18n.note()}</p>`)
-    + sec('privacy', '🔒 Gizlilik', `<div class="field row"><label>Profil oluşturma tarihimi gizle</label><label class="switch"><input type="checkbox" data-k="privacy.hideJoin"><i></i></label></div><div class="field row"><label>Oynadığım oyunları başkalarından gizle</label><label class="switch"><input type="checkbox" data-k="privacy.hideGames"><i></i></label></div>
-      <p class="muted small" id="privNote">${privNote()}</p>`)
+    + sec('privacy', '🔒 Gizlilik', `<div class="field row"><label>Profil oluşturma tarihimi gizle</label><label class="switch"><input type="checkbox" data-k="privacy.hideJoin"><i></i></label></div>`)
     + sec('emu', '🎮 Emülatörler (eskiden yeniye)', `<p class="muted small">Emülatörler resmi kaynaklarından indirilip Kizuna’nın içine kurulur ve otomatik bağlanır.</p><div class="emu-list">${emuRowsHTML()}</div><div class="path-row"><code>${esc(S.gameFolder || 'Oyun klasörü seçilmedi')}</code><button class="btn ghost" id="setFolder">${icon('folder', 16)} Oyun klasörü seç</button></div>`)
-    + sec('gfx', '⚡ Grafik', graphicsHTML() + `<div class="field row"><label>Kizuna’yı tam ekran kullan <small class="muted">(F11 — tercih bir sonraki açılışta hatırlanır)</small></label><button class="btn sm ghost" id="fsToggle">${icon('fullscreen', 14)} Tam ekranı aç / kapat</button></div>`)
+    + sec('gfx', '⚡ Grafik', graphicsHTML() + `<div class="field row"><label>Kizuna’yı tam ekran kullan <small class="muted">(F11)</small></label><button class="btn sm ghost" id="fsToggle">${icon('fullscreen', 14)} Tam ekranı aç / kapat</button></div>`)
     + sec('pad', '🕹️ Kontrolcü ile kullanım', `<div class="field row"><label>Kizuna’yı kontrolcüyle gez</label><label class="switch"><input type="checkbox" data-k="padNav"><i></i></label></div>
-      <div class="pad-help">${[['✚ / Sol çubuk', 'Seçimi hareket ettir'], ['Ⓐ', 'Seç / tıkla'], ['Ⓑ', 'Geri / kapat'], ['LB / RB', 'Önceki / sonraki bölüm'], ['Ⓨ', 'Arama'], ['Ⓧ', 'Müzik çal / durdur'], ['Sağ çubuk', 'Sayfayı kaydır'], ['START', 'Menü rayını aç / kapat']].map(([k, d]) => `<div><kbd>${k}</kbd><span>${d}</span></div>`).join('')}</div>`)
+      <div class="pad-help">${[['✚ / Sol çubuk', 'Seçimi hareket ettir'], ['Ⓐ', 'Seç / tıkla'], ['Ⓑ', 'Geri / kapat'], ['LB / RB', 'Önceki / sonraki bölüm'], ['Ⓨ', 'Arama'], ['Ⓧ', 'Müzik çal / durdur'], ['Sağ çubuk', 'Sayfayı kaydır'], ['START', 'Menü rayını aç / kapat']].map(([k, d]) => `<div><kbd class="${/[a-zçğıöşü]{3}/i.test(k) && !/^(LB|RB|START)/.test(k) ? 'i18n' : ''}">${k}</kbd><span>${d}</span></div>`).join('')}</div>`)
     + sec('app', '⚙️ Uygulama', `<h4>Güncellemeler</h4><div id="updSet"></div><div class="row-btns" style="margin-top:8px"><button class="btn ghost" id="showNews">📰 Yenilikleri göster</button></div><h4 style="margin-top:14px">Diğer</h4><div class="row-btns"><button class="btn ghost" id="reTour">🗺️ Ürün turunu tekrar başlat</button><button class="btn ghost" id="reOb">📘 Öğreticiyi tekrar aç</button><button class="btn danger" id="resetAll">Tüm verileri sıfırla</button></div><div class="confirm hidden" id="resetConfirm"><p>Profil, kütüphane, sohbetler ve ayarlar silinecek. Emin misin?</p><div class="row-btns"><button class="btn danger" id="resetYes">Evet, sıfırla</button><button class="btn ghost" id="resetNo">Vazgeç</button></div></div><p class="muted small">Kizuna · Yapımcılar: Tv Man & FKOAC</p>`)
     + `</div>`;
   bindKeys(v); bindThemeTiles(v); bindYear(v); renderAmbBox();
@@ -1863,7 +1858,7 @@ async function renderAiSettings() {
   <p class="muted">Kizuna AI’yi ChatGPT / Gemini gibi gerçek bir yapay zekâ yapmak için bir <b>Anthropic API anahtarı</b> gir. Anahtarı <a class="lnk" id="aiKeyLink">console.anthropic.com</a> › API Keys bölümünden alabilirsin. Kullanım ücretlidir ve Anthropic hesabından faturalanır.</p>
   <div class="row-inp"><input type="password" id="aiKey" placeholder="${st.stored ? 'Kayıtlı anahtar var — değiştirmek için yenisini yapıştır' : 'sk-ant-...'}" autocomplete="off" spellcheck="false">
   <button class="btn primary" id="aiKeySave">${icon('check', 16)} Kaydet</button>${st.stored ? `<button class="btn ghost" id="aiKeyDel">Kaldır</button>` : ''}</div>
-  ${tipBox(`Anahtar ${st.encrypted ? 'Windows’un şifreli depolamasında' : 'bu bilgisayarda'} saklanır ve yalnızca Claude’a istek gönderirken kullanılır; arayüze, sohbetlere veya başka bir yere gönderilmez. Kizuna AI senin için tema, yıl, müzik değiştirebilir ve oyun açabilir.`)}`;
+  ${tipBox(`Anahtar ${st.encrypted ? 'Windows’un şifreli depolamasında' : MOBILE ? 'bu cihazda' : 'bu bilgisayarda'} saklanır ve yalnızca Claude’a istek gönderirken kullanılır; arayüze, sohbetlere veya başka bir yere gönderilmez. Kizuna AI senin için tema, yıl, müzik değiştirebilir ve oyun açabilir.`)}`;
   $('#aiKeyLink').onclick = () => openExt('https://console.anthropic.com/settings/keys');
   $('#aiKeySave').onclick = async () => {
     const k = $('#aiKey').value.trim(); if (!k) return toast('Önce API anahtarını yapıştır', 'warn');
@@ -1877,12 +1872,12 @@ async function renderAiSettings() {
 /* ---------- Help ---------- */
 VIEWS.help = v => {
   const faq = [
-    ['Kizuna nedir?', 'Kizuna; PS1, PS2, PS3 ve PS4 oyunlarını resmi açık kaynak emülatörlerle tek bir yerden başlatan bir oyun başlatıcısı ve oyuncu topluluğudur.'],
+    ['Kizuna nedir?', 'Kizuna; PS1’den PS5’e oyunları tek bir yerde toplayan, PS1–PS4 oyunlarını resmi açık kaynak emülatörlerle başlatan bir oyun başlatıcısıdır.'],
     ['Oyunları nereden indiririm?', 'Resmi PC sürümü olan oyunlarda İndir butonu oyunu Steam uygulamasında açar, oradan doğrudan indirirsin. Diğer oyunlarda emülatörü tek tıkla Kizuna’ya kurar, kendi diskinden/kopyandan aldığın yedeği eklersin. Kizuna korsan veya değiştirilmiş oyun dosyası dağıtmaz — oyunlar telif hakkıyla korunur ve bu yüzden virüs riski de yoktur.'],
     ['Emülatörleri nasıl kurarım?', 'Ayarlar › Emülatörler’de “Kizuna’ya kur”a bas. DuckStation, PCSX2, RPCS3 ve shadPS4 resmi GitHub sürümlerinden indirilir, Kizuna’nın içine kurulur ve otomatik bağlanır. PS1/PS2 için BIOS’u kendi konsolundan alıp “BIOS klasörü”ne kopyala.'],
     ['Sesli komut çalışmıyor', 'İlk kullanımda dilin için küçük bir ses modeli (~35 MB) indirilir, sonra komutlar tamamen bilgisayarında çalışır. Mikrofonunu Ayarlar › Ses cihazları’ndan seçip “Mikrofonu test et” ile deneyebilirsin. Sağ tıkla komutu yazarak da verebilirsin.'],
     ['PS5 oyunları neden doğrudan çalışmıyor?', 'Şu an PC için çalışan bir PS5 emülatörü yok. PS5 oyunlarının birçoğunun resmi PC sürümü var; İndir butonu seni oraya götürür.'],
-    ['Donma / kasma olur mu?', 'Performans bilgisayarına ve emülatöre bağlıdır. PS1/PS2 çoğu PC’de akıcıdır; PS3 güçlü işlemci ister; PS4 desteği deneyseldir. Grafik ayarlarından Yüksek FPS Modu’nu seçebilirsin.'],
+    ['Donma / kasma olur mu?', 'Performans bilgisayarına ve emülatöre bağlıdır. PS1/PS2 çoğu PC’de akıcıdır; PS3 güçlü işlemci ister; PS4 desteği deneyseldir. Ayarlar › Grafik’ten çözünürlük ölçeğini düşürürsen oyunlar daha akıcı çalışır.'],
     ['Kontrolcümü nasıl bağlarım?', 'Kolunu USB/Bluetooth ile bağla ve bir tuşa bas. Artık Kizuna’yı kolunla gezebilirsin: yön tuşları ile seç, A ile tıkla, B ile geri, LB/RB ile bölümler. Oyun içi tuş eşleştirmesi emülatörün kendi menüsünden yapılır.'],
     ['Ban kuralları', 'Ceza süresi suçun ağırlığına göre değişir: küfür ilk seferde 1 gün, başkasına ağır hakaret ilk seferde 3 gün. Aynı ihlali her tekrarlayışta süre iki katına çıkar (1 → 2 → 4 → 8 gün…). Kizuna AI’ye uygunsuz yazarsan önce uyarılırsın; devam edersen 20 saniye sonra ban başlar ve uygulama yeniden açılsa bile ban ekranı görünür.']
   ];
@@ -1899,7 +1894,7 @@ VIEWS.help = v => {
 
 /* ======================= PRODUCT TOUR (spotlight + arrows) ======================= */
 const TOUR = [
-  { sel: '#searchWrap', text: '🔍 <b>Arama çubuğu</b> — bir oyunun adını yaz, o oyun anında çıkar. Oyuncuları ve bölümleri de bulur. Kısayol: <kbd>Ctrl</kbd>+<kbd>K</kbd>' },
+  { sel: '#searchWrap', text: '🔍 <b>Arama çubuğu</b> — bir oyunun ya da ayarın adını yaz, anında çıkar. Kısayol: <kbd>Ctrl</kbd>+<kbd>K</kbd>' },
   { sel: '[data-nav="catalog"]', text: '🎮 <b>Şimdi buraya tıkla</b> ve PS1 – PS5 oyun kataloğunu aç.', click: true },
   { sel: '.view-catalog .tabs', text: 'Konsola göre filtrele (eskiden yeniye). Bir konsol seçince emülatörünü tek tıkla <b>Kizuna’ya kurabilirsin</b>.' },
   { sel: '#addGameBtn', before: () => go('library'), text: '➕ <b>Buradan oyun ekleyebilirsin</b> — kendi oyun dosyanı seç, kütüphanene eklensin, tek tıkla oyna.' },
